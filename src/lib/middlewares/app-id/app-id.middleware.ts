@@ -1,4 +1,4 @@
-import { Injectable, NestMiddleware } from "@nestjs/common";
+import { HttpException, Injectable, NestMiddleware } from "@nestjs/common";
 import { NextFunction } from "express";
 import { DatabaseService } from "@/services/database/database.service";
 
@@ -12,19 +12,25 @@ export class AppIdMiddleware implements NestMiddleware {
       const isCuid = (str: string) => /^c[a-z0-9]{24}$/.test(str);
 
       if (!isCuid(appParam)) {
-        try {
-          const app = await this.database.app.findUnique({
-            where: { slug: appParam },
-            select: { id: true }
-          });
-          if (app?.id) {
-            req["appId"] = app.id;
-          }
-        } catch (e) {
-          console.log(e);
+        const app = await this.database.app.findUnique({
+          where: { slug: appParam },
+          select: { id: true }
+        });
+        if (app?.id) {
+          req["appId"] = app.id;
+        } else {
+          throw new HttpException("App not found", 404);
         }
       } else {
-        req["appId"] = appParam;
+        const app = await this.database.app.findUnique({
+          where: { id: appParam },
+          select: { id: true }
+        });
+        if (app?.id) {
+          req["appId"] = appParam;
+        } else {
+          throw new HttpException("App not found", 404);
+        }
       }
     }
 
