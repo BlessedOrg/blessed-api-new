@@ -8,7 +8,7 @@ export class ApiKeyController {
   constructor(private readonly apiKeyService: ApiKeyService) {}
 
   @Get()
-  getAPiKey(@Req() req: RequestWithDevAccessToken & AppValidate) {
+  getApiKey(@Req() req: RequestWithDevAccessToken & AppValidate) {
     return this.apiKeyService.getApiKey(req.appId, req.developerId);
   }
 }
