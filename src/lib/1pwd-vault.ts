@@ -160,9 +160,7 @@ export async function getVaultItem(id: string, type?: VaultItemType) {
     }
   );
   const vaultItem = await createdItem.json();
-  if (vaultItem?.status !== 400) {
-    console.log(`🔑 Retrieved ${type} from Vault`);
-  } else {
+  if (vaultItem?.status === 400) {
     const errMsg = `Failed to retrieve ${type} from Vault: ${vaultItem?.message}`;
     throw new Error(errMsg);
   }

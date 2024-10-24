@@ -12,7 +12,6 @@ export class DeveloperAuthGuard implements IAuthGuard {
   async canActivate(context: any): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const token = extractTokenFromHeader(request);
-
     if (!token) {
       throw new UnauthorizedException("Developer Access Token is required.");
     }

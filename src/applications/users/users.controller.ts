@@ -1,12 +1,18 @@
-import { Body, Controller, Post, Req } from "@nestjs/common";
+import { Body, Controller, Get, Post, Req } from "@nestjs/common";
 import { UsersService } from "./users.service";
 import { LoginDto } from "@/lib/dto/login.dto";
 import { CodeDto } from "@/lib/dto/code.dto";
-import { RequireApiKey } from "@/lib/decorators/auth.decorator";
+import { RequireApiKey, RequireUserAndApiKey } from "@/lib/decorators/auth.decorator";
 
 @Controller("applications/:app/users")
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  @RequireUserAndApiKey()
+  @Post("logout")
+  logout(@Req() req: RequestWithApiKeyAndUserAccessToken) {
+    return this.usersService.logout(req.userId);
+  }
 
   @RequireApiKey()
   @Post("login")
@@ -20,5 +26,12 @@ export class UsersController {
     const { appId } = req;
     return this.usersService.verify(codeDto, appId);
   }
- 
+
+  @RequireApiKey()
+  @Get()
+  all(@Req() req: RequestWithAppValidate) {
+    const { appId } = req;
+    return this.usersService.getAllUsers(appId);
+  }
+
 }

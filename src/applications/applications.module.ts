@@ -1,4 +1,4 @@
-import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
+import { MiddlewareConsumer, Module, NestModule, RequestMethod } from "@nestjs/common";
 import { ApplicationsService } from "./applications.service";
 import { ApplicationsController } from "./applications.controller";
 import { ApiKeyModule } from "./api-key/api-key.module";
@@ -13,6 +13,6 @@ export class ApplicationsModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(AppIdMiddleware)
-      .forRoutes("applications/:app/*");
+      .forRoutes({ path: "applications/:app", method: RequestMethod.ALL }, { path: "applications/:app/*", method: RequestMethod.ALL });
   }
 }

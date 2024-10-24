@@ -1,32 +1,21 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
-import { JwtService } from "@nestjs/jwt";
-import { envConstants } from "@/lib/constants";
-import { extractTokenFromHeader } from "@/utils/requests/extractTokenFromHeader";
+import { ApiKeyGuard } from "./api-key.guard";
+import { UserAuthGuard } from "./user-auth.guard";
 
 @Injectable()
 export class UserAndApiKeyAuthGuard implements IAuthGuard {
-  constructor(private jwtService: JwtService) {}
+  constructor(
+    private apiKeyGuard: ApiKeyGuard,
+    private userAuthGuard: UserAuthGuard
+  ) {}
 
   async canActivate(context: any): Promise<boolean> {
-    const request = context.switchToHttp().getRequest();
-    const apiKey = request.headers["blessed-api-key"];
-    if (!apiKey) {
-      throw new UnauthorizedException("Api Key is required.");
-    }
-    const token = extractTokenFromHeader(request);
-
-    if (!token) {
-      throw new UnauthorizedException("User Access Token is required.");
-    }
-
     try {
-      const payload = await this.jwtService.verifyAsync(token, {
-        secret: envConstants.jwtSecret
-      });
-      request["user"] = payload;
-    } catch {
-      throw new UnauthorizedException();
+      await this.apiKeyGuard.canActivate(context);
+      await this.userAuthGuard.canActivate(context);
+      return true;
+    } catch (error) {
+      throw new UnauthorizedException("Both API Key and User Authentication are required.");
     }
-    return true;
   }
 }

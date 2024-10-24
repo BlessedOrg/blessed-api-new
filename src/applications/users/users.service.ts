@@ -14,8 +14,22 @@ export class UsersService {
     private database: DatabaseService
   ) {}
 
-  get() {
-    return this.database.app.findMany();
+  async logout(userId: string) {
+    await this.database.userSession.updateMany({
+      where: {
+        userId
+      },
+      data: {
+        expiresAt: new Date()
+      }
+    });
+    return {
+      message: "Successfully logged out"
+    };
+  }
+
+  getAllUsers(appId: string) {
+    return this.database.user.findMany({ where: { Apps: { some: { id: appId } } } });
   }
   login(loginDto: LoginDto) {
     const { email } = loginDto;

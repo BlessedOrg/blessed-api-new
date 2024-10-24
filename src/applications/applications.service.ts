@@ -51,4 +51,26 @@ export class ApplicationsService {
       }
     });
   }
+  getDetails(appId: string) {
+    return this.database.app.findUnique({
+      where: {
+        id: appId
+      },
+      include: {
+        ApiTokens: {
+          select: {
+            id: true,
+            revoked: true,
+            expiresAt: true
+          }
+        },
+        _count: {
+          select: {
+            SmartContracts: true,
+            Users: true
+          }
+        }
+      }
+    });
+  }
 }

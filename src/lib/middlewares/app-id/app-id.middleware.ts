@@ -7,7 +7,6 @@ export class AppIdMiddleware implements NestMiddleware {
   constructor(private database: DatabaseService) {}
   async use(req: any, res: Response, next: NextFunction) {
     const appParam = req?.params["app"];
-
     if (appParam) {
       const isCuid = (str: string) => /^c[a-z0-9]{24}$/.test(str);
 
