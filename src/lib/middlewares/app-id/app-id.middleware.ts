@@ -1,6 +1,6 @@
 import { Injectable, NestMiddleware } from "@nestjs/common";
 import { NextFunction } from "express";
-import { DatabaseService } from "@/lib/database/database.service";
+import { DatabaseService } from "@/services/database/database.service";
 
 @Injectable()
 export class AppIdMiddleware implements NestMiddleware {

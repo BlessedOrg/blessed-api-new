@@ -1,5 +1,5 @@
 import { HttpException, Injectable, UnauthorizedException } from "@nestjs/common";
-import { DatabaseService } from "@/lib/database/database.service";
+import { DatabaseService } from "@/services/database/database.service";
 import { JwtService } from "@nestjs/jwt";
 import { v4 as uuidv4 } from "uuid";
 import { createVaultAccessTokenItem, updateVaultItem } from "@/lib/1pwd-vault";

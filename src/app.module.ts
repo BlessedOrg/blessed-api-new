@@ -1,7 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
-import { DatabaseModule } from "./lib/database/database.module";
+import { DatabaseModule } from "@/services/database/database.module";
 import { JwtModule } from "@nestjs/jwt";
 import { envConstants } from "@/lib/constants";
 import { DevelopersModule } from "./developers/developers.module";

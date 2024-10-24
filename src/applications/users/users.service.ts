@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { EmailService } from "@/services/email/email.service";
 import { SessionService } from "@/session/session.service";
-import { DatabaseService } from "@/lib/database/database.service";
+import { DatabaseService } from "@/services/database/database.service";
 import { LoginDto } from "@/lib/dto/login.dto";
 import { CodeDto } from "@/lib/dto/code.dto";
 import { createCapsuleAccount } from "@/lib/capsule";
