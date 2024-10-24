@@ -11,7 +11,6 @@ import { AuthGuardsModule } from "@/lib/guards/auth/auth-guards.module";
 import { EmailModule } from "./services/email/email.module";
 import { ConfigModule } from "@nestjs/config";
 import { config } from "@/config";
-import { SessionService } from "./session/session.service";
 import { SessionModule } from "./session/session.module";
 import { UsersModule } from "@/applications/users/users.module";
 import { ApplicationsModule } from "./applications/applications.module";
@@ -32,6 +31,6 @@ import { ApplicationsModule } from "./applications/applications.module";
     ApplicationsModule
   ],
   controllers: [AppController],
-  providers: [AppService, { provide: APP_GUARD, useClass: AuthGuard }, SessionService]
+  providers: [AppService, { provide: APP_GUARD, useClass: AuthGuard }]
 })
 export class AppModule {}

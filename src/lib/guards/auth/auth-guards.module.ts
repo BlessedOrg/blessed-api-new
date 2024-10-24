@@ -7,9 +7,10 @@ import { UserAuthGuard } from "@/lib/guards/auth/user-auth.guard";
 import { UserAndApiKeyAuthGuard } from "@/lib/guards/auth/user-and-api-key-auth.guard";
 import { DeveloperOrApiKeyAuthGuard } from "@/lib/guards/auth/developer-or-api-key-auth.guard";
 import { SessionModule } from "@/session/session.module";
+import { ApiKeyModule } from "@/applications/api-key/api-key.module";
 
 @Module({
-  imports: [SessionModule],
+  imports: [SessionModule, ApiKeyModule],
   providers: [
     AuthGuard,
     AuthGuardFactory,

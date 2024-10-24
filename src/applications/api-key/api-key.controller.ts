@@ -2,14 +2,13 @@ import { Controller, Get, Req } from "@nestjs/common";
 import { ApiKeyService } from "./api-key.service";
 import { RequireDeveloperAuth } from "@/lib/decorators/auth.decorator";
 
+@RequireDeveloperAuth()
 @Controller("applications/:app/api-key")
 export class ApiKeyController {
   constructor(private readonly apiKeyService: ApiKeyService) {}
 
-  @RequireDeveloperAuth()
   @Get()
-  getAPiKey(@Req() req: RequestWithAppValidate) {
-    return this.apiKeyService.getApiKey(req.appId);
+  getAPiKey(@Req() req: RequestWithDevAccessToken & AppValidate) {
+    return this.apiKeyService.getApiKey(req.appId, req.developerId);
   }
-
 }

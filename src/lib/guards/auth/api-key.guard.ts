@@ -1,24 +1,28 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { envConstants } from '@/lib/constants';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { envConstants } from "@/lib/constants";
+import { ApiKeyService } from "@/applications/api-key/api-key.service";
 
 @Injectable()
 export class ApiKeyGuard implements IAuthGuard {
-  constructor(private jwtService: JwtService) {}
+  constructor(private jwtService: JwtService, private apiKeyService: ApiKeyService) {}
 
   async canActivate(context: any): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const apiKey = request.headers['blessed-api-key'];
+    const apiKey = request.headers["blessed-api-key"];
 
     if (!apiKey) {
-      throw new UnauthorizedException('Api Key is required.');
+      throw new UnauthorizedException("blessed-api-key is required.");
     }
 
     try {
-      const payload = await this.jwtService.verifyAsync(apiKey, {
-        secret: envConstants.jwtSecret,
-      });
-      request['user'] = payload;
+      const decoded = this.jwtService.verify(apiKey, {
+        secret: envConstants.jwtSecret
+      }) as ApiTokenJWT;
+
+      const data = await this.apiKeyService.validateApiKey(decoded.apiTokenId, apiKey);
+
+      Object.assign(request, data);
     } catch {
       throw new UnauthorizedException();
     }
