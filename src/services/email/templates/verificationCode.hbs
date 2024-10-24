@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <style>
+      body {
+         background-color: #f4f4f4;
+         font-family: Arial, sans-serif;
+      }
+
+      .container {
+         max-width: 600px;
+         margin: 0 auto;
+         padding: 20px;
+         background-color: #ffffff;
+         border-radius: 8px;
+         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .logo {
+         display: block;
+         margin: 0 auto;
+         max-width: 100px;
+      }
+
+      .title {
+         font-size: 24px;
+         font-weight: bold;
+         color: #333333;
+         text-align: center;
+         margin-bottom: 24px;
+      }
+
+      .otp {
+         font-size: 32px;
+         font-weight: bold;
+         color: #ff0000;
+         margin: 24px 0;
+         text-align: center;
+      }
+
+      .text-center {
+         text-align: center;
+      }
+
+      .link {
+         display: block;
+         width: fit-content;
+         margin: 24px auto 0 auto;
+         padding: 10px 20px;
+         background-color: #38a169; /* Green */
+         color: #ffffff;
+         text-decoration: none;
+         border-radius: 9999px; /* Full rounded */
+      }
+
+      .hidden {
+         font-size: 1px;
+      }
+   </style>
+</head>
+<body>
+<div class="container">
+   <img src="https://avatars.githubusercontent.com/u/164048341?s=200&v=4" alt="Blessed logo" class="logo">
+   <h1 class="title">Your One-Time Password</h1>
+   <div class="text-center">
+      <p>Hello there,</p>
+      <p>Here is your One-Time Password for signing in to Blessed.fan:</p>
+      <div class="otp">{{otp}}</div>
+      <p>Please enter this code to verify your account.</p>
+   </div>
+   <div class="text-center">
+      <p>If you didn't ask for this code, please ignore this message.</p>
+   </div>
+   <div class="hidden">{{otp}}</div>
+</div>
+</body>
+</html>
