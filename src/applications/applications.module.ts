@@ -13,6 +13,6 @@ export class ApplicationsModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(AppIdMiddleware)
-      .forRoutes({ path: "applications/:app", method: RequestMethod.ALL });
+      .forRoutes({ path: "applications/:app*", method: RequestMethod.ALL });
   }
 }

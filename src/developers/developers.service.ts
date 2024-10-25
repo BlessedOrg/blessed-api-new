@@ -1,5 +1,5 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
-import { LoginDto } from "@/common/dto/login.dto";
+import { EmailDto } from "@/common/dto/email.dto";
 import { EmailService } from "@/common/services/email/email.service";
 import { CodeDto } from "@/common/dto/code.dto";
 import { SessionService } from "@/session/session.service";
@@ -17,8 +17,8 @@ export class DevelopersService {
   getDeveloper(developerId: string) {
     return this.database.developerAccount.findUnique({ where: { id: developerId } });
   }
-  login(loginDto: LoginDto) {
-    const { email } = loginDto;
+  login(emailDto: EmailDto) {
+    const { email } = emailDto;
     return this.emailService.sendVerificationCodeEmail(email);
   }
   async logout(developerId: string, accessTokenVaultKey: string) {

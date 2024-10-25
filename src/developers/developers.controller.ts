@@ -1,6 +1,6 @@
 import { Body, Controller, Get, Post, Req } from "@nestjs/common";
 import { DevelopersService } from "./developers.service";
-import { LoginDto } from "@/common/dto/login.dto";
+import { EmailDto } from "@/common/dto/email.dto";
 import { CodeDto } from "@/common/dto/code.dto";
 import { RequireDeveloperAuth } from "@/common/decorators/auth.decorator";
 
@@ -15,8 +15,8 @@ export class DevelopersController {
   }
 
   @Post("login")
-  create(@Body() loginDto: LoginDto) {
-    return this.developersService.login(loginDto);
+  create(@Body() emailDto: EmailDto) {
+    return this.developersService.login(emailDto);
   }
 
   @RequireDeveloperAuth()

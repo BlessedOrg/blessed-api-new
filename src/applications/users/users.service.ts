@@ -2,9 +2,10 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { EmailService } from "@/common/services/email/email.service";
 import { SessionService } from "@/session/session.service";
 import { DatabaseService } from "@/common/services/database/database.service";
-import { LoginDto } from "@/common/dto/login.dto";
+import { EmailDto } from "@/common/dto/email.dto";
 import { CodeDto } from "@/common/dto/code.dto";
 import { createCapsuleAccount } from "@/lib/capsule";
+import { CreateManyUsersDto } from "@/applications/users/dto/many-users-create.dto";
 
 @Injectable()
 export class UsersService {
@@ -27,12 +28,14 @@ export class UsersService {
       message: "Successfully logged out"
     };
   }
-
+  createMany(users: CreateManyUsersDto, appId: string) {
+    return this.createMissingAccounts(users.users.map(user => user.email), appId);
+  }
   getAllUsers(appId: string) {
     return this.database.user.findMany({ where: { Apps: { some: { id: appId } } } });
   }
-  login(loginDto: LoginDto) {
-    const { email } = loginDto;
+  login(emailDto: EmailDto) {
+    const { email } = emailDto;
     return this.emailService.sendVerificationCodeEmail(email);
   }
 
@@ -85,6 +88,100 @@ export class UsersService {
       throw new HttpException(e.message, 500);
     }
   };
+
+  private async createMissingAccounts(emails: string[], appId: string) {
+    try {
+      const existingAccounts = await this.database.user.findMany({
+        where: {
+          email: {
+            in: emails
+          }
+        },
+        include: {
+          Apps: {
+            where: {
+              id: appId
+            }
+          }
+        }
+      });
+
+      const accountsToAssign = existingAccounts.filter(account => account.Apps.length === 0);
+      const alreadyAssignedAccounts = existingAccounts.filter(account => account.Apps.length > 0);
+      const nonExistingEmails = emails.filter(email => !existingAccounts.some(account => account.email === email));
+
+      const result = await this.database.$transaction(async (tx) => {
+        await Promise.all(accountsToAssign.map(account =>
+          tx.user.update({
+            where: { id: account.id },
+            data: { Apps: { connect: { id: appId } } }
+          })
+        ));
+
+        const createNewAccounts = await tx.user.createMany({
+          data: nonExistingEmails.map(email => ({ email })),
+          skipDuplicates: true
+        });
+
+        const newAccounts = await tx.user.findMany({
+          where: { email: { in: nonExistingEmails } }
+        });
+
+        await Promise.all(newAccounts.map(account =>
+          tx.user.update({
+            where: { id: account.id },
+            data: { Apps: { connect: { id: appId } } }
+          })
+        ));
+
+        return {
+          assignedExisting: accountsToAssign.length,
+          createdNew: createNewAccounts.count,
+          assignedNew: newAccounts.length,
+          newAccounts: newAccounts
+        };
+      });
+
+      const capsuleAccounts = [];
+      for (const account of result.newAccounts) {
+        const { data } = await createCapsuleAccount(account.id, account.email, "user");
+        if (data) {
+          capsuleAccounts.push({
+            email: account.email,
+            walletAddress: data.walletAddress,
+            capsuleTokenVaultKey: data.capsuleTokenVaultKey
+          });
+        }
+      }
+
+      await this.database.$transaction(
+        capsuleAccounts.map(account =>
+          this.database.user.update({
+            where: { email: account.email },
+            data: {
+              walletAddress: account.walletAddress,
+              capsuleTokenVaultKey: account.capsuleTokenVaultKey
+            }
+          })
+        )
+      );
+
+      const allUsers = await this.database.user.findMany({
+        where: { email: { in: emails } },
+        select: { id: true, email: true, walletAddress: true }
+      });
+
+      return {
+        assigned: result.assignedExisting,
+        created: result.createdNew,
+        alreadyAssigned: alreadyAssignedAccounts.length,
+        total: emails.length,
+        users: allUsers
+      };
+    } catch (e) {
+      throw new Error(e instanceof Error ? e.message : "An unknown error occurred");
+    }
+  }
 }
 
 
