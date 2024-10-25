@@ -1,7 +1,7 @@
 import { HttpException, Injectable } from "@nestjs/common";
-import { DatabaseService } from "@/services/database/database.service";
+import { DatabaseService } from "@/common/services/database/database.service";
 import { JwtService } from "@nestjs/jwt";
-import { envConstants } from "@/lib/constants";
+import { envConstants } from "@/common/constants";
 import { createVaultApiKeyItem, getVaultItem } from "@/lib/1pwd-vault";
 import { isEqual } from "lodash";
 

@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { envConstants } from "@/lib/constants";
+import { envConstants } from "@/common/constants";
 import { extractTokenFromHeader } from "@/utils/requests/extractTokenFromHeader";
 import { getVaultItem } from "@/lib/1pwd-vault";
 import { SessionService } from "@/session/session.service";

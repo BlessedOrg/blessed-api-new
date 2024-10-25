@@ -1,5 +1,5 @@
 import { shortenWalletAddress } from "@/utils/shortenWalletAddress";
-import { envConstants } from "@/lib/constants";
+import { envConstants } from "@/common/constants";
 
 const {
   vaultAccessTokensId,

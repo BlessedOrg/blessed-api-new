@@ -1,8 +1,8 @@
 import { Body, Controller, Get, Post, Req } from "@nestjs/common";
 import { UsersService } from "./users.service";
-import { LoginDto } from "@/lib/dto/login.dto";
-import { CodeDto } from "@/lib/dto/code.dto";
-import { RequireApiKey, RequireUserAndApiKey } from "@/lib/decorators/auth.decorator";
+import { LoginDto } from "@/common/dto/login.dto";
+import { CodeDto } from "@/common/dto/code.dto";
+import { RequireApiKey, RequireUserAndApiKey } from "@/common/decorators/auth.decorator";
 
 @Controller("applications/:app/users")
 export class UsersController {

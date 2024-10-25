@@ -1,7 +1,7 @@
 import { HttpException, Injectable } from "@nestjs/common";
 import { CreateApplicationDto } from "./dto/create-application.dto";
 import slugify from "slugify";
-import { DatabaseService } from "@/services/database/database.service";
+import { DatabaseService } from "@/common/services/database/database.service";
 
 @Injectable()
 export class ApplicationsService {
