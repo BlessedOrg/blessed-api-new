@@ -5,6 +5,7 @@ import { CodeDto } from "@/common/dto/code.dto";
 import { SessionService } from "@/session/session.service";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { createCapsuleAccount } from "@/lib/capsule";
+import { updateVaultItem } from "@/lib/1pwd-vault";
 
 @Injectable()
 export class DevelopersService {
@@ -13,9 +14,41 @@ export class DevelopersService {
     private sessionService: SessionService,
     private database: DatabaseService
   ) {}
+  getDeveloper(developerId: string) {
+    return this.database.developerAccount.findUnique({ where: { id: developerId } });
+  }
   login(loginDto: LoginDto) {
     const { email } = loginDto;
     return this.emailService.sendVerificationCodeEmail(email);
+  }
+  async logout(developerId: string, accessTokenVaultKey: string) {
+    try {
+      await this.database.developerSession.updateMany({
+        where: {
+          developerId
+        },
+        data: {
+          expiresAt: new Date()
+        }
+      });
+
+      const deletedToken = await updateVaultItem(accessTokenVaultKey, [
+        {
+          op: "replace",
+          path: "/fields/accessToken/value",
+          value: "none"
+        }
+      ], "accessToken");
+      if (deletedToken?.id) {
+        return {
+          message: "Logged out successfully"
+        };
+      } else {
+        throw new Error("Something went wrong");
+      }
+    } catch (e) {
+      throw new HttpException(e.message, 500);
+    }
   }
 
   async verify(codeDto: CodeDto) {

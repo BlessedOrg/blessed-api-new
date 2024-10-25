@@ -33,5 +33,4 @@ export class UsersController {
     const { appId } = req;
     return this.usersService.getAllUsers(appId);
   }
-
 }

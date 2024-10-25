@@ -20,7 +20,7 @@ export class ApplicationsController {
     return this.applicationsService.getDetails(req.appId);
   }
 
-  @RequireDeveloperAuth()
+  @RequireDeveloperAuthOrApiKey()
   @Get()
   all(@Req() req: RequestWithDevAccessToken) {
     const developerId = req.developerId;
