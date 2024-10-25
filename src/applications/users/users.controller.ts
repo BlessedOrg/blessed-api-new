@@ -38,7 +38,6 @@ export class UsersController {
   @Get()
   all(@Req() req: RequestWithAppValidate) {
     const { appId } = req;
-    console.log(`App id for get all users: ${appId}`);
     return this.usersService.getAllUsers(appId);
   }
 }
