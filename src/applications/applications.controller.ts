@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, Req } from "@nestjs/common";
 import { ApplicationsService } from "./applications.service";
 import { CreateApplicationDto } from "./dto/create-application.dto";
-import { RequireDeveloperAuth, RequireDeveloperAuthOrApiKey } from "@/lib/decorators/auth.decorator";
+import { RequireDeveloperAuth, RequireDeveloperAuthOrApiKey } from "@/common/decorators/auth.decorator";
 
 @Controller("applications")
 export class ApplicationsController {
@@ -17,11 +17,10 @@ export class ApplicationsController {
   @RequireDeveloperAuthOrApiKey()
   @Get(":app")
   details(@Req() req: AppValidate) {
-    console.log("Application ID: ", req.appId);
     return this.applicationsService.getDetails(req.appId);
   }
 
-  @RequireDeveloperAuth()
+  @RequireDeveloperAuthOrApiKey()
   @Get()
   all(@Req() req: RequestWithDevAccessToken) {
     const developerId = req.developerId;

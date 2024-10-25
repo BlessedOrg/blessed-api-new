@@ -1,5 +1,5 @@
 import { HttpException, Injectable } from "@nestjs/common";
-import { DatabaseService } from "@/services/database/database.service";
+import { DatabaseService } from "@/common/services/database/database.service";
 import { MailerService } from "@nestjs-modules/mailer";
 import { ConfigService } from "@nestjs/config";
 import * as nodemailer from "nodemailer";

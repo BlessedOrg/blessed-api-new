@@ -1,6 +1,6 @@
 import { Controller, Get, Req } from "@nestjs/common";
 import { ApiKeyService } from "./api-key.service";
-import { RequireDeveloperAuth } from "@/lib/decorators/auth.decorator";
+import { RequireDeveloperAuth } from "@/common/decorators/auth.decorator";
 
 @RequireDeveloperAuth()
 @Controller("applications/:app/api-key")

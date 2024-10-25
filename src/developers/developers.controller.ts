@@ -1,18 +1,31 @@
-import { Body, Controller, Post } from '@nestjs/common';
-import { DevelopersService } from './developers.service';
-import { LoginDto } from '@/lib/dto/login.dto';
-import { CodeDto } from '@/lib/dto/code.dto';
+import { Body, Controller, Get, Post, Req } from "@nestjs/common";
+import { DevelopersService } from "./developers.service";
+import { EmailDto } from "@/common/dto/email.dto";
+import { CodeDto } from "@/common/dto/code.dto";
+import { RequireDeveloperAuth } from "@/common/decorators/auth.decorator";
 
-@Controller('developers')
+@Controller("developers")
 export class DevelopersController {
   constructor(private readonly developersService: DevelopersService) {}
 
-  @Post('login')
-  create(@Body() loginDto: LoginDto) {
-    return this.developersService.login(loginDto);
+  @RequireDeveloperAuth()
+  @Get("me")
+  me(@Req() req: RequestWithDevAccessToken) {
+    return this.developersService.getDeveloper(req.developerId);
   }
 
-  @Post('verify')
+  @Post("login")
+  create(@Body() emailDto: EmailDto) {
+    return this.developersService.login(emailDto);
+  }
+
+  @RequireDeveloperAuth()
+  @Post("logout")
+  logout(@Req() req: RequestWithDevAccessToken) {
+    return this.developersService.logout(req.developerId, req.capsuleTokenVaultKey);
+  }
+
+  @Post("verify")
   verify(@Body() codeDto: CodeDto) {
     return this.developersService.verify(codeDto);
   }

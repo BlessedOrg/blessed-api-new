@@ -2,7 +2,7 @@ import { MiddlewareConsumer, Module, NestModule, RequestMethod } from "@nestjs/c
 import { ApplicationsService } from "./applications.service";
 import { ApplicationsController } from "./applications.controller";
 import { ApiKeyModule } from "./api-key/api-key.module";
-import { AppIdMiddleware } from "@/lib/middlewares/app-id/app-id.middleware";
+import { AppIdMiddleware } from "@/common/middlewares/app-id/app-id.middleware";
 
 @Module({
   controllers: [ApplicationsController],
@@ -13,6 +13,6 @@ export class ApplicationsModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(AppIdMiddleware)
-      .forRoutes({ path: "applications/:app", method: RequestMethod.ALL }, { path: "applications/:app/*", method: RequestMethod.ALL });
+      .forRoutes({ path: "applications/:app*", method: RequestMethod.ALL });
   }
 }
