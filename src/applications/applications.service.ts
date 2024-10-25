@@ -61,7 +61,7 @@ export class ApplicationsService {
           select: {
             id: true,
             revoked: true,
-            expiresAt: true
+            createdAt: true
           }
         },
         _count: {

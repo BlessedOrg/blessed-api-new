@@ -15,17 +15,21 @@ export class DeveloperAuthGuard implements IAuthGuard {
     if (!token) {
       throw new UnauthorizedException("Developer Access Token is required.");
     }
-    const decoded = this.jwtService.verify(token, { secret: envConstants.jwtSecret }) as DeveloperAccessTokenJWT;
+    try {
+      const decoded = this.jwtService.verify(token, { secret: envConstants.jwtSecret }) as DeveloperAccessTokenJWT;
 
-    await this.sessionService.checkIsSessionValid(decoded.developerId, "developer");
-    const itemFromVault = await getVaultItem(decoded?.accessTokenVaultKey, "accessToken");
-    const isTokenExists = itemFromVault?.fields?.some(i => i.value === token);
-    const isTokenInitialized = itemFromVault.fields?.find(i => i.id === "accessToken").value === "none";
-    if (!isTokenExists || isTokenInitialized) {
-      throw new UnauthorizedException("Invalid developer access token.");
+      await this.sessionService.checkIsSessionValid(decoded.developerId, "developer");
+      const itemFromVault = await getVaultItem(decoded?.accessTokenVaultKey, "accessToken");
+      const isTokenExists = itemFromVault?.fields?.some(i => i.value === token);
+      const isTokenInitialized = itemFromVault.fields?.find(i => i.id === "accessToken").value === "none";
+      if (!isTokenExists || isTokenInitialized) {
+        throw new UnauthorizedException("Invalid developer access token.");
+      }
+
+      Object.assign(request, decoded);
+      return true;
+    } catch (e) {
+      throw new UnauthorizedException(e.message);
     }
-
-    Object.assign(request, decoded);
-    return true;
   }
 }

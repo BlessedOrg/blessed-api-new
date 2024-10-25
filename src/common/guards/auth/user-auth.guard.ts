@@ -14,10 +14,14 @@ export class UserAuthGuard implements IAuthGuard {
     if (!token) {
       throw new UnauthorizedException("User Access Token is required.");
     }
-    const decoded = this.jwtService.verify(token, { secret: envConstants.jwtSecret }) as UserAccessTokenJWT;
-    await this.sessionService.checkIsSessionValid(decoded.userId, "user");
+    try {
+      const decoded = this.jwtService.verify(token, { secret: envConstants.jwtSecret }) as UserAccessTokenJWT;
+      await this.sessionService.checkIsSessionValid(decoded.userId, "user");
 
-    Object.assign(request, decoded);
-    return true;
+      Object.assign(request, decoded);
+      return true;
+    } catch (e) {
+      throw new UnauthorizedException(e.message);
+    }
   }
 }

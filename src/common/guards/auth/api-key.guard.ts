@@ -23,9 +23,9 @@ export class ApiKeyGuard implements IAuthGuard {
       const data = await this.apiKeyService.validateApiKey(decoded.apiTokenId, apiKey);
 
       Object.assign(request, data);
-    } catch {
-      throw new UnauthorizedException();
+      return true;
+    } catch (e) {
+      throw new UnauthorizedException(e.message);
     }
-    return true;
   }
 }
