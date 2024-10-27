@@ -22,7 +22,7 @@ export class DevelopersController {
   @RequireDeveloperAuth()
   @Post("logout")
   logout(@Req() req: RequestWithDevAccessToken) {
-    return this.developersService.logout(req.developerId, req.capsuleTokenVaultKey);
+    return this.developersService.logout(req.developerId, req.accessTokenVaultKey);
   }
 
   @Post("verify")

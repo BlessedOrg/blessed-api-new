@@ -34,6 +34,7 @@ declare global {
 
   type AppValidate = {
     appId: string;
+    appOwnerWalletAddress: string;
   };
 
   type TicketValidate = {

@@ -6,4 +6,8 @@ export class EmailDto {
   @IsString({ message: "Email must be a string" })
   @IsNotEmpty({ message: "Email address is required" })
   email: string;
+
+  constructor(email: string) {
+    this.email = email;
+  }
 }

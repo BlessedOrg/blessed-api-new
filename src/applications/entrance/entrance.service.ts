@@ -1,0 +1,133 @@
+import { HttpException, Injectable } from "@nestjs/common";
+import { DatabaseService } from "@/common/services/database/database.service";
+import { CreateEntranceDto } from "@/applications/entrance/dto/create-entrance.dto";
+import { uploadMetadata } from "@/lib/irys";
+import { getSmartWalletForCapsuleWallet } from "@/lib/capsule";
+import { contractArtifacts, deployContract, getExplorerUrl, readContract } from "@/lib/viem";
+import { EntryDto } from "@/applications/entrance/dto/entry.dto";
+import { biconomyMetaTx } from "@/lib/biconomy";
+import { PrefixedHexString } from "ethereumjs-util";
+
+@Injectable()
+export class EntranceService {
+  constructor(private database: DatabaseService) {}
+
+  all(appId: string) {
+    return this.database.smartContract.findMany({
+      where: {
+        appId,
+        name: "entrance"
+      }
+    });
+  }
+  async create(createEntranceDto: CreateEntranceDto, req: RequestWithApiKey & AppValidate) {
+    const { appId, appOwnerWalletAddress, capsuleTokenVaultKey } = req;
+    try {
+      const metadataPayload = {
+        name: "Entrance checker",
+        symbol: "",
+        description: "Entrance checker for event",
+        image: ""
+      };
+      const { metadataUrl, metadataImageUrl } = await uploadMetadata(metadataPayload);
+      const contractName = "entrance";
+
+      const smartWallet = await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
+      const ownerSmartWallet = await smartWallet.getAccountAddress();
+
+      const args = {
+        owner: appOwnerWalletAddress,
+        ownerSmartWallet,
+        ticketAddress: createEntranceDto.ticketAddress
+      };
+
+      const contract = await deployContract(contractName, Object.values(args));
+      console.log("⛓️ Contract Explorer URL: ", getExplorerUrl(contract.contractAddr));
+
+      const maxId = await this.database.smartContract.aggregate({
+        where: {
+          appId,
+          developerId: req.developerId,
+          name: contractName
+        },
+        _max: {
+          version: true
+        }
+      });
+
+      const nextId = (maxId._max.version || 0) + 1;
+
+      const smartContractRecord = await this.database.smartContract.create({
+        data: {
+          address: contract.contractAddr,
+          name: contractName,
+          developerId: req.developerId,
+          version: nextId,
+          appId,
+          metadataUrl,
+          metadataPayload: {
+            ...metadataPayload,
+            ...metadataImageUrl && { metadataImageUrl }
+          }
+        }
+      });
+
+      return (
+        {
+          success: true,
+          contract,
+          smartContractRecord,
+          explorerUrls: {
+            contract: getExplorerUrl(contract.contractAddr)
+          }
+        }
+      );
+    } catch (e) {
+      throw new HttpException(e.message, 500);
+    }
+  }
+  async entry(entryDto: EntryDto, entranceId: string, req: RequestWithApiKeyAndUserAccessToken & AppValidate) {
+    try {
+      const { walletAddress, capsuleTokenVaultKey } = req;
+      const { ticketId } = entryDto;
+      const entranceRecord = await this.database.smartContract.findUnique({ where: { id: entranceId } });
+      if (!entranceRecord.address) {
+        throw new Error(`Wrong parameters. Smart contract entrance from app ${req.appSlug} not found.`);
+      }
+      const contractAddress = entranceRecord.address as PrefixedHexString;
+      const smartWallet = await getSmartWalletForCapsuleWallet(req.capsuleTokenVaultKey);
+      const ownerSmartWallet = await smartWallet.getAccountAddress();
+      const isAlreadyEntered = await readContract(
+        contractAddress,
+        contractArtifacts["entrance"].abi,
+        "hasEntry",
+        [ownerSmartWallet]
+      );
+
+      if (!isAlreadyEntered) {
+        const metaTxResult = await biconomyMetaTx({
+          contractAddress: contractAddress,
+          contractName: "entrance",
+          functionName: "entry",
+          args: [ticketId],
+          userWalletAddress: walletAddress as PrefixedHexString,
+          capsuleTokenVaultKey
+        });
+
+        return (
+          {
+            success: true,
+            explorerUrls: {
+              tx: getExplorerUrl(metaTxResult.data.transactionReceipt.transactionHash)
+            },
+            transactionReceipt: metaTxResult.data.transactionReceipt
+          }
+        );
+      } else {
+        return { message: "Already entered" };
+      }
+    } catch (e) {
+      throw new HttpException(e.message, 500);
+    }
+  }
+}

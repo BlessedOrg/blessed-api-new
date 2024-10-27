@@ -11,6 +11,27 @@ export class EmailService {
     private readonly mailerService: MailerService,
     private readonly configService: ConfigService
   ) {}
+  async sendBatchEmails(emailDataArray: any, isLocalhost: boolean) {
+    const emailPromises = emailDataArray.map(({ recipientEmail, subject, template, context }) => {
+      const options = {
+        from: process.env.SMTP_EMAIL || "test@blessed.fan",
+        to: recipientEmail,
+        subject: subject,
+        template,
+        context
+      };
+
+      return this.mailerService.sendMail(options);
+    });
+    const sendResults = await Promise.all(emailPromises);
+    if (isLocalhost) {
+      sendResults.forEach((result, index) => {
+        console.log(`📨 Email ${index + 1} sent. Preview URL: ${nodemailer.getTestMessageUrl(result)}`);
+      });
+    }
+
+    return sendResults;
+  }
   async sendVerificationCodeEmail(to: string) {
     try {
       const otpCode = await this.generateOTP(to);

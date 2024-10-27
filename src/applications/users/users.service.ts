@@ -31,8 +31,15 @@ export class UsersService {
   createMany(users: CreateManyUsersDto, appId: string) {
     return this.createMissingAccounts(users.users.map(user => user.email), appId);
   }
-  getAllUsers(appId: string) {
+  allUsers(appId: string) {
     return this.database.user.findMany({ where: { Apps: { some: { id: appId } } } });
+  }
+  async user(appId: string, userId: string) {
+    const user = await this.database.user.findUnique({ where: { id: userId, Apps: { some: { id: appId } } } });
+    if (!user) {
+      throw new HttpException("User does not exist", 404);
+    }
+    return user;
   }
   login(emailDto: EmailDto) {
     const { email } = emailDto;
@@ -63,12 +70,13 @@ export class UsersService {
       });
       const { data } = await createCapsuleAccount(createdUserAccount.id, email, "user");
 
-      const { capsuleTokenVaultKey, walletAddress } = data;
+      const { capsuleTokenVaultKey, walletAddress, smartWalletAddress } = data;
       await this.database.user.update({
         where: { id: createdUserAccount.id },
         data: {
           walletAddress,
-          capsuleTokenVaultKey
+          capsuleTokenVaultKey,
+          smartWalletAddress
         }
       });
 
@@ -149,6 +157,7 @@ export class UsersService {
           capsuleAccounts.push({
             email: account.email,
             walletAddress: data.walletAddress,
+            smartWalletAddress: data.smartWalletAddress,
             capsuleTokenVaultKey: data.capsuleTokenVaultKey
           });
         }
@@ -160,6 +169,7 @@ export class UsersService {
             where: { email: account.email },
             data: {
               walletAddress: account.walletAddress,
+              smartWalletAddress: account.smartWalletAddress,
               capsuleTokenVaultKey: account.capsuleTokenVaultKey
             }
           })
@@ -168,7 +178,7 @@ export class UsersService {
 
       const allUsers = await this.database.user.findMany({
         where: { email: { in: emails } },
-        select: { id: true, email: true, walletAddress: true }
+        select: { id: true, email: true, walletAddress: true, smartWalletAddress: true }
       });
 
       return {

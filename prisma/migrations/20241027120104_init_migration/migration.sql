@@ -6,6 +6,7 @@ CREATE TABLE "DeveloperAccount" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "walletAddress" TEXT,
+    "smartWalletAddress" TEXT,
     "accessTokenVaultKey" TEXT,
     "capsuleTokenVaultKey" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -34,6 +35,7 @@ CREATE TABLE "User" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "walletAddress" TEXT,
+    "smartWalletAddress" TEXT,
     "capsuleTokenVaultKey" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -137,6 +139,9 @@ CREATE UNIQUE INDEX "DeveloperAccount_email_key" ON "DeveloperAccount"("email");
 CREATE UNIQUE INDEX "DeveloperAccount_walletAddress_key" ON "DeveloperAccount"("walletAddress");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "DeveloperAccount_smartWalletAddress_key" ON "DeveloperAccount"("smartWalletAddress");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "App_slug_key" ON "App"("slug");
 
 -- CreateIndex
@@ -147,6 +152,9 @@ CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "User_walletAddress_key" ON "User"("walletAddress");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "User_smartWalletAddress_key" ON "User"("smartWalletAddress");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "UserSession_accessToken_key" ON "UserSession"("accessToken");

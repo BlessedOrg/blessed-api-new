@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Req } from "@nestjs/common";
 import { UsersService } from "./users.service";
 import { EmailDto } from "@/common/dto/email.dto";
 import { CodeDto } from "@/common/dto/code.dto";
@@ -11,7 +11,7 @@ export class UsersController {
 
   @RequireApiKey()
   @Post()
-  createManyUsers(@Body() users: CreateManyUsersDto, @Req() req: RequestWithApiKey & AppValidate) {
+  createMany(@Body() users: CreateManyUsersDto, @Req() req: RequestWithApiKey & AppValidate) {
     return this.usersService.createMany(users, req.appId);
   }
 
@@ -23,7 +23,7 @@ export class UsersController {
 
   @RequireApiKey()
   @Post("login")
-  create(@Body() emailDto: EmailDto) {
+  login(@Body() emailDto: EmailDto) {
     return this.usersService.login(emailDto);
   }
 
@@ -35,9 +35,16 @@ export class UsersController {
   }
 
   @RequireApiKey()
-  @Get()
-  all(@Req() req: RequestWithAppValidate) {
+  @Get(":userId")
+  user(@Req() req: RequestWithAppValidate, @Param("userId") userId: string) {
     const { appId } = req;
-    return this.usersService.getAllUsers(appId);
+    return this.usersService.user(appId, userId);
+  }
+
+  @RequireApiKey()
+  @Get()
+  allUsers(@Req() req: RequestWithAppValidate) {
+    const { appId } = req;
+    return this.usersService.allUsers(appId);
   }
 }
