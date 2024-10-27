@@ -14,7 +14,14 @@ const envConstants = {
   capsuleApiKey: process.env.CAPSULE_API_KEY,
   chainId: process.env.CHAIN_ID,
   rpcUrl: process.env.JSON_RPC_URL,
-  BASE_URL: process.env.BASE_URL
+  BASE_URL: process.env.BASE_URL,
+  mail: {
+    pass: process.env.SMTP_PASSWORD,
+    email: process.env.SMTP_EMAIL,
+    port: process.env.SMTP_PORT,
+    host: process.env.SMTP_HOST
+  },
+  port: parseInt(process.env.PORT, 10) || 3000
 };
 
 export { envConstants };

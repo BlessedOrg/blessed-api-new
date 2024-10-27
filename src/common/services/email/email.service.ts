@@ -1,20 +1,19 @@
 import { HttpException, Injectable } from "@nestjs/common";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { MailerService } from "@nestjs-modules/mailer";
-import { ConfigService } from "@nestjs/config";
 import * as nodemailer from "nodemailer";
+import { envConstants } from "@/common/constants";
 
 @Injectable()
 export class EmailService {
   constructor(
     private database: DatabaseService,
-    private readonly mailerService: MailerService,
-    private readonly configService: ConfigService
+    private readonly mailerService: MailerService
   ) {}
   async sendBatchEmails(emailDataArray: any, isLocalhost: boolean) {
     const emailPromises = emailDataArray.map(({ recipientEmail, subject, template, context }) => {
       const options = {
-        from: process.env.SMTP_EMAIL || "test@blessed.fan",
+        from: envConstants.mail.email || "test@blessed.fan",
         to: recipientEmail,
         subject: subject,
         template,
@@ -35,9 +34,8 @@ export class EmailService {
   async sendVerificationCodeEmail(to: string) {
     try {
       const otpCode = await this.generateOTP(to);
-
       const result = await this.mailerService.sendMail({
-        from: this.configService.get("MAIL_EMAIL") || "test@blessed.fan",
+        from: envConstants.mail.email || "test@blessed.fan",
         to,
         subject: "Your One-Time Password for Blessed.fan",
         template: "./verificationCode",
@@ -45,7 +43,7 @@ export class EmailService {
           otp: otpCode
         }
       });
-      if (this.configService.get("NODE_ENV") === "development") {
+      if (envConstants.isDevelopment) {
         console.log("Preview URL:", nodemailer.getTestMessageUrl(result));
       }
       return { message: "Verification code sent successfully" };

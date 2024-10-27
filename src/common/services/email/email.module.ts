@@ -1,18 +1,18 @@
 import { Module } from "@nestjs/common";
 import { MailerModule } from "@nestjs-modules/mailer";
-import { ConfigModule, ConfigService } from "@nestjs/config";
 import * as nodemailer from "nodemailer";
 import { EmailService } from "@/common/services/email/email.service";
 import { HandlebarsAdapter } from "@nestjs-modules/mailer/dist/adapters/handlebars.adapter";
 import { join } from "path";
+import { envConstants } from "@/common/constants";
 
 @Module({
   imports: [
     MailerModule.forRootAsync({
-      imports: [ConfigModule],
-      useFactory: async (configService: ConfigService) => {
-        const isLocalhost = configService.get("NODE_ENV") === "development";
-        const { host, port, pass, email } = configService.get("mail");
+      imports: [],
+      useFactory: async () => {
+        const isLocalhost = envConstants.isDevelopment;
+        const { host, port, pass, email } = envConstants.mail;
         let transport;
         if (isLocalhost) {
           const testAccount = await nodemailer.createTestAccount();
@@ -47,7 +47,7 @@ import { join } from "path";
           }
         };
       },
-      inject: [ConfigService]
+      inject: []
     })
   ],
   providers: [EmailService],
