@@ -3,9 +3,10 @@ import { NonceManager } from "@ethersproject/experimental";
 import { importAllJsonContractsArtifacts } from "@/lib/contracts/interfaces";
 import { createPublicClient, createWalletClient, getAddress, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { envConstants } from "@/common/constants";
 
-export const rpcUrl = process.env.NEXT_PUBLIC_JSON_RPC_URL || "define RPC URL env ";
-export const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID) || 84532;
+export const rpcUrl = envConstants.rpcUrl || "define RPC URL env ";
+export const chainId = Number(envConstants.chainId) || 84532;
 export const ethNativeCurrency = {
   decimals: 18,
   name: "ETH",
@@ -32,6 +33,14 @@ export const activeChain = baseSepolia;
 
 export const account = privateKeyToAccount(`0x${process.env.OPERATOR_PRIVATE_KEY}`);
 
+export const provider = new ethers.providers.JsonRpcProvider({
+  skipFetchSetup: true,
+  fetchOptions: {
+    referrer: envConstants.BASE_URL!
+  },
+  url: rpcUrl!
+});
+
 const client = createWalletClient({
   chain: activeChain,
   account,
@@ -54,14 +63,6 @@ const incrementNonce = () => {
 };
 
 export const fetchNonce = async (address: string | null = null) => {
-  const provider = new ethers.providers.JsonRpcProvider({
-    skipFetchSetup: true,
-    fetchOptions: {
-      referrer: process.env.NEXT_PUBLIC_BASE_URL!
-    },
-    url: rpcUrl!
-  });
-
   const signer = provider.getSigner(account?.address);
   const nonceManager = new NonceManager(signer);
   return nonceManager.getTransactionCount("latest");

@@ -32,13 +32,17 @@ export class DevelopersService {
         }
       });
 
-      const deletedToken = await updateVaultItem(accessTokenVaultKey, [
-        {
-          op: "replace",
-          path: "/fields/accessToken/value",
-          value: "none"
-        }
-      ], "accessToken");
+      const deletedToken = await updateVaultItem(
+        accessTokenVaultKey,
+        [
+          {
+            op: "replace",
+            path: "/fields/accessToken/value",
+            value: "none"
+          }
+        ],
+        "accessToken"
+      );
       if (deletedToken?.id) {
         return {
           message: "Logged out successfully"
@@ -78,12 +82,13 @@ export class DevelopersService {
         email,
         "developer"
       );
-      const { capsuleTokenVaultKey, walletAddress } = capsuleData;
+      const { capsuleTokenVaultKey, walletAddress, smartWalletAddress } = capsuleData;
       await this.database.developerAccount.update({
         where: { id: createdDeveloperAccount.id },
         data: {
           walletAddress,
-          capsuleTokenVaultKey
+          capsuleTokenVaultKey,
+          smartWalletAddress
         }
       });
       const { accessToken, refreshToken } = await this.sessionService.createOrUpdateSession(email, "developer");

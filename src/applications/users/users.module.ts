@@ -7,6 +7,7 @@ import { SessionModule } from "@/session/session.module";
 @Module({
   imports: [EmailModule, SessionModule],
   controllers: [UsersController],
-  providers: [UsersService]
+  providers: [UsersService],
+  exports: [UsersService]
 })
 export class UsersModule {}

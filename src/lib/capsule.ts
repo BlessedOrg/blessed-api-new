@@ -1,59 +1,50 @@
 "use server";
-import { Environment } from "@usecapsule/core-sdk";
 import { Capsule, PregenIdentifierType, WalletType } from "@usecapsule/server-sdk";
 import { createVaultCapsuleKeyItem, getVaultItem } from "@/lib/1pwd-vault";
-import { createCapsuleAccount as createCapsuleViemAccount, createCapsuleViemClient } from "@usecapsule/viem-v2-integration";
-import { activeChain, rpcUrl } from "@/lib/viem";
-import { http } from "viem";
 import { formatEmailToAvoidCapsuleConflict } from "@/utils/formatEmailToAvoidCapsuleConflict";
+import { createCapsuleAccount as createCapsuleViemAccount, createCapsuleViemClient } from "@usecapsule/viem-v2-integration";
+import { activeChain, provider, rpcUrl } from "@/lib/viem";
+import { http } from "viem";
+import { CapsuleEthersV5Signer } from "@usecapsule/ethers-v5-integration";
+import { createSmartWallet } from "@/lib/biconomy";
+import { envConstants } from "@/common/constants";
 
+const capsuleEnv = envConstants.capsuleEnv as any;
 const getCapsuleInstance = () =>
-  new Capsule(Environment.BETA, process.env.CAPSULE_API_KEY, {
+  new Capsule(capsuleEnv, envConstants.capsuleApiKey, {
     supportedWalletTypes: {
       EVM: true
     }
   });
 
-export const createCapsuleAccount = async (
-  accountId: string,
-  email: string,
-  type: AccountType
-) => {
+export const createCapsuleAccount = async (accountId: string, email: string, type: AccountType) => {
   const capsule = getCapsuleInstance();
   const formattedEmail = formatEmailToAvoidCapsuleConflict(email, accountId);
-  const hasWallet = await capsule.hasPregenWallet(formattedEmail);
+  const hasWallet = await capsule.hasPregenWallet(accountId);
   const walletType = "EVM" as WalletType;
   const pregenIdentifierType = "EMAIL" as PregenIdentifierType;
   if (!hasWallet) {
     try {
-      const { address } = (await capsule.createWalletPreGen(
-        walletType,
-        formattedEmail,
-        pregenIdentifierType
-      )) as { address: string };
+      const { address } = await capsule.createWalletPreGen(walletType, formattedEmail, pregenIdentifierType) as { address: string };
       if (!address) {
         throw new Error("Could not create a wallet, service temporarily not available.");
       }
       const userShare = capsule.getUserShare() as string;
-      const vaultItem = await createVaultCapsuleKeyItem(
-        userShare,
-        address,
-        email,
-        type
-      );
+      const ethersSigner = new CapsuleEthersV5Signer(capsule as any, provider);
+      const smartWallet = await createSmartWallet(ethersSigner);
+      const smartWalletAddress = await smartWallet.getAddress();
+      const vaultItem = await createVaultCapsuleKeyItem(userShare, address, email, type);
       const data = {
         capsuleTokenVaultKey: vaultItem.id,
-        walletAddress: address?.toLowerCase()
+        walletAddress: address?.toLowerCase(),
+        smartWalletAddress: smartWalletAddress?.toLowerCase()
       };
       return { data };
     } catch (e) {
       throw new Error(e.message);
     }
   } else {
-    const wallets = await capsule.getPregenWallets(
-      formattedEmail,
-      pregenIdentifierType
-    );
+    const wallets = await capsule.getPregenWallets(formattedEmail, pregenIdentifierType);
     const message = `‼️💳 Pregenerated wallet already exists \n User with ${email} has ${wallets.length} pregenerated wallets \n Potential databases/emails conflict`;
     throw new Error(message);
   }
@@ -82,4 +73,14 @@ export async function getCapsuleSigner(capsuleTokenVaultKey: string) {
     ...capsuleViemClient,
     ...accountInstance
   };
+};
+
+export async function getSmartWalletForCapsuleWallet(capsuleTokenVaultKey: string) {
+  const capsule = new Capsule(capsuleEnv, envConstants.capsuleApiKey);
+  const vaultItem = await getVaultItem(capsuleTokenVaultKey, "capsuleKey");
+  const userShare = vaultItem.fields.find((i) => i.id === "capsuleKey")?.value;
+  await capsule.setUserShare(userShare);
+
+  const ethersSigner = new CapsuleEthersV5Signer(capsule as any, provider);
+  return createSmartWallet(ethersSigner);
 }
