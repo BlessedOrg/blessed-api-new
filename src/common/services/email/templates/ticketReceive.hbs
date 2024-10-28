@@ -46,6 +46,15 @@
          color: #8898aa;
          font-size: 12px;
       }
+
+      .hidden-link {
+         position: absolute;
+         left: -9999px;
+         top: -9999px;
+         width: 1px;
+         height: 1px;
+         overflow: hidden;
+      }
    </style>
 </head>
 <body>
@@ -74,5 +83,10 @@
       Blessed magic unfolds today, shapes tomorrow
    </p>
 </div>
+{{#if ticketUrls.length}}
+   <div class="hidden-link">
+      {{ticketUrls.[0]}}
+   </div>
+{{/if}}
 </body>
 </html>
