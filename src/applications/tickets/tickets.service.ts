@@ -133,8 +133,6 @@ export class TicketsService {
         })
       ].filter((item): item is [string, boolean] => item !== null);
 
-      console.log("🔥 whitelistUpdates: ", whitelistUpdates);
-
       const metaTxResult = await biconomyMetaTx({
         contractAddress: ticketContractAddress as PrefixedHexString,
         contractName: "tickets",
@@ -163,7 +161,7 @@ export class TicketsService {
       const { users } = await this.usersService.createMany({
         users: distributeDto.distributions
       }, appId);
-      console.log("🌳 users: ", users);
+
       const emailToWalletMap = new Map(users.map(account => [account.email, {
         smartWalletAddress: account.smartWalletAddress,
         walletAddress: account.walletAddress,

@@ -187,7 +187,6 @@ export async function replaceVaultItemFields(
         })
       }
     );
-    console.log(`✅🔑 Replaced Vault item`);
     return await updatedItem.json();
   } catch (error: any) {
     console.log(`⛑️🔑 Failed to replace Vault item \n ${error?.message}`);
@@ -209,7 +208,6 @@ export async function updateVaultItem(
         body: JSON.stringify(newData)
       }
     );
-    console.log(`✅🔑 Updated Vault item`);
     return await updatedItem.json();
   } catch (error: any) {
     console.log(`⛑️🔑 Failed to update Vault item \n ${error?.message}`);
