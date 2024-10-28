@@ -174,12 +174,12 @@ export class TicketsService {
         const mappedUser = emailToWalletMap.get(distribution.email);
         if (mappedUser) {
           return {
-            userId: mappedUser.id,
             email: distribution.email,
+            tokenIds: [],
+            userId: mappedUser.id,
             walletAddr: mappedUser.walletAddress,
             smartWalletAddr: mappedUser.smartWalletAddress,
-            amount: distribution.amount,
-            tokenIds: []
+            amount: distribution.amount
           };
         }
         return null;
@@ -214,7 +214,7 @@ export class TicketsService {
       const emailsToSend = await Promise.all(
         distribution.map(async (dist: any) => {
           const ticketUrls = dist.tokenIds.map((tokenId) =>
-            `https://blessed.fan/show-ticket?app=${app.slug}&contractId=${ticketId}&tokenId=${tokenId}&userId=${dist.userId}`
+            `${envConstants.landingPageUrl}/show-ticket?app=${app.slug}&contractId=${ticketId}&tokenId=${tokenId}&userId=${dist.userId}`
           );
           return {
             recipientEmail: dist.email,
@@ -233,10 +233,10 @@ export class TicketsService {
 
       return {
         success: true,
+        distribution,
         explorerUrls: {
           tx: getExplorerUrl(metaTxResult.data.transactionReceipt.transactionHash)
         },
-        distribution,
         transactionReceipt: metaTxResult.data.transactionReceipt
       };
 

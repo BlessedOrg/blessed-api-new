@@ -21,7 +21,8 @@ const envConstants = {
     port: process.env.SMTP_PORT,
     host: process.env.SMTP_HOST
   },
-  port: parseInt(process.env.PORT, 10) || 3000
+  port: parseInt(process.env.PORT, 10) || 3000,
+  landingPageUrl: process.env.LANDING_PAGE_URL
 };
 
 export { envConstants };
