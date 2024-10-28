@@ -308,7 +308,7 @@ export class TicketsService {
         ticketContractAddress,
         contractArtifacts["tickets"].abi,
         "getTokensByUser",
-        [user.walletAddress]
+        [user.smartWalletAddress]
       );
 
       return (
@@ -347,6 +347,7 @@ export class TicketsService {
         select: {
           email: true,
           walletAddress: true,
+          smartWalletAddress: true,
           Apps: {
             where: {
               id: appId
@@ -364,7 +365,7 @@ export class TicketsService {
         ticketContractAddress,
         contractArtifacts["tickets"].abi,
         "balanceOf",
-        [user.walletAddress, tokenId]
+        [user.smartWalletAddress, tokenId]
       );
 
       return (
