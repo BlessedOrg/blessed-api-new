@@ -1,20 +1,19 @@
-import { ArrayMinSize, IsArray, IsNotEmpty, ValidateNested } from "class-validator";
-import { Transform, Type } from "class-transformer";
+import { ArrayMinSize, IsArray, ValidateNested } from "class-validator";
 import { EmailDto } from "@/common/dto/email.dto";
+import { Transform, Type } from "class-transformer";
 
 export class WhitelistDto {
-  @IsNotEmpty()
   @IsArray()
-  @ArrayMinSize(1, { message: "At least one email must be provided for adding" })
+  @ArrayMinSize(1)
   @Transform(({ value }) => value.map((email: string) => new EmailDto(email)))
   @ValidateNested({ each: true })
   @Type(() => EmailDto)
-  addEmails?: EmailDto[];
+  addEmails: EmailDto[];
 
-  @IsNotEmpty()
   @IsArray()
+  @ArrayMinSize(1)
   @Transform(({ value }) => value.map((email: string) => new EmailDto(email)))
   @ValidateNested({ each: true })
   @Type(() => EmailDto)
-  removeEmails?: EmailDto[];
+  removeEmails: EmailDto[];
 }

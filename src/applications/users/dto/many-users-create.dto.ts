@@ -1,6 +1,6 @@
 import { ArrayMinSize, IsArray, ValidateNested } from "class-validator";
-import { Type } from "class-transformer";
 import { EmailDto } from "@/common/dto/email.dto";
+import { Type } from "class-transformer";
 
 export class CreateManyUsersDto {
   @IsArray()

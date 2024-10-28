@@ -9,12 +9,12 @@ import { biconomyMetaTx } from "@/lib/biconomy";
 import { PrefixedHexString } from "ethereumjs-util";
 import { WhitelistDto } from "@/applications/tickets/dto/whitelist.dto";
 import { UsersService } from "@/applications/users/users.service";
-import { DistributeDto } from "@/applications/tickets/dto/distribute.dto";
-import { parseEventLogs } from "viem";
 import { EmailService } from "@/common/services/email/email.service";
-import { envConstants } from "@/common/constants";
 import { isEmpty } from "lodash";
 import { EmailDto } from "@/common/dto/email.dto";
+import { parseEventLogs } from "viem";
+import { envConstants } from "@/common/constants";
+import { DistributeDto } from "@/applications/tickets/dto/distribute.dto";
 
 @Injectable()
 export class TicketsService {
@@ -117,18 +117,18 @@ export class TicketsService {
   async whitelist(whitelistDto: WhitelistDto, req: RequestWithApiKey & AppValidate & TicketValidate) {
     try {
       const { capsuleTokenVaultKey, ticketContractAddress, appOwnerWalletAddress, appId } = req;
-      const allEmails = [...whitelistDto.addEmails, ...(whitelistDto.removeEmails || [])];
+      const allEmails = [...whitelistDto.addEmails, ...whitelistDto.removeEmails];
       const { users } = await this.usersService.createMany({ users: allEmails }, appId);
 
       const emailToWalletMap = new Map(users.map(account => [account.email, account.smartWalletAddress]));
 
       const whitelistUpdates = [
-        ...whitelistDto.addEmails.map((email: any) => {
-          const walletAddress = emailToWalletMap.get(email);
+        ...whitelistDto.addEmails.map((user) => {
+          const walletAddress = emailToWalletMap.get(user.email);
           return walletAddress ? [walletAddress, true] : null;
         }),
-        ...(whitelistDto.removeEmails || []).map((email: any) => {
-          const walletAddress = emailToWalletMap.get(email);
+        ...(whitelistDto.removeEmails || []).map((user) => {
+          const walletAddress = emailToWalletMap.get(user.email);
           return walletAddress ? [walletAddress, false] : null;
         })
       ].filter((item): item is [string, boolean] => item !== null);
@@ -160,14 +160,16 @@ export class TicketsService {
     try {
       const { capsuleTokenVaultKey, appOwnerWalletAddress, ticketContractAddress, ticketId, appId } = req;
       const app = await this.database.app.findUnique({ where: { id: appId } });
-      const { users } = await this.usersService.createMany({ users: distributeDto.distributions.map(distribution => distribution.email) }, appId);
+      const { users } = await this.usersService.createMany({
+        users: distributeDto.distributions
+      }, appId);
       console.log("🌳 users: ", users);
       const emailToWalletMap = new Map(users.map(account => [account.email, {
         smartWalletAddress: account.smartWalletAddress,
         walletAddress: account.walletAddress,
         id: account.id
-      }
-      ]));
+      }]));
+
       const distribution = distributeDto.distributions.map((distribution: { email: any, amount: number }) => {
         const mappedUser = emailToWalletMap.get(distribution.email);
         if (mappedUser) {

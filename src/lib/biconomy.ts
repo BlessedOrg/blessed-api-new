@@ -30,7 +30,6 @@ export const biconomyMetaTx = async ({
   args,
   capsuleTokenVaultKey
 }: MetaTxParams) => {
-  console.log(bundler);
   const capsuleEnv = envConstants.capsuleEnv as any;
   const capsule = new Capsule(capsuleEnv, envConstants.capsuleApiKey);
   const vaultItem = await getVaultItem(capsuleTokenVaultKey, "capsuleKey");
@@ -71,10 +70,9 @@ export const biconomyMetaTx = async ({
     }
   }
 
-  console.log("🧾 userOpReceipt: ", userOpReceipt);
   if (!userOpReceipt) {
     const getUserOpReceipt = await bundler.getUserOpReceipt(userOpResponse.userOpHash);
-    console.log("🧾 getUserOpReceipt: ", getUserOpReceipt);
+    console.log("🧾 getUserOpReceipt 2: ", getUserOpReceipt);
   }
   if (userOpReceipt && userOpReceipt?.success == "true") {
     return {

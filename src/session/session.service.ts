@@ -109,7 +109,7 @@ export class SessionService {
         message: "Logged in successfully"
       };
     } else {
-      const vaultItem = await createVaultAccessTokenItem("---", developer.id);
+      const vaultItem = await createVaultAccessTokenItem("none", developer.id);
       //wait for vault to be created
       await new Promise((resolve) => setTimeout(resolve, 2000));
       if (!vaultItem?.id) {
