@@ -27,7 +27,7 @@ export async function createVaultCapsuleKeyItem(
   email: string,
   type: AccountType
 ) {
-  const isBetaEnv = process.env.NODE_ENV !== "production";
+  const isBetaEnv = envConstants.isDevelopment;
   const vaultId = vaultCapsuleTokensId;
   try {
     const createdItem = await fetch(
@@ -113,6 +113,7 @@ export async function createVaultAccessTokenItem(
 
 export async function createVaultApiKeyItem(apiKey: string, appSlug: string) {
   try {
+    const isBetaEnv = envConstants.isDevelopment;
     const createdItem = await fetch(
       `${vaultApiUrl}/v1/vaults/${vaultApiKeysId}/items`,
       {
@@ -124,7 +125,7 @@ export async function createVaultApiKeyItem(apiKey: string, appSlug: string) {
           },
           title: `API Key for app ${appSlug}`,
           category: "API_CREDENTIAL",
-          tags: ["apiKeys"],
+          tags: ["apiKeys", isBetaEnv ? "BETA" : "Production"],
           fields: [
             {
               id: "appSlug",
