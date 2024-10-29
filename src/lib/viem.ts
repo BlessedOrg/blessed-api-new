@@ -1,9 +1,10 @@
 import { ethers } from "ethers";
 import { NonceManager } from "@ethersproject/experimental";
 import { importAllJsonContractsArtifacts } from "@/lib/contracts/interfaces";
-import { createPublicClient, createWalletClient, getAddress, http } from "viem";
+import { Chain, createPublicClient, createWalletClient, getAddress, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { envConstants } from "@/common/constants";
+import { base } from "viem/chains";
 
 export const rpcUrl = envConstants.rpcUrl || "define RPC URL env ";
 export const chainId = Number(envConstants.chainId) || 84532;
@@ -12,7 +13,7 @@ export const ethNativeCurrency = {
   name: "ETH",
   symbol: "ETH"
 };
-export const baseSepolia = {
+const baseSepolia = {
   id: chainId,
   name: "BaseSepolia",
   nativeCurrency: ethNativeCurrency,
@@ -29,7 +30,12 @@ export const baseSepolia = {
     }
   }
 };
-export const activeChain = baseSepolia;
+const availableChains = {
+  "84532": baseSepolia,
+  "8453": { ...base, rpcUrls: { ...base.rpcUrls, default: { http: [rpcUrl], webSocket: [""] } } }
+} as { [key: string]: Chain };
+
+export const activeChain = availableChains[chainId];
 
 export const account = privateKeyToAccount(`0x${process.env.OPERATOR_PRIVATE_KEY}`);
 
