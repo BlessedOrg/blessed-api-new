@@ -2,15 +2,15 @@ import { Body, Controller, Get, Post, Req } from "@nestjs/common";
 import { DevelopersService } from "./developers.service";
 import { EmailDto } from "@/common/dto/email.dto";
 import { CodeDto } from "@/common/dto/code.dto";
-import { RequireDeveloperAuth } from "@/common/decorators/auth.decorator";
+import { RequireDeveloperAuth, RequireDeveloperAuthOrApiKey } from "@/common/decorators/auth.decorator";
 
 @Controller("developers")
 export class DevelopersController {
   constructor(private readonly developersService: DevelopersService) {}
 
-  @RequireDeveloperAuth()
+  @RequireDeveloperAuthOrApiKey()
   @Get("me")
-  me(@Req() req: RequestWithDevAccessToken) {
+  me(@Req() req: RequestWithApiKeyOrDevAccessToken) {
     return this.developersService.getDeveloper(req.developerId);
   }
 

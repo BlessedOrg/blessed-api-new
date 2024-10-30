@@ -2,8 +2,9 @@ import { Body, Controller, Get, Post, Req } from "@nestjs/common";
 import { ApplicationsService } from "./applications.service";
 import { CreateApplicationDto } from "./dto/create-application.dto";
 import { RequireDeveloperAuth, RequireDeveloperAuthOrApiKey } from "@/common/decorators/auth.decorator";
+import { UseAppIdInterceptor } from "@/common/decorators/use-app-id.decorator";
 
-@Controller("applications")
+@Controller("apps")
 export class ApplicationsController {
   constructor(private readonly applicationsService: ApplicationsService) {}
 
@@ -15,9 +16,17 @@ export class ApplicationsController {
   }
 
   @RequireDeveloperAuthOrApiKey()
+  @UseAppIdInterceptor()
+  @Get(":app/users")
+  allUsers(@Req() req: RequestWithApiKeyOrDevAccessToken & AppValidate) {
+    return this.applicationsService.allUsers(req.appId);
+  }
+
+  @RequireDeveloperAuthOrApiKey()
+  @UseAppIdInterceptor()
   @Get(":app")
-  details(@Req() req: AppValidate) {
-    return this.applicationsService.getDetails(req.appId);
+  details(@Req() req: RequestWithApiKeyOrDevAccessToken & AppValidate) {
+    return this.applicationsService.details(req.appId);
   }
 
   @RequireDeveloperAuthOrApiKey()

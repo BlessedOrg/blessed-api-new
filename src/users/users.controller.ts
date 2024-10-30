@@ -3,15 +3,15 @@ import { UsersService } from "./users.service";
 import { EmailDto } from "@/common/dto/email.dto";
 import { CodeDto } from "@/common/dto/code.dto";
 import { RequireApiKey, RequireUserAndApiKey } from "@/common/decorators/auth.decorator";
-import { CreateManyUsersDto } from "@/applications/users/dto/many-users-create.dto";
+import { CreateManyUsersDto } from "@/users/dto/many-users-create.dto";
 
-@Controller("applications/:app/users")
+@Controller("users")
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @RequireApiKey()
   @Post()
-  createMany(@Body() users: CreateManyUsersDto, @Req() req: RequestWithApiKey & AppValidate) {
+  createMany(@Body() users: CreateManyUsersDto, @Req() req: RequestWithApiKey) {
     return this.usersService.createMany(users, req.appId);
   }
 
@@ -29,21 +29,21 @@ export class UsersController {
 
   @RequireApiKey()
   @Post("verify")
-  verify(@Body() codeDto: CodeDto, @Req() req: RequestWithAppValidate) {
+  verify(@Body() codeDto: CodeDto, @Req() req: RequestWithApiKey) {
     const { appId } = req;
     return this.usersService.verify(codeDto, appId);
   }
 
   @RequireApiKey()
   @Get(":userId")
-  user(@Req() req: RequestWithAppValidate, @Param("userId") userId: string) {
+  user(@Req() req: RequestWithApiKey, @Param("userId") userId: string) {
     const { appId } = req;
     return this.usersService.user(appId, userId);
   }
 
   @RequireApiKey()
   @Get()
-  allUsers(@Req() req: RequestWithAppValidate) {
+  allUsers(@Req() req: RequestWithApiKey) {
     const { appId } = req;
     return this.usersService.allUsers(appId);
   }

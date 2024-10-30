@@ -5,7 +5,7 @@ import { DatabaseService } from "@/common/services/database/database.service";
 import { EmailDto } from "@/common/dto/email.dto";
 import { CodeDto } from "@/common/dto/code.dto";
 import { createCapsuleAccount } from "@/lib/capsule";
-import { CreateManyUsersDto } from "@/applications/users/dto/many-users-create.dto";
+import { CreateManyUsersDto } from "@/users/dto/many-users-create.dto";
 
 @Injectable()
 export class UsersService {

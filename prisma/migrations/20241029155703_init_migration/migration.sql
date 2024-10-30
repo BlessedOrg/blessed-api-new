@@ -94,6 +94,21 @@ CREATE TABLE "EmailVerificationCode" (
 );
 
 -- CreateTable
+CREATE TABLE "Event" (
+    "id" TEXT NOT NULL,
+    "name" TEXT NOT NULL,
+    "description" TEXT,
+    "logoUrl" TEXT,
+    "slug" TEXT NOT NULL,
+    "appId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+    "deletedAt" TIMESTAMP(3),
+
+    CONSTRAINT "Event_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "SmartContract" (
     "id" TEXT NOT NULL,
     "address" TEXT NOT NULL,
@@ -103,6 +118,7 @@ CREATE TABLE "SmartContract" (
     "metadataUrl" TEXT,
     "metadataPayload" JSONB NOT NULL,
     "appId" TEXT NOT NULL,
+    "eventId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -163,6 +179,9 @@ CREATE UNIQUE INDEX "UserSession_accessToken_key" ON "UserSession"("accessToken"
 CREATE UNIQUE INDEX "UserSession_refreshToken_key" ON "UserSession"("refreshToken");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "Event_slug_key" ON "Event"("slug");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "SmartContract_address_key" ON "SmartContract"("address");
 
 -- CreateIndex
@@ -184,10 +203,16 @@ ALTER TABLE "UserSession" ADD CONSTRAINT "UserSession_userId_fkey" FOREIGN KEY (
 ALTER TABLE "DeveloperSession" ADD CONSTRAINT "DeveloperSession_developerId_fkey" FOREIGN KEY ("developerId") REFERENCES "DeveloperAccount"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Event" ADD CONSTRAINT "Event_appId_fkey" FOREIGN KEY ("appId") REFERENCES "App"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "SmartContract" ADD CONSTRAINT "SmartContract_developerId_fkey" FOREIGN KEY ("developerId") REFERENCES "DeveloperAccount"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "SmartContract" ADD CONSTRAINT "SmartContract_appId_fkey" FOREIGN KEY ("appId") REFERENCES "App"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "SmartContract" ADD CONSTRAINT "SmartContract_eventId_fkey" FOREIGN KEY ("eventId") REFERENCES "Event"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "SmartContractInteraction" ADD CONSTRAINT "SmartContractInteraction_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

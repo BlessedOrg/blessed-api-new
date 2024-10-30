@@ -15,7 +15,9 @@ declare global {
     appSlug: string;
     apiTokenId: string;
     developerId: string;
+    developerWalletAddress: string;
     capsuleTokenVaultKey: string;
+    appId: string;
   };
 
   type UserAccessTokenJWT = {
@@ -24,7 +26,9 @@ declare global {
     walletAddress: `0x${string}`;
     email: string;
   };
-
+  type AppValidate = {
+    appId: string;
+  };
   type DeveloperAccessTokenJWT = {
     developerId: string;
     walletAddress: string;
@@ -32,9 +36,8 @@ declare global {
     capsuleTokenVaultKey: string;
   };
 
-  type AppValidate = {
-    appId: string;
-    appOwnerWalletAddress: string;
+  type EventValidate = {
+    eventId: string;
   };
 
   type TicketValidate = {
@@ -43,14 +46,10 @@ declare global {
   };
 
   // Requests
-  type RequestWithTicketValidate = Request & TicketValidate;
-  type RequestWithAppValidate = Request & AppValidate;
   type RequestWithDevAccessToken = Request & DeveloperAccessTokenJWT;
   type RequestWithUserAccessToken = Request & UserAccessTokenJWT;
   type RequestWithApiKey = Request & ApiTokenJWT;
-  type RequestWithApiKeyOrDevAccessToken =
-    | (Request & RequestWithApiKey)
-    | RequestWithDevAccessToken;
+  type RequestWithApiKeyOrDevAccessToken = Request & (DeveloperAccessTokenJWT | ApiTokenJWT);
   type RequestWithApiKeyAndUserAccessToken = Request &
     RequestWithApiKey &
     RequestWithUserAccessToken;
