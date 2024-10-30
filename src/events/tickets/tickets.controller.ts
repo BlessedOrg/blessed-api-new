@@ -41,7 +41,7 @@ export class TicketsController {
   @PublicRequest()
   @UseTicketIdInterceptor()
   @Get(":ticketId/show-ticket/:tokenId")
-  showTicket(@Req() req: RequestWithApiKey & TicketValidate, @Param("tokenId") tokenId: string, @Query("userId") userId?: string
+  showTicket(@Req() req: RequestWithApiKey & TicketValidate & EventValidate, @Param("tokenId") tokenId: string, @Query("userId") userId?: string
   ) {
     return this.ticketsService.showTicket(req, tokenId, userId);
   }

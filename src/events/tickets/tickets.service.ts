@@ -335,9 +335,10 @@ export class TicketsService {
       }
     });
   }
-  async showTicket(req: RequestWithApiKey & TicketValidate, tokenId: string, userId?: string) {
-    const { ticketContractAddress, appId } = req;
+  async showTicket(req: RequestWithApiKey & TicketValidate & EventValidate, tokenId: string, userId?: string) {
+    const { ticketContractAddress, appId, eventId } = req;
     try {
+      const eventData = await this.database.event.findUnique({ where: { id: eventId }, select: { id: true, name: true } });
       const user = await this.database.user?.findUnique({
         where: {
           id: userId
@@ -368,7 +369,7 @@ export class TicketsService {
 
       return (
         {
-          eventName: user?.Apps?.[0]?.name,
+          eventName: eventData.name,
           tokenId,
           userWalletAddress: user.walletAddress,
           userEmail: user.email,
