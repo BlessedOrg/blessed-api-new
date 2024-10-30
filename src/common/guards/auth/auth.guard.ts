@@ -10,7 +10,6 @@ export class AuthGuard implements CanActivate {
     private reflector: Reflector,
     private authGuardFactory: AuthGuardFactory
   ) {}
-
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isProtected = this.checkIfProtected(context);
 

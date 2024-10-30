@@ -5,13 +5,15 @@ import { DatabaseModule } from "@/common/services/database/database.module";
 import { JwtModule } from "@nestjs/jwt";
 import { envConstants } from "@/common/constants";
 import { DevelopersModule } from "./developers/developers.module";
-import { APP_GUARD } from "@nestjs/core";
+import { APP_FILTER, APP_GUARD } from "@nestjs/core";
 import { AuthGuard } from "@/common/guards/auth/auth.guard";
 import { AuthGuardsModule } from "@/common/guards/auth/auth-guards.module";
 import { EmailModule } from "@/common/services/email/email.module";
 import { SessionModule } from "./session/session.module";
-import { UsersModule } from "@/applications/users/users.module";
+import { UsersModule } from "@/users/users.module";
 import { ApplicationsModule } from "./applications/applications.module";
+import { PrismaExceptionFilter } from "@/common/exceptions/prisma-exception.filter";
+import { EventsModule } from "@/events/events.module";
 
 @Module({
   imports: [
@@ -25,9 +27,13 @@ import { ApplicationsModule } from "./applications/applications.module";
     AuthGuardsModule,
     SessionModule,
     UsersModule,
-    ApplicationsModule
+    ApplicationsModule,
+    EventsModule
   ],
   controllers: [AppController],
-  providers: [AppService, { provide: APP_GUARD, useClass: AuthGuard }]
+  providers: [AppService, { provide: APP_GUARD, useClass: AuthGuard }, {
+    provide: APP_FILTER,
+    useClass: PrismaExceptionFilter
+  }]
 })
 export class AppModule {}

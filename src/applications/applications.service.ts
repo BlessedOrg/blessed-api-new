@@ -51,7 +51,10 @@ export class ApplicationsService {
       }
     });
   }
-  getDetails(appId: string) {
+  allUsers(appId: string) {
+    return this.database.user.findMany({ where: { Apps: { some: { id: appId } } } });
+  }
+  details(appId: string) {
     return this.database.app.findUnique({
       where: {
         id: appId

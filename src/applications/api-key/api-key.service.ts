@@ -20,7 +20,7 @@ export class ApiKeyService {
           apiTokenVaultKey: ""
         }
       });
-      const apiKey = this.jwtService.sign({ appSlug: app.slug, apiTokenId: apiTokenRecord?.id, developerId }, { secret: envConstants.jwtSecret });
+      const apiKey = this.jwtService.sign({ appId: app.id, appSlug: app.slug, apiTokenId: apiTokenRecord?.id, developerId }, { secret: envConstants.jwtSecret });
       const vaultItem = await createVaultApiKeyItem(apiKey, app.slug);
       await this.database.apiToken.update({
         where: {
@@ -63,6 +63,7 @@ export class ApiKeyService {
               DeveloperAccount: {
                 select: {
                   id: true,
+                  walletAddress: true,
                   capsuleTokenVaultKey: true
                 }
               }
@@ -84,7 +85,9 @@ export class ApiKeyService {
       return {
         developerId: apiToken.App.DeveloperAccount.id,
         appSlug: apiToken.App.slug,
-        capsuleTokenVaultKey: apiToken.App.DeveloperAccount.capsuleTokenVaultKey
+        appId: apiToken.App.id,
+        capsuleTokenVaultKey: apiToken.App.DeveloperAccount.capsuleTokenVaultKey,
+        developerWalletAddress: apiToken.App.DeveloperAccount.walletAddress
       };
     } catch (e) {
       throw new HttpException(e.message, 401);

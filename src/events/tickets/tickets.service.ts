@@ -1,27 +1,27 @@
 import { HttpException, Injectable } from "@nestjs/common";
-import { CreateTicketDto } from "@/applications/tickets/dto/create-ticket.dto";
+import { CreateTicketDto } from "@/events/tickets/dto/create-ticket.dto";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { uploadMetadata } from "@/lib/irys";
-import { getSmartWalletForCapsuleWallet } from "@/lib/capsule";
 import { contractArtifacts, deployContract, getExplorerUrl, readContract } from "@/lib/viem";
-import { SupplyDto } from "@/applications/tickets/dto/supply.dto";
+import { SupplyDto } from "@/events/tickets/dto/supply.dto";
 import { biconomyMetaTx } from "@/lib/biconomy";
 import { PrefixedHexString } from "ethereumjs-util";
-import { WhitelistDto } from "@/applications/tickets/dto/whitelist.dto";
-import { UsersService } from "@/applications/users/users.service";
+import { WhitelistDto } from "@/events/tickets/dto/whitelist.dto";
+import { UsersService } from "@/users/users.service";
 import { EmailService } from "@/common/services/email/email.service";
 import { isEmpty } from "lodash";
 import { EmailDto } from "@/common/dto/email.dto";
 import { parseEventLogs } from "viem";
 import { envConstants } from "@/common/constants";
-import { DistributeDto } from "@/applications/tickets/dto/distribute.dto";
+import { DistributeDto } from "@/events/tickets/dto/distribute.dto";
+import { getSmartWalletForCapsuleWallet } from "@/lib/capsule";
 
 @Injectable()
 export class TicketsService {
   constructor(private database: DatabaseService, private usersService: UsersService, private emailService: EmailService) {}
-  async create(createTicketDto: CreateTicketDto, req: RequestWithApiKey & AppValidate) {
+  async create(createTicketDto: CreateTicketDto, req: RequestWithApiKey & EventValidate) {
     try {
-      const { developerId, appId, capsuleTokenVaultKey, appOwnerWalletAddress } = req;
+      const { developerId, appId, capsuleTokenVaultKey, developerWalletAddress } = req;
       const { metadataUrl, metadataImageUrl } = await uploadMetadata({
         name: createTicketDto.name,
         symbol: createTicketDto.symbol,
@@ -35,7 +35,7 @@ export class TicketsService {
       const contractName = "tickets";
 
       const args = {
-        owner: appOwnerWalletAddress,
+        owner: developerWalletAddress,
         ownerSmartWallet,
         baseURI: metadataUrl,
         name: createTicketDto.name,
@@ -63,8 +63,6 @@ export class TicketsService {
       const nextId = (maxId._max.version || 0) + 1;
       const ticketRecord = await this.database.smartContract.create({
         data: {
-          App: { connect: { id: appId } },
-          DevelopersAccount: { connect: { id: developerId } },
           address: contract.contractAddr,
           name: contractName,
           version: nextId,
@@ -74,7 +72,10 @@ export class TicketsService {
             symbol: createTicketDto.symbol,
             description: createTicketDto.description,
             ...metadataImageUrl && { metadataImageUrl }
-          }
+          },
+          App: { connect: { id: appId } },
+          Event: { connect: { id: req.eventId } },
+          DevelopersAccount: { connect: { id: req.developerId } }
         }
       });
       return {
@@ -90,9 +91,8 @@ export class TicketsService {
       throw new HttpException(e?.message, 500);
     }
   }
-  async supply(supplyDto: SupplyDto, req: RequestWithApiKey & AppValidate & TicketValidate) {
-    const { ticketContractAddress, capsuleTokenVaultKey, appOwnerWalletAddress } = req;
-
+  async supply(supplyDto: SupplyDto, req: RequestWithApiKey & TicketValidate) {
+    const { ticketContractAddress, capsuleTokenVaultKey, developerWalletAddress } = req;
     try {
       const metaTxResult = await biconomyMetaTx({
         contractAddress: ticketContractAddress as PrefixedHexString,
@@ -100,7 +100,7 @@ export class TicketsService {
         functionName: "updateSupply",
         args: [supplyDto.additionalSupply],
         capsuleTokenVaultKey: capsuleTokenVaultKey,
-        userWalletAddress: appOwnerWalletAddress
+        userWalletAddress: developerWalletAddress
       });
 
       return {
@@ -114,9 +114,9 @@ export class TicketsService {
       throw new HttpException(e?.message, 500);
     }
   }
-  async whitelist(whitelistDto: WhitelistDto, req: RequestWithApiKey & AppValidate & TicketValidate) {
+  async whitelist(whitelistDto: WhitelistDto, req: RequestWithApiKey & TicketValidate) {
     try {
-      const { capsuleTokenVaultKey, ticketContractAddress, appOwnerWalletAddress, appId } = req;
+      const { capsuleTokenVaultKey, ticketContractAddress, developerWalletAddress, appId } = req;
       const allEmails = [...whitelistDto.addEmails, ...whitelistDto.removeEmails];
       const { users } = await this.usersService.createMany({ users: allEmails }, appId);
 
@@ -139,7 +139,7 @@ export class TicketsService {
         functionName: "updateWhitelist",
         args: [whitelistUpdates],
         capsuleTokenVaultKey,
-        userWalletAddress: appOwnerWalletAddress
+        userWalletAddress: developerWalletAddress
       });
 
       return {
@@ -154,9 +154,9 @@ export class TicketsService {
       throw new HttpException(e.message, 500);
     }
   }
-  async distribute(distributeDto: DistributeDto, req: RequestWithApiKey & AppValidate & TicketValidate) {
+  async distribute(distributeDto: DistributeDto, req: RequestWithApiKey & TicketValidate) {
     try {
-      const { capsuleTokenVaultKey, appOwnerWalletAddress, ticketContractAddress, ticketId, appId } = req;
+      const { capsuleTokenVaultKey, developerWalletAddress, ticketContractAddress, ticketId, appId } = req;
       const app = await this.database.app.findUnique({ where: { id: appId } });
       const { users } = await this.usersService.createMany({
         users: distributeDto.distributions
@@ -189,7 +189,7 @@ export class TicketsService {
         functionName: "distribute",
         args: [distribution.map(dist => [dist.smartWalletAddr, dist.amount])],
         capsuleTokenVaultKey,
-        userWalletAddress: appOwnerWalletAddress
+        userWalletAddress: developerWalletAddress
       });
 
       const logs = parseEventLogs({
@@ -242,7 +242,7 @@ export class TicketsService {
       throw new HttpException(e.message, 500);
     }
   }
-  async owners(req: RequestWithApiKey & AppValidate & TicketValidate) {
+  async owners(req: RequestWithApiKey & TicketValidate) {
     const { ticketContractAddress } = req;
     const pageSize = 100; // Number of addresses to fetch per call
     let allHolders = [];
@@ -283,7 +283,7 @@ export class TicketsService {
       throw new HttpException(e.message, 500);
     }
   }
-  async ownerByEmail(email: EmailDto["email"], req: RequestWithApiKey & AppValidate & TicketValidate) {
+  async ownerByEmail(email: EmailDto["email"], req: RequestWithApiKey & TicketValidate) {
     const { ticketContractAddress } = req;
 
     try {
@@ -335,7 +335,7 @@ export class TicketsService {
       }
     });
   }
-  async showTicket(req: RequestWithApiKey & AppValidate & TicketValidate, tokenId: string, userId?: string) {
+  async showTicket(req: RequestWithApiKey & TicketValidate, tokenId: string, userId?: string) {
     const { ticketContractAddress, appId } = req;
     try {
       const user = await this.database.user?.findUnique({

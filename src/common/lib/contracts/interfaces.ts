@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import { basename, join } from "path";
 
 export function importAllJsonContractsArtifacts() {
-  const dirPath = join(process.cwd(), "src", "lib", "contracts", "artifacts");
+  const dirPath = join(process.cwd(), "src", "common", "lib", "contracts", "artifacts");
   const files = fs.readdirSync(dirPath);
   const jsonObjects: { [key: string]: any } = {};
 

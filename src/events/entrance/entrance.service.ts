@@ -1,10 +1,10 @@
 import { HttpException, Injectable } from "@nestjs/common";
 import { DatabaseService } from "@/common/services/database/database.service";
-import { CreateEntranceDto } from "@/applications/entrance/dto/create-entrance.dto";
+import { CreateEntranceDto } from "@/events/entrance/dto/create-entrance.dto";
 import { uploadMetadata } from "@/lib/irys";
 import { getSmartWalletForCapsuleWallet } from "@/lib/capsule";
 import { contractArtifacts, deployContract, getExplorerUrl, readContract } from "@/lib/viem";
-import { EntryDto } from "@/applications/entrance/dto/entry.dto";
+import { EntryDto } from "@/events/entrance/dto/entry.dto";
 import { biconomyMetaTx } from "@/lib/biconomy";
 import { PrefixedHexString } from "ethereumjs-util";
 
@@ -20,8 +20,8 @@ export class EntranceService {
       }
     });
   }
-  async create(createEntranceDto: CreateEntranceDto, req: RequestWithApiKey & AppValidate) {
-    const { appId, appOwnerWalletAddress, capsuleTokenVaultKey } = req;
+  async create(createEntranceDto: CreateEntranceDto, req: RequestWithApiKey & EventValidate) {
+    const { appId, developerWalletAddress, capsuleTokenVaultKey } = req;
     try {
       const metadataPayload = {
         name: "Entrance checker",
@@ -36,7 +36,7 @@ export class EntranceService {
       const ownerSmartWallet = await smartWallet.getAccountAddress();
 
       const args = {
-        owner: appOwnerWalletAddress,
+        owner: developerWalletAddress,
         ownerSmartWallet,
         ticketAddress: createEntranceDto.ticketAddress
       };
@@ -61,14 +61,15 @@ export class EntranceService {
         data: {
           address: contract.contractAddr,
           name: contractName,
-          developerId: req.developerId,
           version: nextId,
-          appId,
           metadataUrl,
           metadataPayload: {
             ...metadataPayload,
             ...metadataImageUrl && { metadataImageUrl }
-          }
+          },
+          App: { connect: { id: appId } },
+          Event: { connect: { id: req.eventId } },
+          DevelopersAccount: { connect: { id: req.developerId } }
         }
       });
 
@@ -86,7 +87,7 @@ export class EntranceService {
       throw new HttpException(e.message, 500);
     }
   }
-  async entry(entryDto: EntryDto, entranceId: string, req: RequestWithApiKeyAndUserAccessToken & AppValidate) {
+  async entry(entryDto: EntryDto, entranceId: string, req: RequestWithApiKeyAndUserAccessToken) {
     try {
       const { walletAddress, capsuleTokenVaultKey } = req;
       const { ticketId } = entryDto;

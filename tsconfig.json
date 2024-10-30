@@ -20,6 +20,8 @@
     "paths": {
       "@/*": ["src/*"],
       "@/prisma/*": ["prisma/*"],
+      "@/lib/*": ["src/common/lib/*"],
+      "@/utils/*": ["src/common/utils/*"]
     }
   }
 }
