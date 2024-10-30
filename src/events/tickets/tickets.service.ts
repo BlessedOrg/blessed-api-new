@@ -154,9 +154,9 @@ export class TicketsService {
       throw new HttpException(e.message, 500);
     }
   }
-  async distribute(distributeDto: DistributeDto, req: RequestWithApiKey & TicketValidate) {
+  async distribute(distributeDto: DistributeDto, req: RequestWithApiKey & TicketValidate & EventValidate) {
     try {
-      const { capsuleTokenVaultKey, developerWalletAddress, ticketContractAddress, ticketId, appId } = req;
+      const { capsuleTokenVaultKey, developerWalletAddress, ticketContractAddress, ticketId, appId, eventId } = req;
       const app = await this.database.app.findUnique({ where: { id: appId } });
       const { users } = await this.usersService.createMany({
         users: distributeDto.distributions
@@ -212,7 +212,7 @@ export class TicketsService {
       const emailsToSend = await Promise.all(
         distribution.map(async (dist: any) => {
           const ticketUrls = dist.tokenIds.map((tokenId) =>
-            `${envConstants.landingPageUrl}/show-ticket?app=${app.slug}&contractId=${ticketId}&tokenId=${tokenId}&userId=${dist.userId}`
+            `${envConstants.landingPageUrl}/show-ticket?app=${app.slug}&contractId=${ticketId}&tokenId=${tokenId}&userId=${dist.userId}&eventId=${eventId}`
           );
           return {
             recipientEmail: dist.email,

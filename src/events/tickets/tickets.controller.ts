@@ -34,7 +34,7 @@ export class TicketsController {
 
   @UseTicketIdInterceptor()
   @Post(":ticketId/distribute")
-  distribute(@Body() distributeDto: DistributeDto, @Req() req: RequestWithApiKey & TicketValidate) {
+  distribute(@Body() distributeDto: DistributeDto, @Req() req: RequestWithApiKey & TicketValidate & EventValidate) {
     return this.ticketsService.distribute(distributeDto, req);
   }
 
