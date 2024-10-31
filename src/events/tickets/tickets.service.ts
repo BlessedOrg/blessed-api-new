@@ -61,7 +61,7 @@ export class TicketsService {
       });
 
       const nextId = (maxId._max.version || 0) + 1;
-      const ticketRecord = await this.database.smartContract.create({
+      const ticket = await this.database.smartContract.create({
         data: {
           address: contract.contractAddr,
           name: contractName,
@@ -80,9 +80,9 @@ export class TicketsService {
       });
       return {
         success: true,
-        ticketId: ticketRecord.id,
+        ticketId: ticket.id,
+        ticket,
         contract,
-        ticketRecord,
         explorerUrls: {
           contract: getExplorerUrl(contract.contractAddr)
         }
@@ -141,14 +141,23 @@ export class TicketsService {
         capsuleTokenVaultKey,
         userWalletAddress: developerWalletAddress
       });
-
+      const updatedUsersWhitelist = users.filter(user => ({ email: user.email, walletAddress: user.smartWalletAddress }));
+      const usersAndUpdatedWhitelistStatus = whitelistUpdates.map((whitelistUpdate) => {
+        const [walletAddress, isWhitelisted] = whitelistUpdate;
+        const user = updatedUsersWhitelist.find(user => user.smartWalletAddress === walletAddress);
+        return {
+          email: user?.email,
+          walletAddress,
+          isWhitelisted
+        };
+      });
       return {
         success: true,
+        whitelistUsersUpdate: usersAndUpdatedWhitelistStatus,
+        transactionReceipt: metaTxResult.data.transactionReceipt,
         explorerUrls: {
           tx: getExplorerUrl(metaTxResult.data.transactionReceipt.transactionHash)
-        },
-        whitelistUpdatesMap: whitelistUpdates,
-        transactionReceipt: metaTxResult.data.transactionReceipt
+        }
       };
     } catch (e) {
       throw new HttpException(e.message, 500);
@@ -232,10 +241,10 @@ export class TicketsService {
       return {
         success: true,
         distribution,
+        transactionReceipt: metaTxResult.data.transactionReceipt,
         explorerUrls: {
           tx: getExplorerUrl(metaTxResult.data.transactionReceipt.transactionHash)
-        },
-        transactionReceipt: metaTxResult.data.transactionReceipt
+        }
       };
 
     } catch (e) {

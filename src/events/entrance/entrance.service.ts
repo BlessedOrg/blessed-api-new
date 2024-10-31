@@ -57,7 +57,7 @@ export class EntranceService {
 
       const nextId = (maxId._max.version || 0) + 1;
 
-      const smartContractRecord = await this.database.smartContract.create({
+      const entrance = await this.database.smartContract.create({
         data: {
           address: contract.contractAddr,
           name: contractName,
@@ -76,8 +76,8 @@ export class EntranceService {
       return (
         {
           success: true,
+          entrance,
           contract,
-          smartContractRecord,
           explorerUrls: {
             contract: getExplorerUrl(contract.contractAddr)
           }
