@@ -14,6 +14,7 @@ import { UsersModule } from "@/users/users.module";
 import { ApplicationsModule } from "./applications/applications.module";
 import { PrismaExceptionFilter } from "@/common/exceptions/prisma-exception.filter";
 import { EventsModule } from "@/events/events.module";
+import { ApplicationModule } from "./application/application.module";
 
 @Module({
   imports: [
@@ -28,7 +29,8 @@ import { EventsModule } from "@/events/events.module";
     SessionModule,
     UsersModule,
     ApplicationsModule,
-    EventsModule
+    EventsModule,
+    ApplicationModule
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: AuthGuard }, {

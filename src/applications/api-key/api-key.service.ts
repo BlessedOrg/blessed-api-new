@@ -76,9 +76,8 @@ export class ApiKeyService {
       }
       const itemFromVault = await getVaultItem(apiToken?.apiTokenVaultKey, "apiKey");
 
-      const actualApiToken = itemFromVault.fields.find(f => f.id === "apiKey").value;
-
-      if (!isEqual(apiKey, actualApiToken)) {
+      const actualApiKey = itemFromVault.fields?.find(f => f.id === "apiKey")?.value;
+      if (!!actualApiKey && !isEqual(apiKey, actualApiKey)) {
         throw new Error("Invalid API Key");
       }
 

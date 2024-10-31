@@ -1,7 +1,7 @@
 import { Body, Controller, Get, Post, Req } from "@nestjs/common";
 import { ApplicationsService } from "./applications.service";
 import { CreateApplicationDto } from "./dto/create-application.dto";
-import { RequireDeveloperAuth, RequireDeveloperAuthOrApiKey } from "@/common/decorators/auth.decorator";
+import { RequireDeveloperAuth } from "@/common/decorators/auth.decorator";
 import { UseAppIdInterceptor } from "@/common/decorators/use-app-id.decorator";
 
 @Controller("apps")
@@ -15,21 +15,21 @@ export class ApplicationsController {
     return this.applicationsService.create(createApplicationDto, developerId);
   }
 
-  @RequireDeveloperAuthOrApiKey()
+  @RequireDeveloperAuth()
   @UseAppIdInterceptor()
   @Get(":app/users")
-  allUsers(@Req() req: RequestWithApiKeyOrDevAccessToken & AppValidate) {
+  allUsers(@Req() req: RequestWithDevAccessToken & AppValidate) {
     return this.applicationsService.allUsers(req.appId);
   }
 
-  @RequireDeveloperAuthOrApiKey()
+  @RequireDeveloperAuth()
   @UseAppIdInterceptor()
   @Get(":app")
-  details(@Req() req: RequestWithApiKeyOrDevAccessToken & AppValidate) {
+  details(@Req() req: RequestWithDevAccessToken & AppValidate) {
     return this.applicationsService.details(req.appId);
   }
 
-  @RequireDeveloperAuthOrApiKey()
+  @RequireDeveloperAuth()
   @Get()
   all(@Req() req: RequestWithDevAccessToken) {
     const developerId = req.developerId;
