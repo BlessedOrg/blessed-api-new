@@ -104,6 +104,7 @@ export class SessionService {
         refreshToken,
         developer: {
           walletAddress: developer.walletAddress,
+          smartWalletAddress: developer.smartWalletAddress,
           id: developer.id
         },
         message: "Logged in successfully"

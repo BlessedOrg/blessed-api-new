@@ -99,6 +99,7 @@ export class DevelopersService {
         developer: {
           email,
           walletAddress,
+          smartWalletAddress,
           id: createdDeveloperAccount.id
         },
         message: "Account created successfully"
