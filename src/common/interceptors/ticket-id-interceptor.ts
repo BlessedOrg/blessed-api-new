@@ -14,11 +14,9 @@ export class TicketIdInterceptor implements NestInterceptor {
     if (!ticketParam) {
       throw new NotFoundException("Ticket id param is required");
     }
-
-    const ticketRecord = await this.database.smartContract.findUnique({
+    const ticketRecord = await this.database.ticket.findUnique({
       where: {
         appId,
-        name: "tickets",
         id: ticketParam
       },
       select: { id: true, address: true }

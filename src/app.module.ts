@@ -4,33 +4,27 @@ import { AppService } from "./app.service";
 import { DatabaseModule } from "@/common/services/database/database.module";
 import { JwtModule } from "@nestjs/jwt";
 import { envConstants } from "@/common/constants";
-import { DevelopersModule } from "./developers/developers.module";
 import { APP_FILTER, APP_GUARD } from "@nestjs/core";
 import { AuthGuard } from "@/common/guards/auth/auth.guard";
 import { AuthGuardsModule } from "@/common/guards/auth/auth-guards.module";
 import { EmailModule } from "@/common/services/email/email.module";
-import { SessionModule } from "./session/session.module";
-import { UsersModule } from "@/users/users.module";
-import { ApplicationsModule } from "./applications/applications.module";
+import { SessionModule } from "@/common/services/session/session.module";
 import { PrismaExceptionFilter } from "@/common/exceptions/prisma-exception.filter";
-import { EventsModule } from "@/events/events.module";
-import { ApplicationModule } from "./application/application.module";
+import { PublicModule } from "@/public/public.module";
+import { PrivateModule } from "@/private/private.module";
 
 @Module({
   imports: [
     DatabaseModule,
+    EmailModule,
+    AuthGuardsModule,
+    SessionModule,
     JwtModule.register({
       global: true,
       secret: envConstants.jwtSecret
     }),
-    EmailModule,
-    DevelopersModule,
-    AuthGuardsModule,
-    SessionModule,
-    UsersModule,
-    ApplicationsModule,
-    EventsModule,
-    ApplicationModule
+    PrivateModule,
+    PublicModule
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: AuthGuard }, {
