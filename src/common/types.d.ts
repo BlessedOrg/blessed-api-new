@@ -1,5 +1,5 @@
-import { CanActivate, ExecutionContext } from "@nestjs/common";
-import { Request } from "express";
+import { CanActivate, ExecutionContext } from '@nestjs/common';
+import { Request } from 'express';
 
 export {};
 declare global {
@@ -7,8 +7,8 @@ declare global {
     canActivate(context: ExecutionContext): Promise<boolean>;
   }
 
-  type VaultItemType = "accessToken" | "capsuleKey" | "apiKey";
-  type AccountType = "user" | "developer";
+  type VaultItemType = 'accessToken' | 'capsuleKey' | 'apiKey';
+  type AccountType = 'user' | 'developer';
 
   //jwt's payload
   type ApiTokenJWT = {
@@ -38,6 +38,7 @@ declare global {
 
   type EventValidate = {
     eventId: string;
+    eventSlug: string;
   };
 
   type TicketValidate = {
@@ -49,7 +50,8 @@ declare global {
   type RequestWithDevAccessToken = Request & DeveloperAccessTokenJWT;
   type RequestWithUserAccessToken = Request & UserAccessTokenJWT;
   type RequestWithApiKey = Request & ApiTokenJWT;
-  type RequestWithApiKeyOrDevAccessToken = Request & (DeveloperAccessTokenJWT | ApiTokenJWT);
+  type RequestWithApiKeyOrDevAccessToken = Request &
+    (DeveloperAccessTokenJWT | ApiTokenJWT);
   type RequestWithApiKeyAndUserAccessToken = Request &
     RequestWithApiKey &
     RequestWithUserAccessToken;

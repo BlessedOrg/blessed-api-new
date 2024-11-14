@@ -2,7 +2,7 @@ import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { envConstants } from "@/common/constants";
 import { extractTokenFromHeader } from "@/utils/requests/extractTokenFromHeader";
-import { SessionService } from "@/session/session.service";
+import { SessionService } from "@/common/services/session/session.service";
 
 @Injectable()
 export class UserAuthGuard implements IAuthGuard {

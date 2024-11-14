@@ -12,7 +12,7 @@ export class EventIdInterceptor implements NestInterceptor {
 
     if (eventParam) {
       const isCuid = (str: string) => /^c[a-z0-9]{24}$/.test(str);
-      const select = { id: true };
+      const select = { id: true, slug: true };
       let event;
 
       if (!isCuid(eventParam)) {
@@ -29,6 +29,7 @@ export class EventIdInterceptor implements NestInterceptor {
 
       if (event?.id) {
         request["eventId"] = event.id;
+        request["eventSlug"] = event.slug;
       } else {
         throw new HttpException("Event not found", 404);
       }
