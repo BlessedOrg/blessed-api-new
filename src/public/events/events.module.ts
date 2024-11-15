@@ -3,7 +3,7 @@ import { EventsService } from "./events.service";
 import { EventsController } from "./events.controller";
 import { EntranceModule } from "@/public/events/entrance/entrance.module";
 import { TicketsModule } from "@/public/events/tickets/tickets.module";
-import { EventIdInterceptor } from "@/common/interceptors/event-id-interceptor";
+import { EventIdInterceptor } from "@/common/interceptors/param-protect/event-id-interceptor";
 
 @Module({
   imports: [EntranceModule, TicketsModule],

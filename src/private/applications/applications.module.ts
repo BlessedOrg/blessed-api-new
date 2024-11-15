@@ -2,7 +2,7 @@ import { Module } from "@nestjs/common";
 import { ApplicationsService } from "./applications.service";
 import { ApplicationsController } from "./applications.controller";
 import { ApiKeyModule } from "@/private/applications/api-key/api-key.module";
-import { AppIdInterceptor } from "@/common/interceptors/app-id.interceptor";
+import { AppIdInterceptor } from "@/common/interceptors/param-protect/app-id.interceptor";
 
 @Module({
   controllers: [ApplicationsController],

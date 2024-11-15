@@ -1,4 +1,4 @@
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, Length, Min, registerDecorator, ValidateIf, ValidateNested, ValidationArguments, ValidationOptions } from "class-validator";
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, Length, Min, registerDecorator, ValidateNested, ValidationArguments, ValidationOptions } from "class-validator";
 import { AirdropEnum } from "@/common/enums.enum";
 import { Type } from "class-transformer";
 import { NameDto } from "@/common/dto/name.dto";
@@ -15,12 +15,11 @@ export class AirdropDto {
   })
   eventSlug: string;
 
-  @ValidateIf((o) => o.type === AirdropEnum.HOLDERS)
   @IsNotEmpty({ message: "Ticket slug is required for holders type" })
   @Length(1, 100, {
     message: "Ticket slug must be between 1 and 100 characters"
   })
-  ticketSlug?: string;
+  ticketSlug: string;
 }
 
 export class SnapshotDto {
