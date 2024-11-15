@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { envConstants } from "@/common/constants";
+import { envVariables } from "@/common/env-variables";
 import { extractTokenFromHeader } from "@/utils/requests/extractTokenFromHeader";
 import { getVaultItem } from "@/lib/1pwd-vault";
 import { SessionService } from "@/session/session.service";
@@ -17,7 +17,7 @@ export class DeveloperAuthGuard implements IAuthGuard {
       throw new UnauthorizedException("Developer Access Token is required.");
     }
     try {
-      const decoded = this.jwtService.verify(token, { secret: envConstants.jwtSecret }) as DeveloperAccessTokenJWT;
+      const decoded = this.jwtService.verify(token, { secret: envVariables.jwtSecret }) as DeveloperAccessTokenJWT;
 
       await this.sessionService.checkIsSessionValid(decoded.developerId, "developer");
       const itemFromVault = await getVaultItem(decoded?.accessTokenVaultKey, "accessToken");

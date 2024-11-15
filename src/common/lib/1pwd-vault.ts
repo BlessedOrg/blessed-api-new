@@ -1,5 +1,5 @@
 import { shortenWalletAddress } from "@/utils/shortenWalletAddress";
-import { envConstants } from "@/common/constants";
+import { envVariables } from "@/common/env-variables";
 
 const {
   vaultAccessTokensId,
@@ -7,7 +7,7 @@ const {
   vaultApiKeysId,
   vaultApiUrl,
   vaultToken
-} = envConstants;
+} = envVariables;
 const headers = {
   Authorization: `Bearer ${vaultToken}`,
   "Content-Type": "application/json"
@@ -27,7 +27,7 @@ export async function createVaultCapsuleKeyItem(
   email: string,
   type: AccountType
 ) {
-  const isBetaEnv = envConstants.isDevelopment;
+  const isBetaEnv = envVariables.isDevelopment;
   const vaultId = vaultCapsuleTokensId;
   try {
     const createdItem = await fetch(
@@ -113,7 +113,7 @@ export async function createVaultAccessTokenItem(
 
 export async function createVaultApiKeyItem(apiKey: string, appSlug: string) {
   try {
-    const isBetaEnv = envConstants.isDevelopment;
+    const isBetaEnv = envVariables.isDevelopment;
     const createdItem = await fetch(
       `${vaultApiUrl}/v1/vaults/${vaultApiKeysId}/items`,
       {

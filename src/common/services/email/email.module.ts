@@ -4,15 +4,15 @@ import * as nodemailer from "nodemailer";
 import { EmailService } from "@/common/services/email/email.service";
 import { HandlebarsAdapter } from "@nestjs-modules/mailer/dist/adapters/handlebars.adapter";
 import { join } from "path";
-import { envConstants } from "@/common/constants";
+import { envVariables } from "@/common/env-variables";
 
 @Module({
   imports: [
     MailerModule.forRootAsync({
       imports: [],
       useFactory: async () => {
-        const isLocalhost = envConstants.isDevelopment;
-        const { host, port, pass, email } = envConstants.mail;
+        const isLocalhost = envVariables.isDevelopment;
+        const { host, port, pass, email } = envVariables.mail;
         let transport;
         if (isLocalhost) {
           const testAccount = await nodemailer.createTestAccount();

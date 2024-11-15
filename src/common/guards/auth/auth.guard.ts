@@ -2,7 +2,7 @@ import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
 import { AuthGuardFactory } from "@/common/guards/auth/auth-factory.guard";
 import { authGuardKeysArray } from "@/common/decorators/auth.decorator";
 import { Reflector } from "@nestjs/core";
-import { envConstants } from "@/common/constants";
+import { envVariables } from "@/common/env-variables";
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -14,12 +14,12 @@ export class AuthGuard implements CanActivate {
     const isProtected = this.checkIfProtected(context);
 
     if (!isProtected) {
-      if (envConstants.isDevelopment) {
+      if (envVariables.isDevelopment) {
         console.log("Endpoint is not protected by any auth guard");
       }
       return true;
     }
-    if (envConstants.isDevelopment) {
+    if (envVariables.isDevelopment) {
       console.log("Endpoint is secure by one of the auth guards");
     }
     const guard = this.authGuardFactory.create(context);

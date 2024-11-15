@@ -2,7 +2,7 @@ import { HttpException, Injectable } from "@nestjs/common";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { MailerService } from "@nestjs-modules/mailer";
 import * as nodemailer from "nodemailer";
-import { envConstants } from "@/common/constants";
+import { envVariables } from "@/common/env-variables";
 
 @Injectable()
 export class EmailService {
@@ -13,7 +13,7 @@ export class EmailService {
   async sendBatchEmails(emailDataArray: any, isLocalhost: boolean) {
     const emailPromises = emailDataArray.map(({ recipientEmail, subject, template, context }) => {
       const options = {
-        from: envConstants.mail.email || "test@blessed.fan",
+        from: envVariables.mail.email || "test@blessed.fan",
         to: recipientEmail,
         subject: subject,
         template,
@@ -35,7 +35,7 @@ export class EmailService {
     try {
       const otpCode = await this.generateOTP(to);
       const result = await this.mailerService.sendMail({
-        from: envConstants.mail.email || "test@blessed.fan",
+        from: envVariables.mail.email || "test@blessed.fan",
         to,
         subject: "Your One-Time Password for Blessed.fan",
         template: "./verificationCode",
@@ -43,7 +43,7 @@ export class EmailService {
           otp: otpCode
         }
       });
-      if (envConstants.isDevelopment) {
+      if (envVariables.isDevelopment) {
         console.log("Preview URL:", nodemailer.getTestMessageUrl(result));
       }
       return { message: "Verification code sent successfully" };

@@ -4,7 +4,7 @@ import { getVaultItem } from "@/lib/1pwd-vault";
 import { contractArtifacts, getExplorerUrl, provider } from "@/lib/viem";
 import { Capsule } from "@usecapsule/server-sdk";
 import { CapsuleEthersV5Signer } from "@usecapsule/ethers-v5-integration";
-import { envConstants } from "@/common/constants";
+import { envVariables } from "@/common/env-variables";
 
 interface MetaTxParams {
   contractAddress: string;
@@ -18,9 +18,9 @@ interface MetaTxParams {
 export const createSmartWallet = async (signer: LightSigner) =>
   createSmartAccountClient({
     signer: signer,
-    bundlerUrl: envConstants.bundlerUrl, // <-- Read about this at https://docs.biconomy.io/dashboard#bundler-url
-    biconomyPaymasterApiKey: envConstants.biconomyPaymasterApiKey, // <-- Read about at https://docs.biconomy.io/dashboard/paymaster
-    rpcUrl: envConstants.rpcUrl // <-- read about this at https://docs.biconomy.io/account/methods#createsmartaccountclient
+    bundlerUrl: envVariables.bundlerUrl, // <-- Read about this at https://docs.biconomy.io/dashboard#bundler-url
+    biconomyPaymasterApiKey: envVariables.biconomyPaymasterApiKey, // <-- Read about at https://docs.biconomy.io/dashboard/paymaster
+    rpcUrl: envVariables.rpcUrl // <-- read about this at https://docs.biconomy.io/account/methods#createsmartaccountclient
   });
 
 export const biconomyMetaTx = async ({
@@ -30,8 +30,8 @@ export const biconomyMetaTx = async ({
   args,
   capsuleTokenVaultKey
 }: MetaTxParams) => {
-  const capsuleEnv = envConstants.capsuleEnv as any;
-  const capsule = new Capsule(capsuleEnv, envConstants.capsuleApiKey);
+  const capsuleEnv = envVariables.capsuleEnv as any;
+  const capsule = new Capsule(capsuleEnv, envVariables.capsuleApiKey);
   const vaultItem = await getVaultItem(capsuleTokenVaultKey, "capsuleKey");
   const userShare = vaultItem.fields.find((i) => i.id === "capsuleKey")?.value;
   await capsule.setUserShare(userShare);
@@ -87,5 +87,5 @@ export const biconomyMetaTx = async ({
 };
 
 export const bundler = new Bundler({
-  bundlerUrl: envConstants.bundlerUrl // Replace with Base Sepolia chain ID
+  bundlerUrl: envVariables.bundlerUrl // Replace with Base Sepolia chain ID
 });

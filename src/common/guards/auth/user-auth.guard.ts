@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { envConstants } from "@/common/constants";
+import { envVariables } from "@/common/env-variables";
 import { extractTokenFromHeader } from "@/utils/requests/extractTokenFromHeader";
 import { SessionService } from "@/session/session.service";
 
@@ -15,7 +15,7 @@ export class UserAuthGuard implements IAuthGuard {
       throw new UnauthorizedException("User Access Token is required.");
     }
     try {
-      const decoded = this.jwtService.verify(token, { secret: envConstants.jwtSecret }) as UserAccessTokenJWT;
+      const decoded = this.jwtService.verify(token, { secret: envVariables.jwtSecret }) as UserAccessTokenJWT;
       await this.sessionService.checkIsSessionValid(decoded.userId, "user");
 
       Object.assign(request, decoded);
