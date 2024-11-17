@@ -8,6 +8,7 @@ import { DistributeDto } from "@/events/tickets/dto/distribute.dto";
 import { EmailDto } from "@/common/dto/email.dto";
 import { UseEventIdInterceptor } from "@/common/decorators/event-id-decorator";
 import { UseTicketIdInterceptor } from "@/common/decorators/use-ticket-id.decorator";
+import { WebhooksDto } from "@/webhooks/webhooks.dto";
 
 @RequireApiKey()
 @UseEventIdInterceptor()
@@ -24,6 +25,12 @@ export class TicketsController {
   @Post(":ticketId/supply")
   supply(@Body() supplyDto: SupplyDto, @Req() req: RequestWithApiKey & TicketValidate) {
     return this.ticketsService.supply(supplyDto, req);
+  }
+
+  @UseTicketIdInterceptor()
+  @Get(":ticketId/details")
+  details(@Req() req: RequestWithApiKey & TicketValidate) {
+    return this.ticketsService.getTicketDetails(req);
   }
 
   @UseTicketIdInterceptor()
@@ -61,5 +68,11 @@ export class TicketsController {
   @Get()
   contracts(@Req() req: RequestWithApiKey) {
     return this.ticketsService.contracts(req.appId);
+  }
+
+  @UseTicketIdInterceptor()
+  @Post(":ticketId/checkout-session")
+  checkoutSession(@Req() req: RequestWithApiKey & TicketValidate, @Body() webhooksDto: WebhooksDto) {
+    return this.ticketsService.getCheckoutSession(webhooksDto, req)
   }
 }

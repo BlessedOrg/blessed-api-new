@@ -198,6 +198,7 @@ export class SessionService {
         accessToken,
         refreshToken,
         walletAddress: user.walletAddress,
+        smartWalletAddress: user.smartWalletAddress,
         userId: user.id,
         message: "Logged in successfully"
       };
@@ -221,6 +222,7 @@ export class SessionService {
         accessToken,
         refreshToken,
         walletAddress: user.walletAddress,
+        smartWalletAddress: user.smartWalletAddress,
         userId: user.id
       };
     }

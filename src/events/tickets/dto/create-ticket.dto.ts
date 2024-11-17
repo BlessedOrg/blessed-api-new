@@ -1,4 +1,5 @@
-import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, Length, Min, MinLength, registerDecorator, ValidationArguments, ValidationOptions } from "class-validator";
+import { IsBoolean, IsNotEmpty, IsNumber, IsOptional, Length, Min, MinLength, registerDecorator, ValidationArguments, ValidationOptions, IsPositive } from "class-validator";
+import { envVariables } from "@/common/env-variables";
 
 export class CreateTicketDto {
   @MinLength(4, { message: "Name must be at least 4 characters" })
@@ -11,6 +12,13 @@ export class CreateTicketDto {
   @Length(2, 10, { message: "Symbol must be 2-10 characters" })
   @IsNotEmpty({ message: "Symbol is required" })
   symbol: string;
+
+  // @IsNotEmpty({ message: "ERC20 Address is required" })
+  // erc20Address: string;
+
+  @IsNotEmpty({ message: "Price is required" })
+  @IsPositive({ message: "Price must be positive number (can be 0)" })
+  price: number;
 
   @IsLessThanOrEqual("maxSupply", { message: "Initial supply must be less than or equal to max supply" })
   @Min(1, { message: "Initial supply must be a positive number" })

@@ -24,7 +24,8 @@ const envVariables = {
   port: parseInt(process.env.PORT, 10) || 3000,
   landingPageUrl: process.env.LANDING_PAGE_URL,
   stripeSecretKey: process.env.STRIPE_SECRET_KEY,
-  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+  erc20Address: process.env.ERC20_CONTRACT_ADDRESS
 };
 
 export { envVariables };
