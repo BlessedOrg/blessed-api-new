@@ -16,9 +16,7 @@ export class ApiKeyGuard implements IAuthGuard {
     }
 
     try {
-      const decoded = this.jwtService.verify(apiKey, {
-        secret: envVariables.jwtSecret
-      }) as ApiTokenJWT;
+      const decoded = this.jwtService.verify(apiKey, { secret: envVariables.jwtSecret }) as ApiTokenJWT;
 
       const data = await this.apiKeyService.validateApiKey(decoded.apiTokenId, apiKey);
 
