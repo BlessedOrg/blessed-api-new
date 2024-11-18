@@ -19,11 +19,6 @@ export class WebhooksController {
     @Res() response: Response,
     @Headers("stripe-signature") signature: string,
   ) {
-    try {
-      await this.webhooksService.handleWebhook(request, signature);
-      response.sendStatus(200);
-    } catch (err) {
-      response.status(400).send(`Webhook Error: ${err.message}`);
-    }
+    return this.webhooksService.handleWebhook(request, signature);
   }
 }

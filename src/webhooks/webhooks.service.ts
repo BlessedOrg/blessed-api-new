@@ -25,6 +25,8 @@ export class WebhooksService {
   async handleWebhook(request: any, signature: string): Promise<void> {
     let event: Stripe.Event;
 
+    console.log("🔮 event: ", event)
+
     try {
       event = this.stripe.webhooks.constructEvent(
         request.body as any,
@@ -37,10 +39,19 @@ export class WebhooksService {
       );
     }
 
+    // Process the event asynchronously
+    this.processWebhookEvent(event).catch(error => {
+      console.error('Error processing webhook:', error);
+    });
+
+    return;
+  }
+
+
+  private async processWebhookEvent(event: Stripe.Event): Promise<void> {
     switch (event.type) {
       case "payment_intent.succeeded":
-        const paymentIntentSucceeded = event.data
-          .object as Stripe.PaymentIntent;
+        const paymentIntentSucceeded = event.data.object as Stripe.PaymentIntent;
         await this.handlePaymentIntentSucceeded(paymentIntentSucceeded);
         break;
       default:
@@ -48,9 +59,7 @@ export class WebhooksService {
     }
   }
 
-  private async handlePaymentIntentSucceeded(
-    paymentIntent: Stripe.PaymentIntent,
-  ): Promise<void> {
+  private async handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent): Promise<void> {
     console.log(paymentIntent);
 
     try {

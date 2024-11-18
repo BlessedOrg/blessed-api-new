@@ -54,7 +54,7 @@ export const biconomyMetaTx = async ({
     paymasterServiceData: { mode: PaymasterMode.SPONSORED }
   });
 
-  console.log("🫡 userOpResponse: ", userOpResponse);
+  console.log("🫡 userOp Hash: ", userOpResponse.userOpHash);
   const { transactionHash } = await userOpResponse.waitForTxHash();
 
   console.log("💨 transactionHash", getExplorerUrl(transactionHash));
