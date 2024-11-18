@@ -25,8 +25,6 @@ export class WebhooksService {
   async handleWebhook(request: any, signature: string): Promise<void> {
     let event: Stripe.Event;
 
-    console.log("🔮 event: ", event)
-
     try {
       event = this.stripe.webhooks.constructEvent(
         request.body as any,
@@ -34,19 +32,14 @@ export class WebhooksService {
         envVariables.stripeWebhookSecret,
       );
     } catch (err) {
-      throw new BadRequestException(
-        `Webhook signature verification failed: ${err.message}`,
-      );
+      throw new BadRequestException(`Webhook signature verification failed: ${err.message}`);
     }
 
-    // Process the event asynchronously
-    this.processWebhookEvent(event).catch(error => {
-      console.error('Error processing webhook:', error);
-    });
+    this.processWebhookEvent(event)
+      .catch(error => console.log("🚨 error /webhooks/stripe:", error.message));
 
     return;
   }
-
 
   private async processWebhookEvent(event: Stripe.Event): Promise<void> {
     switch (event.type) {
@@ -60,12 +53,9 @@ export class WebhooksService {
   }
 
   private async handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent): Promise<void> {
-    console.log(paymentIntent);
-
+    console.log("🪩 webhook event:", paymentIntent);
     try {
       const metadata = paymentIntent.metadata;
-
-      console.log("🔥 metadata: ", metadata);
 
       const ticket = await this.database.ticket.findUnique({
         where: {
@@ -85,8 +75,6 @@ export class WebhooksService {
           },
         },
       });
-
-      console.log("🔥 ticket: ", ticket);
 
       // 🏗️ TODO: buy ERC20 with the received fiat for Operator's wallet, or create a CRON that will do it?
 
@@ -137,8 +125,6 @@ export class WebhooksService {
         capsuleTokenVaultKey: user.capsuleTokenVaultKey,
       });
 
-      console.log("🔥 getResult: ", getResult);
-
       const logs = parseEventLogs({
         abi: contractArtifacts["tickets"].abi,
         logs: getResult.data.transactionReceipt.logs,
@@ -149,8 +135,6 @@ export class WebhooksService {
         .map((log) => (log as any)?.args);
 
       const tokenId = Number(transferSingleEventArgs[0].id);
-
-      console.log("🔥 tokenId: ", tokenId);
 
       await this.emailService.sendTicketPurchasedEmail(
         user.email,
@@ -165,7 +149,6 @@ export class WebhooksService {
         ),
       );
 
-      console.log(`💽 done!`);
     } catch (error) {
       console.log("🚨 error on /webhooks:", error.message);
     }
