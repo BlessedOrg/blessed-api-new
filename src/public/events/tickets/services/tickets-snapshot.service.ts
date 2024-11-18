@@ -161,9 +161,7 @@ export class TicketsSnapshotService {
       .map(({ user }) => user);
 
     const users = eligibleUsersForAllTickets.filter((user) => !user?.external);
-    const external = eligibleUsersForAllTickets.filter(
-      (user) => user?.external
-    );
+    const external = eligibleUsersForAllTickets.filter((user) => user?.external);
 
     return {
       externalAddresses: external,
@@ -192,8 +190,7 @@ export class TicketsSnapshotService {
     const result = await readContract(
       address,
       contractArtifacts["tickets"].abi,
-      "totalSupply",
-      []
+      "totalSupply"
     );
     return Number(result);
   }
