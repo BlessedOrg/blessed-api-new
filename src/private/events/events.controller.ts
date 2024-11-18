@@ -8,7 +8,7 @@ import { UpdateEventDto } from "@/public/events/dto/update-event.dto";
 
 @RequireDeveloperAuth()
 @Controller("private/events")
-export class EventsPrivateController {
+export class EventsController {
   constructor(private eventsService: EventsService) {}
 
   @Get()

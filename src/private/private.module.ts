@@ -1,21 +1,21 @@
-import { Module } from '@nestjs/common';
-import { DevelopersModule } from '@/private/developers/developers.module';
-import { ApplicationsModule } from '@/private/applications/applications.module';
-import { AudiencesPrivateModule } from './audiences-private/audiences-private.module';
-import { TicketsPrivateModule } from './tickets-private/tickets-private.module';
-import { EventsPrivateModule } from './events-private/events-private.module';
-import { CampaignsPrivateModule } from './campaigns-private/campaigns-private.module';
+import { Module } from "@nestjs/common";
+import { DevelopersModule } from "@/private/developers/developers.module";
+import { ApplicationsModule } from "@/private/applications/applications.module";
+import { AudiencesModule } from "@/private/audiences/audiences.module";
+import { TicketsModule } from "@/private/tickets/tickets.module";
+import { EventsModule } from "@/private/events/events.module";
+import { CampaignsModule } from "@/private/campaigns/campaigns.module";
 
 @Module({
   imports: [
     DevelopersModule,
     ApplicationsModule,
-    AudiencesPrivateModule,
-    TicketsPrivateModule,
-    EventsPrivateModule,
-    CampaignsPrivateModule,
+    AudiencesModule,
+    TicketsModule,
+    EventsModule,
+    CampaignsModule
   ],
   controllers: [],
-  providers: [],
+  providers: []
 })
 export class PrivateModule {}

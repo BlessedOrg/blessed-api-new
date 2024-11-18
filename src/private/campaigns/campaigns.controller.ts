@@ -7,7 +7,7 @@ import { RequireDeveloperAuth } from "@/common/decorators/auth.decorator";
 @RequireDeveloperAuth()
 @UseAppIdInterceptor()
 @Controller("private/apps/:app/campaigns")
-export class CampaignsPrivateController {
+export class CampaignsController {
   constructor(private campaignService: CampaignsService) {}
 
   @Get()
@@ -40,7 +40,7 @@ export class CampaignsPrivateController {
     @Req() req: RequestWithDevAccessToken & AppValidate,
     @Param("campaign") id: string,
     @Body()
-      updateCampaignAudienceDto: {
+    updateCampaignAudienceDto: {
       audiences: string[];
       audiencesToRemove?: string[];
     }
@@ -57,7 +57,7 @@ export class CampaignsPrivateController {
     @Req() req: RequestWithDevAccessToken & AppValidate,
     @Param("campaign") id: string,
     @Body()
-      updateCampaignTicketsDto: { tickets: string[]; ticketsToRemove?: string[] }
+    updateCampaignTicketsDto: { tickets: string[]; ticketsToRemove?: string[] }
   ) {
     return this.campaignService.updateTickets(
       req.appId,

@@ -8,7 +8,7 @@ import { AssignAudiencesDto } from "@/public/audiences/dto/assign-audiences.dto"
 @RequireDeveloperAuth()
 @UseAppIdInterceptor()
 @Controller("private/apps/:app/audiences")
-export class AudiencesPrivateController {
+export class AudiencesController {
   constructor(private audienceService: AudiencesService) {}
 
   @Get()

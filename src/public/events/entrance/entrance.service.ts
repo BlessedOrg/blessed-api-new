@@ -20,6 +20,7 @@ export class EntranceService {
       }
     });
   }
+
   async create(
     createEntranceDto: CreateEntranceDto,
     req: RequestWithApiKey & EventValidate
@@ -36,12 +37,10 @@ export class EntranceService {
         description: `Entrance checker for ${event.name} event`,
         image: ""
       };
-      const { metadataUrl, metadataImageUrl } =
-        await uploadMetadata(metadataPayload);
+      const { metadataUrl, metadataImageUrl } = await uploadMetadata(metadataPayload);
       const contractName = "entrance";
 
-      const smartWallet =
-        await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
+      const smartWallet = await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
       const ownerSmartWallet = await smartWallet.getAccountAddress();
 
       const ticket = await this.database.ticket.findUnique({
@@ -92,6 +91,7 @@ export class EntranceService {
       throw new HttpException(e.message, 500);
     }
   }
+
   async entry(
     entryDto: EntryDto,
     entranceId: string,
@@ -146,6 +146,7 @@ export class EntranceService {
       throw new HttpException(e.message, 500);
     }
   }
+
   async entries(entranceId: string) {
     try {
       const entranceRecord = await this.database.entrance.findUnique({

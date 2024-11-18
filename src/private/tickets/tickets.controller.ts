@@ -8,7 +8,7 @@ import { UseEventIdInterceptor } from "@/common/decorators/event-id-decorator";
 
 @RequireDeveloperAuth()
 @Controller("private/tickets")
-export class TicketsPrivateController {
+export class TicketsController {
   constructor(private ticketsService: TicketsService) {}
 
   @UseInterceptors(SnapshotInterceptor)

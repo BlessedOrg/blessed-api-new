@@ -133,6 +133,7 @@ export class TicketsService {
       throw new HttpException(e?.message, 500);
     }
   }
+
   async supply(supplyDto: SupplyDto, req: RequestWithApiKey & TicketValidate) {
     const {
       ticketContractAddress,
@@ -162,6 +163,7 @@ export class TicketsService {
       throw new HttpException(e?.message, 500);
     }
   }
+
   async whitelist(
     whitelistDto: WhitelistDto,
     req: RequestWithApiKey & TicketValidate
@@ -236,6 +238,7 @@ export class TicketsService {
       throw new HttpException(e.message, 500);
     }
   }
+
   distribute(
     distributeDto: DistributeDto,
     params: {
@@ -249,6 +252,7 @@ export class TicketsService {
   ) {
     return this.ticketDistributeService.distribute(distributeDto, params);
   }
+
   async owners(
     ticketContractAddress: string,
     pagination: { start?: number; pageSize?: number } = {
@@ -310,6 +314,7 @@ export class TicketsService {
       throw new HttpException(e.message, 500);
     }
   }
+
   async ownerByEmail(
     email: EmailDto["email"],
     req: RequestWithApiKey & TicketValidate
@@ -354,6 +359,7 @@ export class TicketsService {
       throw new HttpException(e.message, 500);
     }
   }
+
   contracts(appId: string) {
     return this.database.ticket.findMany({
       where: {
@@ -361,6 +367,7 @@ export class TicketsService {
       }
     });
   }
+
   async showTicket(
     req: RequestWithApiKey & TicketValidate & EventValidate,
     tokenId: string,

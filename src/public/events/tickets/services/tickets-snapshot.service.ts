@@ -22,11 +22,10 @@ export class TicketsSnapshotService {
       const { tickets, entrances } =
         await this.getTicketsAndEntrances(snapshot);
 
-      const eligibleUsersForTicketHold =
-        await this.getEligibleUsersForTicketHold(tickets);
-
-      const eligibleUsersForEntrance =
-        await this.getEligibleUsersForEntrances(entrances);
+      const [eligibleUsersForTicketHold, eligibleUsersForEntrance] = await Promise.all([
+        this.getEligibleUsersForTicketHold(tickets),
+        this.getEligibleUsersForEntrances(entrances)
+      ]);
 
       const eligibleUsersForTicketHoldMap = new Map(
         eligibleUsersForTicketHold.owners.map((user) => [
@@ -50,38 +49,46 @@ export class TicketsSnapshotService {
         )
       );
 
-      const isEntranceRequired = entrances.length > 0;
-      const isOwnerRequired = tickets.length > 0;
+      const isEntranceRequired = !!entrances.length;
+      const isOwnerRequired = !!tickets.length;
+
       let eligibleUsers: any[] = [];
       let eligibleExternalAddresses: any[] = [];
-      if (isEntranceRequired && isOwnerRequired) {
-        const usersWithMeetCriteria = Array.from(
-          eligibleUsersForTicketHoldMap.keys()
-        ).filter((user) => eligibleUsersForEntranceMap.has(user));
-        const externalAddressesWithMeetCriteria = Array.from(
-          eligibleExternalAddressesForTicketHold
-        )
-          .filter((user) => eligibleExternalAddressesForEntrance.has(user))
-          .map((i) => ({ walletAddress: i, external: true }));
 
-        eligibleUsers = usersWithMeetCriteria.map((user) =>
-          eligibleUsersForTicketHoldMap.get(user)
-        );
-        eligibleExternalAddresses = externalAddressesWithMeetCriteria;
-      } else if (isEntranceRequired && !isOwnerRequired) {
-        eligibleUsers = [
-          ...eligibleUsersForEntrance.flatMap((result) => result.entries),
-          ...Array.from(eligibleExternalAddressesForEntrance)
-        ];
-        eligibleExternalAddresses = Array.from(
-          eligibleExternalAddressesForEntrance
-        ).map((i) => ({ walletAddress: i, external: true }));
-      } else {
-        eligibleUsers = eligibleUsersForTicketHold.owners;
-        eligibleExternalAddresses = Array.from(
-          eligibleExternalAddressesForTicketHold
-        ).map((i) => ({ walletAddress: i, external: true }));
+      const scenario = `${isEntranceRequired}_${isOwnerRequired}`;
+      switch (scenario) {
+        case "true_true": {
+          const usersWithMeetCriteria = Array.from(
+            eligibleUsersForTicketHoldMap.keys()
+          ).filter((user) => eligibleUsersForEntranceMap.has(user));
+
+          eligibleUsers = usersWithMeetCriteria.map((user) =>
+            eligibleUsersForTicketHoldMap.get(user)
+          );
+          eligibleExternalAddresses = Array.from(
+            eligibleExternalAddressesForTicketHold
+          )
+            .filter((user) => eligibleExternalAddressesForEntrance.has(user))
+            .map((i) => ({ walletAddress: i, external: true }));
+          break;
+        }
+
+        case "true_false": {
+          eligibleUsers = eligibleUsersForEntrance.flatMap((result) => result.entries);
+          eligibleExternalAddresses = Array.from(
+            eligibleExternalAddressesForEntrance
+          ).map((i) => ({ walletAddress: i, external: true }));
+          break;
+        }
+
+        default: {
+          eligibleUsers = eligibleUsersForTicketHold.owners;
+          eligibleExternalAddresses = Array.from(
+            eligibleExternalAddressesForTicketHold
+          ).map((i) => ({ walletAddress: i, external: true }));
+        }
       }
+
       return {
         eligibleUsers,
         eligibleExternalAddresses,
