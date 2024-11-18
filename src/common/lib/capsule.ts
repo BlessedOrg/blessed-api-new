@@ -7,11 +7,11 @@ import { activeChain, provider, rpcUrl } from "@/lib/viem";
 import { http } from "viem";
 import { CapsuleEthersV5Signer } from "@usecapsule/ethers-v5-integration";
 import { createSmartWallet } from "@/lib/biconomy";
-import { envConstants } from "@/common/constants";
+import { envVariables } from "@/common/env-variables";
 
-const capsuleEnv = envConstants.capsuleEnv as any;
+const capsuleEnv = envVariables.capsuleEnv as any;
 const getCapsuleInstance = () =>
-  new Capsule(capsuleEnv, envConstants.capsuleApiKey, {
+  new Capsule(capsuleEnv, envVariables.capsuleApiKey, {
     supportedWalletTypes: {
       EVM: true
     }
@@ -76,7 +76,7 @@ export async function getCapsuleSigner(capsuleTokenVaultKey: string) {
 };
 
 export async function getSmartWalletForCapsuleWallet(capsuleTokenVaultKey: string) {
-  const capsule = new Capsule(capsuleEnv, envConstants.capsuleApiKey);
+  const capsule = new Capsule(capsuleEnv, envVariables.capsuleApiKey);
   const vaultItem = await getVaultItem(capsuleTokenVaultKey, "capsuleKey");
   const userShare = vaultItem.fields.find((i) => i.id === "capsuleKey")?.value;
   await capsule.setUserShare(userShare);

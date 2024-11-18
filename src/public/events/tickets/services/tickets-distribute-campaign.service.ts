@@ -1,9 +1,9 @@
 import { forwardRef, HttpException, Inject, Injectable } from "@nestjs/common";
-import { envConstants } from "@/common/constants";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { TicketsDistributeService } from "@/public/events/tickets/services/tickets-distribute.service";
 import { EmailService } from "@/common/services/email/email.service";
 import { TicketsService } from "@/public/events/tickets/tickets.service";
+import { envVariables } from "@/common/env-variables";
 
 @Injectable()
 export class TicketsDistributeCampaignService {
@@ -97,7 +97,7 @@ export class TicketsDistributeCampaignService {
               .map(async (dist) => {
                 const ticketUrls = dist.tokenIds.map(
                   (tokenId) =>
-                    `${envConstants.landingPageUrl}/show-ticket?contractId=${ticket.id}&tokenId=${tokenId}&userId=${dist.userId}&eventId=${event.id}`
+                    `${envVariables.landingPageUrl}/show-ticket?contractId=${ticket.id}&tokenId=${tokenId}&userId=${dist.userId}&eventId=${event.id}`
                 );
                 return {
                   recipientEmail: dist.email,
@@ -114,7 +114,7 @@ export class TicketsDistributeCampaignService {
           );
           await this.emailService.sendBatchEmails(
             emailsToSend,
-            envConstants.isDevelopment
+            envVariables.isDevelopment
           );
 
           return { distribution, externalDistribution };

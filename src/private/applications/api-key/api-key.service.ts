@@ -1,7 +1,7 @@
 import { HttpException, Injectable } from "@nestjs/common";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { JwtService } from "@nestjs/jwt";
-import { envConstants } from "@/common/constants";
+import { envVariables } from "@/common/env-variables";
 import { createVaultApiKeyItem, getVaultItem } from "@/lib/1pwd-vault";
 import { isEqual } from "lodash";
 
@@ -20,7 +20,7 @@ export class ApiKeyService {
           apiTokenVaultKey: ""
         }
       });
-      const apiKey = this.jwtService.sign({ appId: app.id, appSlug: app.slug, apiTokenId: apiTokenRecord?.id, developerId }, { secret: envConstants.jwtSecret });
+      const apiKey = this.jwtService.sign({ appId: app.id, appSlug: app.slug, apiTokenId: apiTokenRecord?.id, developerId }, { secret: envVariables.jwtSecret });
       const vaultItem = await createVaultApiKeyItem(apiKey, app.slug);
       await this.database.apiToken.update({
         where: {
