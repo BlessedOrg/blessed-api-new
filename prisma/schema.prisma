@@ -20,7 +20,8 @@ model DeveloperAccount {
   smartWalletAddress   String?            @unique
   accessTokenVaultKey  String?
   capsuleTokenVaultKey String?
-  SmartContract        SmartContract[]
+  Tickets              Ticket[]
+  Entrances            Entrance[]
   Apps                 App[]
   Sessions             DeveloperSession[]
   createdAt            DateTime           @default(now())
@@ -34,27 +35,32 @@ model App {
   description      String?
   imageUrl         String?
   domainUrl        String?
-  SmartContracts   SmartContract[]
+  Tickets          Ticket[]
+  Entrances        Entrance[]
   DeveloperAccount DeveloperAccount @relation(fields: [developerId], references: [id])
   developerId      String
   Users            User[]
   ApiTokens        ApiToken[]
   Events           Event[]
+  Campaigns        Campaign[]
+  Audiences        Audience[]
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 }
 
 model User {
-  id                        String                     @id @default(cuid())
-  email                     String                     @unique
-  walletAddress             String?                    @unique
-  smartWalletAddress        String?                    @unique
-  capsuleTokenVaultKey      String?
-  Sessions                  UserSession[]
-  SmartContractInteractions SmartContractInteraction[]
-  Apps                      App[]
-  createdAt                 DateTime                   @default(now())
-  updatedAt                 DateTime                   @updatedAt
+  id                   String                @id @default(cuid())
+  email                String                @unique
+  walletAddress        String?               @unique
+  smartWalletAddress   String?               @unique
+  capsuleTokenVaultKey String?
+  Sessions             UserSession[]
+  TicketInteractions   TicketInteraction[]
+  EntranceInteractions EntranceInteraction[]
+  Apps                 App[]
+  AudienceUsers        AudienceUser[]
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
 }
 
 model ApiToken {
@@ -99,51 +105,143 @@ model EmailVerificationCode {
 }
 
 model Event {
-  id             String          @id @default(cuid())
-  name           String
-  description    String?
-  logoUrl        String?
-  slug           String          @unique
-  App            App             @relation(fields: [appId], references: [id])
-  appId          String
-  SmartContracts SmartContract[]
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  deletedAt      DateTime?
+  id          String     @id @default(cuid())
+  name        String
+  description String?
+  logoUrl     String?
+  slug        String     @unique
+  App         App        @relation(fields: [appId], references: [id])
+  appId       String
+  Tickets     Ticket[]
+  Entrances   Entrance[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
 }
 
-model SmartContract {
-  id                        String                     @id @default(cuid())
-  address                   String                     @unique
-  name                      String
-  version                   Int
-  DevelopersAccount         DeveloperAccount?          @relation(fields: [developerId], references: [id])
-  developerId               String?
-  metadataUrl               String?
-  metadataPayload           Json
-  App                       App                        @relation(fields: [appId], references: [id])
-  appId                     String
-  Event                     Event                      @relation(fields: [eventId], references: [id])
-  eventId                   String
-  SmartContractInteractions SmartContractInteraction[]
-  createdAt                 DateTime                   @default(now())
-  updatedAt                 DateTime                   @updatedAt
+model Campaign {
+  id                   String                @id @default(cuid())
+  name                 String
+  slug                 String
+  Audiences            Audience[]
+  CampaignDistribution CampaignDistribution?
+  Tickets              Ticket[]
+  App                  App                   @relation(fields: [appId], references: [id])
+  appId                String
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime?             @updatedAt
+  deletedAt            DateTime?
 }
 
-model SmartContractInteraction {
-  id              String                       @id @default(cuid())
-  User            User                         @relation(fields: [userId], references: [id])
-  userId          String
-  SmartContract   SmartContract                @relation(fields: [smartContractId], references: [id])
-  smartContractId String
-  method          String
-  txHash          String
-  output          Json?
-  input           Json?
-  fees            String?
-  type            SmartContractInteractionType
-  createdAt       DateTime                     @default(now())
-  updatedAt       DateTime                     @updatedAt
+model CampaignDistribution {
+  id            String         @id @default(cuid())
+  Campaign      Campaign       @relation(fields: [campaignId], references: [id])
+  campaignId    String         @unique
+  AudienceUsers AudienceUser[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model Audience {
+  id            String         @id @default(cuid())
+  name          String
+  slug          String
+  Campaigns     Campaign[]
+  AudienceUsers AudienceUser[]
+  App           App            @relation(fields: [appId], references: [id])
+  appId         String
+  public        Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime?      @updatedAt
+  deletedAt     DateTime?
+}
+
+model AudienceUser {
+  id                    String                 @id @default(cuid())
+  Audiences             Audience[]
+  CampaignDistributions CampaignDistribution[]
+  User                  User?                  @relation(fields: [userId], references: [id])
+  userId                String?                @unique
+  externalWalletAddress String?                @unique
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime?              @updatedAt
+  deletedAt             DateTime?
+}
+
+model Ticket {
+  id                 String              @id @default(cuid())
+  address            String              @unique
+  name               String
+  slug               String
+  DevelopersAccount  DeveloperAccount?   @relation(fields: [developerId], references: [id])
+  developerId        String?
+  metadataUrl        String?
+  metadataPayload    Json
+  App                App                 @relation(fields: [appId], references: [id])
+  appId              String
+  Event              Event               @relation(fields: [eventId], references: [id])
+  eventId            String
+  TicketInteractions TicketInteraction[]
+  Entrance           Entrance?
+  Campaigns          Campaign[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  @@unique([slug, eventId])
+}
+
+model Entrance {
+  id                  String                @id @default(cuid())
+  address             String                @unique
+  name                String
+  slug                String
+  DevelopersAccount   DeveloperAccount?     @relation(fields: [developerId], references: [id])
+  developerId         String?
+  metadataUrl         String?
+  metadataPayload     Json
+  App                 App                   @relation(fields: [appId], references: [id])
+  appId               String
+  Event               Event                 @relation(fields: [eventId], references: [id])
+  eventId             String
+  Ticket              Ticket?               @relation(fields: [ticketId], references: [id])
+  ticketId            String?               @unique
+  EntranceInteraction EntranceInteraction[]
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+
+  @@unique([slug, eventId])
+}
+
+model TicketInteraction {
+  id        String                       @id @default(cuid())
+  User      User                         @relation(fields: [userId], references: [id])
+  userId    String
+  Ticket    Ticket                       @relation(fields: [ticketId], references: [id])
+  ticketId  String
+  method    String
+  txHash    String
+  output    Json?
+  input     Json?
+  fees      String?
+  type      SmartContractInteractionType
+  createdAt DateTime                     @default(now())
+  updatedAt DateTime                     @updatedAt
+}
+
+model EntranceInteraction {
+  id         String                       @id @default(cuid())
+  User       User                         @relation(fields: [userId], references: [id])
+  userId     String
+  Entrance   Entrance                     @relation(fields: [entranceId], references: [id])
+  entranceId String
+  method     String
+  txHash     String
+  output     Json?
+  input      Json?
+  fees       String?
+  type       SmartContractInteractionType
+  createdAt  DateTime                     @default(now())
+  updatedAt  DateTime                     @updatedAt
 }
 
 enum SmartContractInteractionType {
