@@ -8,25 +8,29 @@ import { envVariables } from "@/common/env-variables";
 export class EmailService {
   constructor(
     private database: DatabaseService,
-    private readonly mailerService: MailerService
+    private readonly mailerService: MailerService,
   ) {}
 
   async sendBatchEmails(emailDataArray: any, isLocalhost: boolean) {
-    const emailPromises = emailDataArray.map(({ recipientEmail, subject, template, context }) => {
-      const options = {
-        from: envVariables.mail.email || "test@blessed.fan",
-        to: recipientEmail,
-        subject: subject,
-        template,
-        context
-      };
+    const emailPromises = emailDataArray.map(
+      ({ recipientEmail, subject, template, context }) => {
+        const options = {
+          from: envVariables.mail.email || "test@blessed.fan",
+          to: recipientEmail,
+          subject: subject,
+          template,
+          context,
+        };
 
-      return this.mailerService.sendMail(options);
-    });
+        return this.mailerService.sendMail(options);
+      },
+    );
     const sendResults = await Promise.all(emailPromises);
     if (isLocalhost) {
       sendResults.forEach((result, index) => {
-        console.log(`📨 Email ${index + 1} sent. Preview URL: ${nodemailer.getTestMessageUrl(result)}`);
+        console.log(
+          `📨 Email ${index + 1} sent. Preview URL: ${nodemailer.getTestMessageUrl(result)}`,
+        );
       });
     }
 
@@ -42,8 +46,8 @@ export class EmailService {
         subject: "Your One-Time Password for Blessed.fan",
         template: "./verificationCode",
         context: {
-          otp: otpCode
-        }
+          otp: otpCode,
+        },
       });
       this.logEmailinDevelopment(result);
       return { message: "Verification code sent successfully" };
@@ -52,18 +56,23 @@ export class EmailService {
     }
   }
 
-  async sendTicketPurchasedEmail(to: string, imageUrl: URL, eventName: string, ticketUrl: URL) {
+  async sendTicketPurchasedEmail(
+    to: string,
+    imageUrl: string,
+    eventName: string,
+    ticketUrl: string,
+  ) {
     try {
       const result = await this.mailerService.sendMail({
         from: envVariables.mail.email || "test@blessed.fan",
         to,
         subject: `Your Ticket for ${eventName}`,
-        template: "./verificationCode",
+        template: "./ticketPurchase",
         context: {
           imageUrl,
           eventName,
-          ticketUrl
-        }
+          ticketUrl,
+        },
       });
       this.logEmailinDevelopment(result);
       return { message: "Ticket purchase confirmation sent successfully" };
@@ -76,8 +85,8 @@ export class EmailService {
     const existingCodeData =
       await this.database.emailVerificationCode.findFirst({
         where: {
-          code
-        }
+          code,
+        },
       });
     if (!existingCodeData) {
       throw new HttpException("Invalid code", 400);
@@ -86,20 +95,20 @@ export class EmailService {
     if (new Date(existingCodeData.expiresAt).getTime() < new Date().getTime()) {
       await this.database.emailVerificationCode.delete({
         where: {
-          id: existingCodeData.id
-        }
+          id: existingCodeData.id,
+        },
       });
       throw new HttpException("Code expired", 400);
     }
 
     await this.database.emailVerificationCode.delete({
       where: {
-        id: existingCodeData.id
-      }
+        id: existingCodeData.id,
+      },
     });
 
     return {
-      email: existingCodeData.email
+      email: existingCodeData.email,
     };
   }
 
@@ -117,8 +126,8 @@ export class EmailService {
       data: {
         code: otp,
         email: to,
-        expiresAt: new Date(Date.now() + 3 * 60 * 1000)
-      }
+        expiresAt: new Date(Date.now() + 3 * 60 * 1000),
+      },
     });
     if (newCode) {
       console.log(`📧 Created verification code record:`, newCode.code);

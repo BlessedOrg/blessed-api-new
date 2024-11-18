@@ -1,28 +1,28 @@
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "./app.module";
 import { ValidationPipe } from "@nestjs/common";
-import * as express from 'express';
+import * as express from "express";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    logger: ["error", "warn", "log", "debug", "verbose"]
+    logger: ["error", "warn", "log", "debug", "verbose"],
   });
   app.enableCors({
     origin: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true
+    credentials: true,
   });
   app.setGlobalPrefix("/api/v1");
   app.useGlobalPipes(
     new ValidationPipe({
       transform: true,
       whitelist: true,
-      stopAtFirstError: true
-    })
+      stopAtFirstError: true,
+    }),
   );
 
-  app.use('/api/v1/webhooks', express.raw({ type: 'application/json' }));
+  app.use("/api/v1/webhooks/stripe", express.raw({ type: "application/json" }));
 
   const server = app.getHttpServer();
   const timeout = 2 * 60 * 1000; // 2 minutes

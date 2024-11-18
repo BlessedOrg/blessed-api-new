@@ -6,17 +6,19 @@ import { PrefixedHexString } from "ethereumjs-util";
 import { contractArtifacts, readContract, writeContract } from "@/lib/viem";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { parseEventLogs } from "viem";
+import { getTicketUrl } from "@/utils/getTicketUrl";
+import { EmailService } from "@/common/services/email/email.service";
 
 @Injectable()
 export class WebhooksService {
   private readonly stripe: Stripe;
 
   constructor(
-    private database: DatabaseService
-    // private emailService: EmailService,
+    private database: DatabaseService,
+    private emailService: EmailService,
   ) {
     this.stripe = new Stripe(envVariables.stripeSecretKey, {
-      apiVersion: "2024-10-28.acacia"
+      apiVersion: "2024-10-28.acacia",
     });
   }
 
@@ -27,11 +29,11 @@ export class WebhooksService {
       event = this.stripe.webhooks.constructEvent(
         request.body as any,
         signature,
-        envVariables.stripeWebhookSecret
+        envVariables.stripeWebhookSecret,
       );
     } catch (err) {
       throw new BadRequestException(
-        `Webhook signature verification failed: ${err.message}`
+        `Webhook signature verification failed: ${err.message}`,
       );
     }
 
@@ -47,7 +49,7 @@ export class WebhooksService {
   }
 
   private async handlePaymentIntentSucceeded(
-    paymentIntent: Stripe.PaymentIntent
+    paymentIntent: Stripe.PaymentIntent,
   ): Promise<void> {
     console.log(paymentIntent);
 
@@ -58,92 +60,103 @@ export class WebhooksService {
 
       const ticket = await this.database.ticket.findUnique({
         where: {
-          id: metadata.ticketId
+          id: metadata.ticketId,
         },
         include: {
           Event: {
             select: {
-              name: true
-            }
+              name: true,
+              id: true,
+            },
           },
           App: {
             select: {
-              slug: true
-            }
-          }
-        }
+              slug: true,
+            },
+          },
+        },
       });
 
-      // 0. buy ERC20 with the received fiat for Operator's wallet
-      // 1. send crypto equivalent of paid fiat to buyer's smart wallet
+      console.log("🔥 ticket: ", ticket);
+
+      // 🏗️ TODO: buy ERC20 with the received fiat for Operator's wallet, or create a CRON that will do it?
+
       const erc20Address = await readContract(
-        metadata.ticketContractAddress,
+        ticket.address,
         contractArtifacts["tickets"].abi,
-        "erc20Address"
+        "erc20Address",
       );
-      console.log("🐥 erc20Address: ", erc20Address);
 
       const ticketPrice = await readContract(
-        metadata.ticketContractAddress,
+        ticket.address,
         contractArtifacts["tickets"].abi,
-        "price"
+        "price",
       );
-      console.log("🐬 ticketPrice: ", ticketPrice);
 
       const user = await this.database.user.findUnique({
         where: {
-          id: metadata.userId
+          id: metadata.userId,
         },
         select: {
+          id: true,
           email: true,
           capsuleTokenVaultKey: true,
-          smartWalletAddress: true
-        }
+          smartWalletAddress: true,
+        },
       });
-      console.log("🔥 user: ", user);
 
-      const transfer = await writeContract(
+      await writeContract(
         erc20Address,
         "transfer",
         [user.smartWalletAddress, ticketPrice],
-        contractArtifacts["erc20"].abi
+        contractArtifacts["erc20"].abi,
       );
-      console.log("🌳 transfer: ", transfer);
 
-      // 2. call `approve` on ticket's contract as buyer's SM
-      const approveResult = await biconomyMetaTx({
+      await biconomyMetaTx({
         contractAddress: erc20Address as PrefixedHexString,
         contractName: "erc20",
         functionName: "approve",
-        args: [metadata.ticketContractAddress, ticketPrice],
-        capsuleTokenVaultKey: user.capsuleTokenVaultKey
+        args: [ticket.address, ticketPrice],
+        capsuleTokenVaultKey: user.capsuleTokenVaultKey,
       });
-      console.log("✅ approve: ", !!approveResult);
 
-      // 3. call `buy` on ticket's contract as buyer's SM
       const getResult = await biconomyMetaTx({
-        contractAddress: metadata.ticketContractAddress as PrefixedHexString,
+        contractAddress: ticket.address as PrefixedHexString,
         contractName: "tickets",
         functionName: "get",
         args: [],
-        capsuleTokenVaultKey: user.capsuleTokenVaultKey
+        capsuleTokenVaultKey: user.capsuleTokenVaultKey,
       });
-      console.log("🎟️ get: ", getResult);
+
+      console.log("🔥 getResult: ", getResult);
 
       const logs = parseEventLogs({
         abi: contractArtifacts["tickets"].abi,
-        logs: getResult.data.transactionReceipt.logs
+        logs: getResult.data.transactionReceipt.logs,
       });
 
       const transferSingleEventArgs = logs
         .filter((log) => (log as any) !== "TransferSingle")
         .map((log) => (log as any)?.args);
 
-      console.log("🔥 transferSingleEventArgs: ", transferSingleEventArgs);
+      const tokenId = Number(transferSingleEventArgs[0].id);
 
-      // const url = getTicketUrl(ticket.App.slug, ticket.id)
-      //
-      // this.emailService.sendTicketPurchasedEmail(user.email, '', ticket.Event.name, );
+      console.log("🔥 tokenId: ", tokenId);
+
+      await this.emailService.sendTicketPurchasedEmail(
+        user.email,
+        "https://avatars.githubusercontent.com/u/164048341",
+        ticket.Event.name,
+        getTicketUrl(
+          ticket.App.slug,
+          ticket.id,
+          tokenId,
+          user.id,
+          ticket.Event.id,
+        ),
+      );
+
+      console.log(`💽 done!`);
     } catch (error) {
       console.log("🚨 error on /webhooks:", error.message);
     }
