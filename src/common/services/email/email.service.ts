@@ -10,6 +10,7 @@ export class EmailService {
     private database: DatabaseService,
     private readonly mailerService: MailerService
   ) {}
+
   async sendBatchEmails(emailDataArray: any, isLocalhost: boolean) {
     const emailPromises = emailDataArray.map(({ recipientEmail, subject, template, context }) => {
       const options = {
@@ -31,6 +32,7 @@ export class EmailService {
 
     return sendResults;
   }
+
   async sendVerificationCodeEmail(to: string) {
     try {
       const otpCode = await this.generateOTP(to);
@@ -43,10 +45,28 @@ export class EmailService {
           otp: otpCode
         }
       });
-      if (envVariables.isDevelopment) {
-        console.log("Preview URL:", nodemailer.getTestMessageUrl(result));
-      }
+      this.logEmailinDevelopment(result);
       return { message: "Verification code sent successfully" };
+    } catch (error) {
+      throw new Error(error);
+    }
+  }
+
+  async sendTicketPurchasedEmail(to: string, imageUrl: URL, eventName: string, ticketUrl: URL) {
+    try {
+      const result = await this.mailerService.sendMail({
+        from: envVariables.mail.email || "test@blessed.fan",
+        to,
+        subject: `Your Ticket for ${eventName}`,
+        template: "./verificationCode",
+        context: {
+          imageUrl,
+          eventName,
+          ticketUrl
+        }
+      });
+      this.logEmailinDevelopment(result);
+      return { message: "Ticket purchase confirmation sent successfully" };
     } catch (error) {
       throw new Error(error);
     }
@@ -104,5 +124,11 @@ export class EmailService {
       console.log(`📧 Created verification code record:`, newCode.code);
     }
     return otp;
+  }
+
+  logEmailinDevelopment(result: any) {
+    if (envVariables.isDevelopment) {
+      console.log("📨 Preview URL:", nodemailer.getTestMessageUrl(result));
+    }
   }
 }

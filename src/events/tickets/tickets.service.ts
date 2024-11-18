@@ -20,8 +20,8 @@ import { parseEventLogs } from 'viem';
 import { envVariables } from '@/common/env-variables';
 import { DistributeDto } from '@/events/tickets/dto/distribute.dto';
 import { getSmartWalletForCapsuleWallet } from '@/lib/capsule';
-import { WebhooksDto } from "@/webhooks/webhooks.dto";
-import Stripe from "stripe";
+import { WebhooksDto } from '@/webhooks/webhooks.dto';
+import Stripe from 'stripe';
 
 @Injectable()
 export class TicketsService {
@@ -53,7 +53,11 @@ export class TicketsService {
         await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
       const ownerSmartWallet = await smartWallet.getAccountAddress();
 
+      console.log('🔥 ownerSmartWallet: ', ownerSmartWallet);
+
       const contractName = 'tickets';
+
+      console.log('🐥 envVariables.erc20Address: ', envVariables.erc20Address);
 
       const erc20Decimals = await readContract(
         envVariables.erc20Address,
@@ -68,12 +72,14 @@ export class TicketsService {
         name: createTicketDto.name,
         symbol: createTicketDto.symbol,
         erc20Address: envVariables.erc20Address,
-        price: (createTicketDto.price) * 10 ** Number(erc20Decimals),
+        price: createTicketDto.price * 10 ** Number(erc20Decimals),
         initialSupply: createTicketDto.initialSupply,
         maxSupply: createTicketDto.maxSupply,
         transferable: createTicketDto.transferable,
         whitelistOnly: createTicketDto.whitelistOnly,
       };
+
+      console.log('🐮 args: ', args);
 
       const contract = await deployContract(contractName, Object.values(args));
       console.log(
@@ -561,46 +567,49 @@ export class TicketsService {
     };
   }
 
-  async getCheckoutSession(webhooksDto: WebhooksDto, req: RequestWithApiKey & TicketValidate) {
-
-    console.log(`💽 elo`)
-    console.log("🔮 req: ", req.body)
+  async getCheckoutSession(
+    webhooksDto: WebhooksDto,
+    req: RequestWithApiKey & TicketValidate,
+  ) {
+    console.log(`💽 elo`);
+    console.log('🔮 req: ', req.body);
     // console.log("🔮 webhooksDto: ", webhooksDto)
     // console.log("🔮 req: ", req)
 
-
-
-    console.log("🔮 webhooksDto: ", webhooksDto)
-    console.log("🔮 process.env.STRIPE_SECRET_KEY: ", process.env.STRIPE_SECRET_KEY)
+    console.log('🔮 webhooksDto: ', webhooksDto);
+    console.log(
+      '🔮 process.env.STRIPE_SECRET_KEY: ',
+      process.env.STRIPE_SECRET_KEY,
+    );
     try {
       const user = await this.database.user.findUnique({
         where: { id: webhooksDto.userId },
         select: {
           id: true,
-          smartWalletAddress: true
-        }
+          smartWalletAddress: true,
+        },
       });
 
       const ticket = await this.database.smartContract.findUnique({
         where: {
-          id: webhooksDto.ticketId
+          id: webhooksDto.ticketId,
         },
         include: {
           Event: {
             select: {
               name: true,
-            }
-          }
-        }
+            },
+          },
+        },
       });
 
       const price = await readContract(
         ticket.address,
         contractArtifacts['tickets'].abi,
-        "price",
+        'price',
       );
 
-      console.log("🔮 price: ", Number(price))
+      console.log('🔮 price: ', Number(price));
 
       const erc20Decimals = await readContract(
         envVariables.erc20Address,
@@ -608,57 +617,57 @@ export class TicketsService {
         'decimals',
       );
 
+      const denomPrice = Number(price) / 10 ** Number(erc20Decimals);
 
-      const denomPrice = (Number(price)) / 10 ** Number(erc20Decimals)
+      console.log('🔮 denomPrice: ', denomPrice);
 
-      console.log("🔮 denomPrice: ", denomPrice)
-
-
-
-      console.log("🔮 ticket: ", ticket)
+      console.log('🔮 ticket: ', ticket);
 
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-        apiVersion: "2024-10-28.acacia"
+        apiVersion: '2024-10-28.acacia',
       });
 
-      console.log(`💽 hello`)
+      console.log(`💽 hello`);
 
       const session = await stripe.checkout.sessions.create({
-        payment_method_types: ["card"],
+        payment_method_types: ['card'],
         line_items: [
           {
             price_data: {
-              currency: "usd",
+              currency: 'usd',
               product_data: {
                 name: `${ticket.Event.name} ticket`,
                 // description: "This cost X USDC, we will convert it for you",
-                images: ["https://avatars.githubusercontent.com/u/164048341"],
+                images: ['https://avatars.githubusercontent.com/u/164048341'],
                 metadata: {
-                  key1: "value1",
-                  key2: "value2"
-                }
+                  key1: 'value1',
+                  key2: 'value2',
+                },
               },
-              unit_amount: denomPrice // Stripe expects amount in cents
+              unit_amount: denomPrice, // Stripe expects amount in cents
             },
-            quantity: 1
-          }
+            quantity: 1,
+          },
         ],
-        mode: "payment",
+        mode: 'payment',
         success_url: `https://example.com`,
         cancel_url: `https://example.com/cancel`,
-        metadata: {
-          userSmartWalletAddress: user.smartWalletAddress,
-          userId: user.id
-        }
+        payment_intent_data: {
+          metadata: {
+            userSmartWalletAddress: user.smartWalletAddress,
+            userId: user.id,
+            ticketId: ticket.id,
+          },
+        },
       });
 
-      console.log("🔮 session: ", session)
+      console.log('💳 session: ', session);
 
       return session;
 
       // return NextResponse.json({ sessionId: session.id });
     } catch (err: any) {
-      console.log("🚨 error on /checkout-session", err.message)
+      console.log('🚨 error on /checkout-session', err.message);
       // return NextResponse.json({ error: err.message }, { status: 500 });
     }
   }

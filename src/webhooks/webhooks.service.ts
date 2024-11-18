@@ -5,12 +5,18 @@ import { biconomyMetaTx } from '@/lib/biconomy';
 import { PrefixedHexString } from 'ethereumjs-util';
 import { contractArtifacts, readContract, writeContract } from '@/lib/viem';
 import { DatabaseService } from '@/common/services/database/database.service';
+import { EmailService } from '@/common/services/email/email.service';
+import { getTicketUrl } from '@/utils/getTicketUrl';
+import { parseEventLogs } from 'viem';
 
 @Injectable()
 export class WebhooksService {
   private readonly stripe: Stripe;
 
-  constructor(private database: DatabaseService) {
+  constructor(
+    private database: DatabaseService,
+    // private emailService: EmailService,
+  ) {
     this.stripe = new Stripe(envVariables.stripeSecretKey, {
       apiVersion: '2024-10-28.acacia',
     });
@@ -45,10 +51,30 @@ export class WebhooksService {
   private async handlePaymentIntentSucceeded(
     paymentIntent: Stripe.PaymentIntent,
   ): Promise<void> {
-    console.log('event:', paymentIntent);
+    console.log(paymentIntent);
 
     try {
       const metadata = paymentIntent.metadata;
+
+      console.log('🔥 metadata: ', metadata);
+
+      const ticket = await this.database.smartContract.findUnique({
+        where: {
+          id: metadata.ticketId,
+        },
+        include: {
+          Event: {
+            select: {
+              name: true,
+            },
+          },
+          App: {
+            select: {
+              slug: true,
+            },
+          },
+        },
+      });
 
       // 0. buy ERC20 with the received fiat for Operator's wallet
       // 1. send crypto equivalent of paid fiat to buyer's smart wallet
@@ -71,6 +97,7 @@ export class WebhooksService {
           id: metadata.userId,
         },
         select: {
+          email: true,
           capsuleTokenVaultKey: true,
           smartWalletAddress: true,
         },
@@ -104,12 +131,23 @@ export class WebhooksService {
         capsuleTokenVaultKey: user.capsuleTokenVaultKey,
       });
       console.log('🎟️ get: ', getResult);
+
+      const logs = parseEventLogs({
+        abi: contractArtifacts['tickets'].abi,
+        logs: getResult.data.transactionReceipt.logs,
+      });
+
+      const transferSingleEventArgs = logs
+        .filter((log) => (log as any) !== 'TransferSingle')
+        .map((log) => (log as any)?.args);
+
+      console.log('🔥 transferSingleEventArgs: ', transferSingleEventArgs);
+
+      // const url = getTicketUrl(ticket.App.slug, ticket.id)
+      //
+      // this.emailService.sendTicketPurchasedEmail(user.email, '', ticket.Event.name, );
     } catch (error) {
       console.log('🚨 error on /webhooks:', error.message);
     }
-  }
-
-  async createCheckoutSession(request: any): Promise<void> {
-
   }
 }
