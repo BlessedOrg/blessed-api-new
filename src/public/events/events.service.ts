@@ -1,7 +1,8 @@
-import { Injectable } from "@nestjs/common";
+import { HttpException, Injectable } from "@nestjs/common";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { CreateEventDto } from "@/public/events/dto/create-event.dto";
 import slugify from "slugify";
+import { UpdateEventDto } from "@/public/events/dto/update-event.dto";
 
 @Injectable()
 export class EventsService {
@@ -22,6 +23,36 @@ export class EventsService {
         },
         Entrances: true
       }
+    });
+  }
+  async update(appId: string, eventId: string, updateEventDto: UpdateEventDto) {
+    if (updateEventDto.name) {
+      const slug = slugify(updateEventDto.name, {
+        lower: true,
+        strict: true,
+        trim: true
+      });
+      updateEventDto["slug"] = slug;
+    }
+
+    const isNameExists = await this.database.event.findFirst({
+      where: {
+        slug: updateEventDto.slug,
+        appId,
+        NOT: {
+          id: eventId
+        }
+      }
+    });
+    if (isNameExists) {
+      throw new HttpException("Name already exists", 400);
+    }
+    return this.database.event.update({
+      where: {
+        id: eventId,
+        appId
+      },
+      data: updateEventDto
     });
   }
   create(createEventDto: CreateEventDto, appId: string) {
@@ -89,10 +120,14 @@ export class EventsService {
     });
   }
 
-  details(eventId: string) {
+  details(appId: string, eventId: string) {
     return this.database.event.findUnique({
       where: {
-        id: eventId
+        id: eventId,
+        appId
+      },
+      include: {
+        Tickets: true
       }
     });
   }

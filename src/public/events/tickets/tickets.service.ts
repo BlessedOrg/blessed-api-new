@@ -27,6 +27,14 @@ export class TicketsService {
     private ticketDistributeCampaignService: TicketsDistributeCampaignService
   ) {}
 
+  getEventTickets(appId: string, eventId: string) {
+    return this.database.ticket.findMany({
+      where: {
+        eventId,
+        appId
+      }
+    });
+  }
   async snapshot(snapshotDto: SnapshotDto) {
     return this.ticketSnapshotService.snapshot(snapshotDto);
   }

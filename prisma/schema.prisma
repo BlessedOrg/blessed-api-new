@@ -42,8 +42,8 @@ model App {
   Users            User[]
   ApiTokens        ApiToken[]
   Events           Event[]
-  Campaign         Campaign[]
-  Audiences        Audiences[]
+  Campaigns        Campaign[]
+  Audiences        Audience[]
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 }
@@ -123,7 +123,7 @@ model Campaign {
   id                   String                @id @default(cuid())
   name                 String
   slug                 String
-  Audiences            Audiences[]
+  Audiences            Audience[]
   CampaignDistribution CampaignDistribution?
   Tickets              Ticket[]
   App                  App                   @relation(fields: [appId], references: [id])
@@ -142,24 +142,24 @@ model CampaignDistribution {
   updatedAt     DateTime       @updatedAt
 }
 
-model Audiences {
-  id           String         @id @default(cuid())
-  name         String
-  slug         String
-  Campaigns    Campaign[]
-  AudienceUser AudienceUser[]
-  App          App            @relation(fields: [appId], references: [id])
-  appId        String
-  public       Boolean        @default(false)
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime?      @updatedAt
-  deletedAt    DateTime?
+model Audience {
+  id            String         @id @default(cuid())
+  name          String
+  slug          String
+  Campaigns     Campaign[]
+  AudienceUsers AudienceUser[]
+  App           App            @relation(fields: [appId], references: [id])
+  appId         String
+  public        Boolean        @default(false)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime?      @updatedAt
+  deletedAt     DateTime?
 }
 
 model AudienceUser {
   id                    String                 @id @default(cuid())
-  Audiences             Audiences[]
-  CampaignDistribution  CampaignDistribution[]
+  Audiences             Audience[]
+  CampaignDistributions CampaignDistribution[]
   User                  User?                  @relation(fields: [userId], references: [id])
   userId                String?                @unique
   externalWalletAddress String?                @unique
@@ -169,23 +169,23 @@ model AudienceUser {
 }
 
 model Ticket {
-  id                String              @id @default(cuid())
-  address           String              @unique
-  name              String
-  slug              String
-  DevelopersAccount DeveloperAccount?   @relation(fields: [developerId], references: [id])
-  developerId       String?
-  metadataUrl       String?
-  metadataPayload   Json
-  App               App                 @relation(fields: [appId], references: [id])
-  appId             String
-  Event             Event               @relation(fields: [eventId], references: [id])
-  eventId           String
-  TicketInteraction TicketInteraction[]
-  Entrance          Entrance?
-  Campaigns         Campaign[]
-  createdAt         DateTime            @default(now())
-  updatedAt         DateTime            @updatedAt
+  id                 String              @id @default(cuid())
+  address            String              @unique
+  name               String
+  slug               String
+  DevelopersAccount  DeveloperAccount?   @relation(fields: [developerId], references: [id])
+  developerId        String?
+  metadataUrl        String?
+  metadataPayload    Json
+  App                App                 @relation(fields: [appId], references: [id])
+  appId              String
+  Event              Event               @relation(fields: [eventId], references: [id])
+  eventId            String
+  TicketInteractions TicketInteraction[]
+  Entrance           Entrance?
+  Campaigns          Campaign[]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 
   @@unique([slug, eventId])
 }

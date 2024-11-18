@@ -30,6 +30,6 @@ export class EventsController {
   @UseEventIdInterceptor()
   @Get(":event")
   details(@Req() req: RequestWithApiKey & EventValidate) {
-    return this.eventsService.details(req.eventId);
+    return this.eventsService.details(req.appId, req.eventId);
   }
 }

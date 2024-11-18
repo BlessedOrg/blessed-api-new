@@ -13,7 +13,7 @@ export class AudiencesService {
   ) {}
 
   all(appId: string) {
-    return this.database.audiences.findMany({
+    return this.database.audience.findMany({
       where: {
         appId,
         deletedAt: {
@@ -21,7 +21,7 @@ export class AudiencesService {
         }
       },
       include: {
-        AudienceUser: {
+        AudienceUsers: {
           include: {
             User: true
           }
@@ -36,7 +36,7 @@ export class AudiencesService {
       strict: true,
       trim: true
     });
-    return this.database.audiences.create({
+    return this.database.audience.create({
       data: { appId, name: createAudienceDto.name, slug }
     });
   }
@@ -132,7 +132,7 @@ export class AudiencesService {
           strict: true,
           trim: true
         });
-        return this.database.audiences.update({
+        return this.database.audience.update({
           where: { id: audienceId, appId },
           data: { name: updateAudienceDto.name, slug }
         });
@@ -145,7 +145,7 @@ export class AudiencesService {
   }
 
   deleteAudience(appId: string, audienceId: string) {
-    return this.database.audiences.update({
+    return this.database.audience.update({
       where: { id: audienceId, appId },
       data: {
         deletedAt: new Date()

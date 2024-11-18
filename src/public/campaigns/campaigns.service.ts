@@ -22,7 +22,7 @@ export class CampaignsService {
       include: {
         Audiences: {
           include: {
-            AudienceUser: {
+            AudienceUsers: {
               include: {
                 User: true
               }

@@ -50,7 +50,7 @@ CREATE TABLE "CampaignDistribution" (
 );
 
 -- CreateTable
-CREATE TABLE "Audiences" (
+CREATE TABLE "Audience" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
@@ -60,7 +60,7 @@ CREATE TABLE "Audiences" (
     "updatedAt" TIMESTAMP(3),
     "deletedAt" TIMESTAMP(3),
 
-    CONSTRAINT "Audiences_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "Audience_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -151,13 +151,13 @@ CREATE TABLE "_CampaignToTicket" (
 );
 
 -- CreateTable
-CREATE TABLE "_AudiencesToCampaign" (
+CREATE TABLE "_AudienceToCampaign" (
     "A" TEXT NOT NULL,
     "B" TEXT NOT NULL
 );
 
 -- CreateTable
-CREATE TABLE "_AudienceUserToAudiences" (
+CREATE TABLE "_AudienceToAudienceUser" (
     "A" TEXT NOT NULL,
     "B" TEXT NOT NULL
 );
@@ -199,16 +199,16 @@ CREATE UNIQUE INDEX "_CampaignToTicket_AB_unique" ON "_CampaignToTicket"("A", "B
 CREATE INDEX "_CampaignToTicket_B_index" ON "_CampaignToTicket"("B");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "_AudiencesToCampaign_AB_unique" ON "_AudiencesToCampaign"("A", "B");
+CREATE UNIQUE INDEX "_AudienceToCampaign_AB_unique" ON "_AudienceToCampaign"("A", "B");
 
 -- CreateIndex
-CREATE INDEX "_AudiencesToCampaign_B_index" ON "_AudiencesToCampaign"("B");
+CREATE INDEX "_AudienceToCampaign_B_index" ON "_AudienceToCampaign"("B");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "_AudienceUserToAudiences_AB_unique" ON "_AudienceUserToAudiences"("A", "B");
+CREATE UNIQUE INDEX "_AudienceToAudienceUser_AB_unique" ON "_AudienceToAudienceUser"("A", "B");
 
 -- CreateIndex
-CREATE INDEX "_AudienceUserToAudiences_B_index" ON "_AudienceUserToAudiences"("B");
+CREATE INDEX "_AudienceToAudienceUser_B_index" ON "_AudienceToAudienceUser"("B");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "_AudienceUserToCampaignDistribution_AB_unique" ON "_AudienceUserToCampaignDistribution"("A", "B");
@@ -223,7 +223,7 @@ ALTER TABLE "Campaign" ADD CONSTRAINT "Campaign_appId_fkey" FOREIGN KEY ("appId"
 ALTER TABLE "CampaignDistribution" ADD CONSTRAINT "CampaignDistribution_campaignId_fkey" FOREIGN KEY ("campaignId") REFERENCES "Campaign"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "Audiences" ADD CONSTRAINT "Audiences_appId_fkey" FOREIGN KEY ("appId") REFERENCES "App"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "Audience" ADD CONSTRAINT "Audience_appId_fkey" FOREIGN KEY ("appId") REFERENCES "App"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "AudienceUser" ADD CONSTRAINT "AudienceUser_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
@@ -268,16 +268,16 @@ ALTER TABLE "_CampaignToTicket" ADD CONSTRAINT "_CampaignToTicket_A_fkey" FOREIG
 ALTER TABLE "_CampaignToTicket" ADD CONSTRAINT "_CampaignToTicket_B_fkey" FOREIGN KEY ("B") REFERENCES "Ticket"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "_AudiencesToCampaign" ADD CONSTRAINT "_AudiencesToCampaign_A_fkey" FOREIGN KEY ("A") REFERENCES "Audiences"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "_AudienceToCampaign" ADD CONSTRAINT "_AudienceToCampaign_A_fkey" FOREIGN KEY ("A") REFERENCES "Audience"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "_AudiencesToCampaign" ADD CONSTRAINT "_AudiencesToCampaign_B_fkey" FOREIGN KEY ("B") REFERENCES "Campaign"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "_AudienceToCampaign" ADD CONSTRAINT "_AudienceToCampaign_B_fkey" FOREIGN KEY ("B") REFERENCES "Campaign"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "_AudienceUserToAudiences" ADD CONSTRAINT "_AudienceUserToAudiences_A_fkey" FOREIGN KEY ("A") REFERENCES "AudienceUser"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "_AudienceToAudienceUser" ADD CONSTRAINT "_AudienceToAudienceUser_A_fkey" FOREIGN KEY ("A") REFERENCES "Audience"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "_AudienceUserToAudiences" ADD CONSTRAINT "_AudienceUserToAudiences_B_fkey" FOREIGN KEY ("B") REFERENCES "Audiences"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "_AudienceToAudienceUser" ADD CONSTRAINT "_AudienceToAudienceUser_B_fkey" FOREIGN KEY ("B") REFERENCES "AudienceUser"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "_AudienceUserToCampaignDistribution" ADD CONSTRAINT "_AudienceUserToCampaignDistribution_A_fkey" FOREIGN KEY ("A") REFERENCES "AudienceUser"("id") ON DELETE CASCADE ON UPDATE CASCADE;

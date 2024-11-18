@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, Req, ValidationPipe } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Query, Req, UseInterceptors, ValidationPipe } from "@nestjs/common";
 import { TicketsService } from "./tickets.service";
 import { PublicRequest, RequireApiKey } from "@/common/decorators/auth.decorator";
 import { CreateTicketDto, SnapshotDto } from "@/public/events/tickets/dto/create-ticket.dto";
@@ -8,6 +8,7 @@ import { DistributeDto } from "@/public/events/tickets/dto/distribute.dto";
 import { EmailDto } from "@/common/dto/email.dto";
 import { UseEventIdInterceptor } from "@/common/decorators/event-id-decorator";
 import { UseTicketIdInterceptor } from "@/common/decorators/use-ticket-id.decorator";
+import { SnapshotInterceptor } from "@/common/interceptors/tickets/snapshot.interceptor";
 
 @RequireApiKey()
 @UseEventIdInterceptor()
@@ -86,11 +87,9 @@ export class TicketsController {
     return this.ticketsService.owners(req.ticketContractAddress);
   }
 
+  @UseInterceptors(SnapshotInterceptor)
   @Post("snapshot")
-  snapshot(
-    @Req() req: RequestWithApiKey & TicketValidate & EventValidate,
-    @Body() snapshotDto: SnapshotDto
-  ) {
+  snapshot(@Body() snapshotDto: SnapshotDto) {
     return this.ticketsService.snapshot(snapshotDto);
   }
 

@@ -32,7 +32,7 @@ export class SessionService {
         orderBy: { updatedAt: "desc" }
       });
     }
-    const sessionExpired = new Date(session?.expiresAt).getTime() < new Date().getTime();
+    const sessionExpired = !session?.expiresAt || new Date(session?.expiresAt).getTime() < new Date().getTime();
     if (sessionExpired) {
       throw new UnauthorizedException("Session expired");
     }
