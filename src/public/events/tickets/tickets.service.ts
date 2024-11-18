@@ -516,8 +516,6 @@ export class TicketsService {
   }
 
   async getCheckoutSession(webhooksDto: WebhooksDto, req: RequestWithApiKey & TicketValidate) {
-
-    console.log(`💽 eloooo`)
     try {
       const user = await this.database.user.findUnique({
         where: {
@@ -525,7 +523,8 @@ export class TicketsService {
         },
         select: {
           id: true,
-          smartWalletAddress: true
+          smartWalletAddress: true,
+          email: true
         }
       });
 
@@ -576,8 +575,8 @@ export class TicketsService {
           }
         ],
         mode: "payment",
-        success_url: `https://example.com`,
-        cancel_url: `https://example.com/cancel`,
+        success_url: webhooksDto.successUrl ?? `${envVariables.landingPageUrl}/ticket-purchase-success?email=${user.email}`,
+        cancel_url: webhooksDto.cancelUrl ?? req.get("host"),
         payment_intent_data: {
           metadata: {
             userSmartWalletAddress: user.smartWalletAddress,

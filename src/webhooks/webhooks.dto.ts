@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export class WebhooksDto {
   @IsString({ message: 'ticketId must be a string' })
@@ -13,11 +13,13 @@ export class WebhooksDto {
   @IsNotEmpty({ message: 'eventSlug is required' })
   eventSlug: string;
 
-  // @IsString({ message: 'successUrl must be a string' })
-  // @IsNotEmpty({ message: 'successUrl is required' })
-  // successUrl: string;
-  //
-  // @IsString({ message: 'cancelUrl must be a string' })
-  // @IsNotEmpty({ message: 'cancelUrl is required' })
-  // cancelUrl: string;
+  @IsOptional()
+  @IsString({ message: 'successUrl must be a string' })
+  @IsNotEmpty({ message: 'successUrl is required' })
+  successUrl: string;
+
+  @IsOptional()
+  @IsString({ message: 'cancelUrl must be a string' })
+  @IsNotEmpty({ message: 'cancelUrl is required' })
+  cancelUrl: string;
 }
