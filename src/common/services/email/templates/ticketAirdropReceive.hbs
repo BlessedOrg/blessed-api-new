@@ -1,0 +1,96 @@
+<html>
+<head>
+   <style>
+      body {
+         background-color: #ffffff;
+         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+      }
+
+      .container {
+         margin: 0 auto;
+         padding: 20px 0 48px;
+      }
+
+      .logo {
+         margin: 0 auto;
+         max-width: 100px;
+      }
+
+      .paragraph {
+         font-size: 16px;
+         line-height: 26px;
+      }
+
+      .btn-container {
+         text-align: center;
+      }
+
+      .button {
+         background-color: #5F51E8;
+         border-radius: 3px;
+         color: #fff;
+         font-size: 16px;
+         text-decoration: none;
+         text-align: center;
+         display: block;
+         padding: 12px;
+         margin-bottom: 8px;
+      }
+
+      .hr {
+         border-color: #cccccc;
+         margin: 20px 0;
+      }
+
+      .footer {
+         color: #8898aa;
+         font-size: 12px;
+      }
+
+      .hidden-link {
+         width: 1px;
+         height: 1px;
+         font-size: 1px;
+      }
+
+      .img {
+         width: 100%;
+         height: auto;
+      }
+   </style>
+</head>
+<body>
+<div class="container">
+   {{#if imageUrl}}
+      <img src="{{imageUrl}}" alt="{{eventName}} logo" class="logo">
+   {{/if}}
+   <p class="paragraph">Hello there!</p>
+   <p class="paragraph">Great news, you are blessed! The {{eventName}} team has sent you the {{#if multipleTickets}}
+      tickets{{else}}ticket{{/if}} airdrop.</p>
+   <img src="https://media.licdn.com/dms/image/D4E12AQF0MZ_5nAmafg/article-cover_image-shrink_720_1280/0/1708708888047?e=2147483647&v=beta&t=GG9y8w5CKUOHp7bd_5LwqM41koX3SpHQny4yniuFrpo" alt="Airdrop Parachute" class="img">
+
+   <p class="paragraph">To make things easier for you, we've created an account on your behalf, where your ticket(s) is
+      securely held. Simply log in to access your ticket and get ready for the event.</p>
+   <div class="btn-container">
+      {{#each ticketUrls}}
+         <a href="{{this}}" class="button">
+            Access your ticket {{#if ../multipleTickets}}#{{add @index 1}}{{/if}}
+         </a>
+      {{/each}}
+   </div>
+   <p class="paragraph">
+      Tons of fun at the event<br>
+      Your blessed.fan team
+   </p>
+   <hr class="hr">
+   <p class="footer">
+      Blessed magic unfolds today, shapes tomorrow
+   </p>
+</div>
+{{#if ticketUrls.length}}
+   <div class="hidden-link">
+      {{ticketUrls.[0]}}
+   </div>
+{{/if}}
+</body>
+</html>

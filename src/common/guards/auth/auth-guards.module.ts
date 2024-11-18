@@ -6,8 +6,8 @@ import { DeveloperAuthGuard } from "@/common/guards/auth/developer-auth.guard";
 import { UserAuthGuard } from "@/common/guards/auth/user-auth.guard";
 import { UserAndApiKeyAuthGuard } from "@/common/guards/auth/user-and-api-key-auth.guard";
 import { DeveloperOrApiKeyAuthGuard } from "@/common/guards/auth/developer-or-api-key-auth.guard";
-import { SessionModule } from "@/session/session.module";
-import { ApiKeyModule } from "@/applications/api-key/api-key.module";
+import { SessionModule } from "@/common/services/session/session.module";
+import { ApiKeyModule } from "@/private/applications/api-key/api-key.module";
 
 @Module({
   imports: [SessionModule, ApiKeyModule],

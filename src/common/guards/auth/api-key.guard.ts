@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { envVariables } from "@/common/env-variables";
-import { ApiKeyService } from "@/applications/api-key/api-key.service";
+import { ApiKeyService } from "@/private/applications/api-key/api-key.service";
 
 @Injectable()
 export class ApiKeyGuard implements IAuthGuard {
