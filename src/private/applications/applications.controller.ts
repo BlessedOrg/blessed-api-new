@@ -14,6 +14,7 @@ export class ApplicationsController {
     @Body() createApplicationDto: CreateApplicationDto,
     @Req() req: RequestWithDevAccessToken
   ) {
+    console.log("test");
     const developerId = req.developerId;
     return this.applicationsService.create(createApplicationDto, developerId);
   }
