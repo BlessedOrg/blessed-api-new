@@ -516,6 +516,8 @@ export class TicketsService {
   }
 
   async getCheckoutSession(webhooksDto: WebhooksDto, req: RequestWithApiKey & TicketValidate) {
+
+    console.log(`💽 eloooo`)
     try {
       const user = await this.database.user.findUnique({
         where: {

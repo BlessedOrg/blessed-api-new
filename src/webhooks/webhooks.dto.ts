@@ -12,4 +12,12 @@ export class WebhooksDto {
   @IsString({ message: 'eventSlug must be a string' })
   @IsNotEmpty({ message: 'eventSlug is required' })
   eventSlug: string;
+
+  // @IsString({ message: 'successUrl must be a string' })
+  // @IsNotEmpty({ message: 'successUrl is required' })
+  // successUrl: string;
+  //
+  // @IsString({ message: 'cancelUrl must be a string' })
+  // @IsNotEmpty({ message: 'cancelUrl is required' })
+  // cancelUrl: string;
 }
