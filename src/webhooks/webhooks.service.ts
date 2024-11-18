@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, HttpStatus, Injectable } from "@nestjs/common";
 import Stripe from "stripe";
 import { envVariables } from "@/common/env-variables";
 import { biconomyMetaTx } from "@/lib/biconomy";
@@ -22,7 +22,7 @@ export class WebhooksService {
     });
   }
 
-  async handleWebhook(request: any, signature: string): Promise<void> {
+  async handleWebhook(request: any, signature: string): Promise<HttpStatus> {
     let event: Stripe.Event;
 
     try {
@@ -36,9 +36,9 @@ export class WebhooksService {
     }
 
     this.processWebhookEvent(event)
-      .catch(error => console.log("🚨 error /webhooks/stripe:", error.message));
+      .catch(error => console.log("🚨 error /webhooks/stripe 1:", error.message));
 
-    return;
+    return HttpStatus.OK;
   }
 
   private async processWebhookEvent(event: Stripe.Event): Promise<void> {
@@ -76,6 +76,8 @@ export class WebhooksService {
         },
       });
 
+      console.log("🔮 ticket: ", ticket)
+
       // 🏗️ TODO: buy ERC20 with the received fiat for Operator's wallet, or create a CRON that will do it?
 
       const erc20Address = await readContract(
@@ -84,11 +86,15 @@ export class WebhooksService {
         "erc20Address",
       );
 
+      console.log("🐬 erc20Address: ", erc20Address)
+
       const ticketPrice = await readContract(
         ticket.address,
         contractArtifacts["tickets"].abi,
         "price",
       );
+
+      console.log("🐬 ticketPrice: ", ticketPrice)
 
       const user = await this.database.user.findUnique({
         where: {
@@ -101,6 +107,8 @@ export class WebhooksService {
           smartWalletAddress: true,
         },
       });
+
+      console.log("🔥 user: ", user)
 
       await writeContract(
         erc20Address,
@@ -136,6 +144,8 @@ export class WebhooksService {
 
       const tokenId = Number(transferSingleEventArgs[0].id);
 
+      console.log("🐥 tokenId: ", tokenId)
+
       await this.emailService.sendTicketPurchasedEmail(
         user.email,
         "https://avatars.githubusercontent.com/u/164048341",
@@ -149,8 +159,10 @@ export class WebhooksService {
         ),
       );
 
+      console.log(`📨 email with ticket #${tokenId} sent!`)
+
     } catch (error) {
-      console.log("🚨 error on /webhooks:", error.message);
+      console.log("🚨 error on /webhooks/stripe 2:", error.message);
     }
   }
 }

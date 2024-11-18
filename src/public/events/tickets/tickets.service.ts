@@ -576,7 +576,7 @@ export class TicketsService {
         ],
         mode: "payment",
         success_url: webhooksDto.successUrl ?? `${envVariables.landingPageUrl}/ticket-purchase-success?email=${user.email}`,
-        cancel_url: webhooksDto.cancelUrl ?? req.get("host"),
+        // cancel_url: webhooksDto.cancelUrl ?? req.get("host"),
         payment_intent_data: {
           metadata: {
             userSmartWalletAddress: user.smartWalletAddress,
