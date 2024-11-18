@@ -27,7 +27,7 @@ export class TicketsService {
     private ticketDistributeCampaignService: TicketsDistributeCampaignService
   ) {}
 
-  getAllTickets(appId: string, eventId: string) {
+  getEventTickets(appId: string, eventId: string) {
     return this.database.ticket.findMany({
       where: {
         eventId,

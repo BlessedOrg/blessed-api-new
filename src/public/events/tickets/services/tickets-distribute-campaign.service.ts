@@ -26,7 +26,7 @@ export class TicketsDistributeCampaignService {
         include: {
           Audiences: {
             include: {
-              AudienceUser: {
+              AudienceUsers: {
                 include: {
                   User: true
                 }
@@ -50,7 +50,7 @@ export class TicketsDistributeCampaignService {
       const distributions = await Promise.all(
         ticketsToDistribute.map(async (ticket) => {
           const users = campaign.Audiences.flatMap(
-            (audienceUser) => audienceUser.AudienceUser
+            (audienceUser) => audienceUser.AudienceUsers
           );
           const externalUsers = users
             .filter((user) => !!user?.externalWalletAddress)
