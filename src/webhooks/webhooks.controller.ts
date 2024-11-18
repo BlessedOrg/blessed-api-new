@@ -1,10 +1,8 @@
-import { Controller, Headers, Post, Req, Res, RawBodyRequest, Get, Body } from "@nestjs/common";
-import { Request, Response } from 'express';
-import { WebhooksService } from './webhooks.service';
+import { Controller, Headers, Post, RawBodyRequest, Req, Res } from "@nestjs/common";
+import { Request, Response } from "express";
+import { WebhooksService } from "./webhooks.service";
 import { RequireApiKey } from "@/common/decorators/auth.decorator";
 import Stripe from "stripe";
-import { EmailDto } from "@/common/dto/email.dto";
-import { WebhooksDto } from "@/webhooks/webhooks.dto";
 import { DatabaseService } from "@/common/services/database/database.service";
 
 @Controller("webhooks")
@@ -12,7 +10,7 @@ export class WebhooksController {
   constructor(private readonly webhooksService: WebhooksService, private database: DatabaseService) {}
 
   @Post()
-  async handleWebhook(@Req() request: RawBodyRequest<Request>, @Res() response: Response, @Headers('stripe-signature') signature: string) {
+  async handleWebhook(@Req() request: RawBodyRequest<Request>, @Res() response: Response, @Headers("stripe-signature") signature: string) {
     try {
       await this.webhooksService.handleWebhook(request, signature);
       response.sendStatus(200);
@@ -25,23 +23,22 @@ export class WebhooksController {
   @Post("checkout-session")
   async checkoutSession(
     // @Body() webhooksDto: WebhooksDto
-    @Req() req: RequestWithApiKey,
+    @Req() req: RequestWithApiKey
   ) {
 
-    console.log(`💽 elo`)
-    console.log("🔮 req: ", req.body)
+    console.log(`💽 elo`);
+    console.log("🔮 req: ", req.body);
     // console.log("🔮 webhooksDto: ", webhooksDto)
     // console.log("🔮 req: ", req)
     const webhooksDto = {
-      userId:"",
+      userId: "",
       ticketId: ""
-    }
-
+    };
 
     return;
 
-    console.log("🔮 webhooksDto: ", webhooksDto)
-    console.log("🔮 process.env.STRIPE_SECRET_KEY: ", process.env.STRIPE_SECRET_KEY)
+    console.log("🔮 webhooksDto: ", webhooksDto);
+    console.log("🔮 process.env.STRIPE_SECRET_KEY: ", process.env.STRIPE_SECRET_KEY);
     try {
       const user = await this.database.user.findUnique({
         where: { id: webhooksDto.userId },
@@ -51,26 +48,26 @@ export class WebhooksController {
         }
       });
 
-      const ticket = await this.database.smartContract.findUnique({
+      const ticket = await this.database.ticket.findUnique({
         where: {
           id: webhooksDto.ticketId
         },
         include: {
           Event: {
             select: {
-              name: true,
+              name: true
             }
           }
         }
       });
 
-      console.log("🔮 ticket: ", ticket)
+      console.log("🔮 ticket: ", ticket);
 
       const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
         apiVersion: "2024-10-28.acacia"
       });
 
-      console.log(`💽 hello`)
+      console.log(`💽 hello`);
 
       const session = await stripe.checkout.sessions.create({
         payment_method_types: ["card"],
@@ -101,7 +98,7 @@ export class WebhooksController {
         }
       });
 
-      console.log("🔮 session: ", session)
+      console.log("🔮 session: ", session);
 
       // return NextResponse.json({ sessionId: session.id });
     } catch (err: any) {

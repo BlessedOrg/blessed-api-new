@@ -4,10 +4,10 @@ import { biconomyMetaTx } from "@/lib/biconomy";
 import { PrefixedHexString } from "ethereumjs-util";
 import { parseEventLogs } from "viem";
 import { DistributeDto } from "@/public/events/tickets/dto/distribute.dto";
-import { envConstants } from "@/common/constants";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { UsersService } from "@/public/users/users.service";
 import { EmailService } from "@/common/services/email/email.service";
+import { envVariables } from "@/common/env-variables";
 
 @Injectable()
 export class TicketsDistributeService {
@@ -57,7 +57,7 @@ export class TicketsDistributeService {
         distribution.map(async (dist) => {
           const ticketUrls = dist.tokenIds.map(
             (tokenId) =>
-              `${envConstants.landingPageUrl}/show-ticket?app=${app.slug}&contractId=${ticketId}&tokenId=${tokenId}&userId=${dist.userId}&eventId=${eventId}`
+              `${envVariables.landingPageUrl}/show-ticket?app=${app.slug}&contractId=${ticketId}&tokenId=${tokenId}&userId=${dist.userId}&eventId=${eventId}`
           );
           return {
             recipientEmail: dist.email,
@@ -74,7 +74,7 @@ export class TicketsDistributeService {
       );
       await this.emailService.sendBatchEmails(
         emailsToSend,
-        envConstants.isDevelopment
+        envVariables.isDevelopment
       );
 
       return {

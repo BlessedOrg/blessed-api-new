@@ -16,6 +16,9 @@ import slugify from "slugify";
 import { TicketsSnapshotService } from "@/public/events/tickets/services/tickets-snapshot.service";
 import { TicketsDistributeService } from "@/public/events/tickets/services/tickets-distribute.service";
 import { TicketsDistributeCampaignService } from "@/public/events/tickets/services/tickets-distribute-campaign.service";
+import { WebhooksDto } from "@/webhooks/webhooks.dto";
+import { envVariables } from "@/common/env-variables";
+import Stripe from "stripe";
 
 @Injectable()
 export class TicketsService {
@@ -437,6 +440,180 @@ export class TicketsService {
       };
     } catch (e) {
       throw new HttpException(e.message, 500);
+    }
+  }
+
+  async getTicketDetails(req: RequestWithApiKey & TicketValidate) {
+    const { ticketContractAddress, appId, ticketId } = req;
+
+    const app = await this.database.app.findUnique({
+      where: {
+        id: appId
+      }
+    });
+
+    console.log("🔮 app: ", app);
+
+    console.log("🔥 ticketId: ", ticketId);
+
+    const sc = await this.database.ticket.findUnique({
+      where: {
+        id: ticketId
+      },
+      include: {
+        Event: {
+          select: {
+            name: true
+          }
+        }
+      }
+    });
+
+    console.log("🔮 sc: ", sc);
+
+    const readTicketContract = (
+      functionName: string,
+      args: [] | null = null
+    ) => {
+      return readContract(
+        ticketContractAddress,
+        contractArtifacts["tickets"].abi,
+        functionName,
+        args
+      );
+    };
+
+    const name = await readTicketContract("name");
+    const price = await readTicketContract("price");
+    const currentSupply = await readTicketContract("currentSupply");
+    const totalSupply = await readTicketContract("totalSupply");
+    const initialSupply = await readTicketContract("initialSupply");
+    const transferable = await readTicketContract("transferable");
+    const whitelistOnly = await readTicketContract("whitelistOnly");
+    const nextTokenId = await readTicketContract("nextTokenId");
+
+    return {
+      smartContractAddress: ticketContractAddress,
+      applicationName: app.name,
+      applicationDescription: app.description,
+      eventName: sc.Event.name,
+      ticketName: name,
+      ticketDescription: (sc as any)?.metadataPayload?.description,
+      ticketImage: (sc as any)?.metadataPayload?.metadataImageUrl,
+      ticketId,
+      price: Number(price) ?? 0,
+      initialSupply: Number(initialSupply),
+      currentSupply: Number(currentSupply),
+      totalSupply: Number(totalSupply),
+      tokensSold: Number(nextTokenId),
+      transferable,
+      whitelistOnly,
+      createdAt: new Date(sc.createdAt)
+    };
+  }
+
+  async getCheckoutSession(
+    webhooksDto: WebhooksDto,
+    req: RequestWithApiKey & TicketValidate
+  ) {
+    console.log(`💽 elo`);
+    console.log("🔮 req: ", req.body);
+    // console.log("🔮 webhooksDto: ", webhooksDto)
+    // console.log("🔮 req: ", req)
+
+    console.log("🔮 webhooksDto: ", webhooksDto);
+    console.log(
+      "🔮 process.env.STRIPE_SECRET_KEY: ",
+      process.env.STRIPE_SECRET_KEY
+    );
+    try {
+      const user = await this.database.user.findUnique({
+        where: { id: webhooksDto.userId },
+        select: {
+          id: true,
+          smartWalletAddress: true
+        }
+      });
+
+      const ticket = await this.database.ticket.findUnique({
+        where: {
+          id: webhooksDto.ticketId
+        },
+        include: {
+          Event: {
+            select: {
+              name: true
+            }
+          }
+        }
+      });
+
+      const price = await readContract(
+        ticket.address,
+        contractArtifacts["tickets"].abi,
+        "price"
+      );
+
+      console.log("🔮 price: ", Number(price));
+
+      const erc20Decimals = await readContract(
+        envVariables.erc20Address,
+        contractArtifacts["erc20"].abi,
+        "decimals"
+      );
+
+      const denomPrice = Number(price) / 10 ** Number(erc20Decimals);
+
+      console.log("🔮 denomPrice: ", denomPrice);
+
+      console.log("🔮 ticket: ", ticket);
+
+      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
+        apiVersion: "2024-10-28.acacia"
+      });
+
+      console.log(`💽 hello`);
+
+      const session = await stripe.checkout.sessions.create({
+        payment_method_types: ["card"],
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: {
+                name: `${ticket.Event.name} ticket`,
+                // description: "This cost X USDC, we will convert it for you",
+                images: ["https://avatars.githubusercontent.com/u/164048341"],
+                metadata: {
+                  key1: "value1",
+                  key2: "value2"
+                }
+              },
+              unit_amount: denomPrice // Stripe expects amount in cents
+            },
+            quantity: 1
+          }
+        ],
+        mode: "payment",
+        success_url: `https://example.com`,
+        cancel_url: `https://example.com/cancel`,
+        payment_intent_data: {
+          metadata: {
+            userSmartWalletAddress: user.smartWalletAddress,
+            userId: user.id,
+            ticketId: ticket.id
+          }
+        }
+      });
+
+      console.log("💳 session: ", session);
+
+      return session;
+
+      // return NextResponse.json({ sessionId: session.id });
+    } catch (err: any) {
+      console.log("🚨 error on /checkout-session", err.message);
+      // return NextResponse.json({ error: err.message }, { status: 500 });
     }
   }
 }
