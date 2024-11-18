@@ -49,9 +49,9 @@ export class TicketsDistributeCampaignService {
       let allUsersIds = [];
       const distributions = await Promise.all(
         ticketsToDistribute.map(async (ticket) => {
-          const users = campaign.Audiences.flatMap(
-            (audienceUser) => audienceUser.AudienceUsers
-          );
+          const users = campaign.Audiences.reduce((acc, audienceUser) => {
+            return [...acc, ...audienceUser.AudienceUsers.filter((user) => !acc.some((u) => u.id === user.id))];
+          }, []);
           const externalUsers = users
             .filter((user) => !!user?.externalWalletAddress)
             .map((u) => ({
