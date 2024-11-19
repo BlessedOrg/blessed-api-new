@@ -1,4 +1,4 @@
-import { HttpException, Injectable } from "@nestjs/common";
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { CreateTicketDto, SnapshotDto } from "@/public/events/tickets/dto/create-ticket.dto";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { uploadMetadata } from "@/lib/irys";
@@ -67,14 +67,29 @@ export class TicketsService {
       eventId: string;
     },
   ) {
+    let ticketId: string;
     try {
-      const {
-        developerId,
-        appId,
-        capsuleTokenVaultKey,
-        developerWalletAddress,
-        eventId,
-      } = params;
+      const { developerId, appId, capsuleTokenVaultKey, developerWalletAddress, eventId } = params;
+
+      const slug = slugify(createTicketDto.name, {
+        lower: true,
+        strict: true,
+        trim: true,
+      });
+      const ticket = await this.database.ticket.create({
+        data: {
+          address: "",
+          name: createTicketDto.name,
+          metadataUrl: "",
+          slug,
+          metadataPayload: {},
+          App: { connect: { id: appId } },
+          Event: { connect: { id: eventId } },
+          DevelopersAccount: { connect: { id: developerId } },
+        },
+      });
+      ticketId = ticket.id;
+
       const { metadataUrl, metadataImageUrl } = await uploadMetadata({
         name: createTicketDto.name,
         symbol: createTicketDto.symbol,
@@ -82,8 +97,7 @@ export class TicketsService {
         image: "",
       });
 
-      const smartWallet =
-        await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
+      const smartWallet = await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
       const ownerSmartWallet = await smartWallet.getAccountAddress();
 
       const contractName = "tickets";
@@ -109,43 +123,46 @@ export class TicketsService {
       };
 
       const contract = await deployContract(contractName, Object.values(args));
-      console.log(
-        "⛓️ Contract Explorer URL: ",
-        getExplorerUrl(contract.contractAddr),
-      );
-      const slug = slugify(createTicketDto.name, {
-        lower: true,
-        strict: true,
-        trim: true,
-      });
-      const ticket = await this.database.ticket.create({
+      console.log("⛓️ Contract Explorer URL: ", getExplorerUrl(contract.contractAddr));
+
+      const updatedTicket = await this.database.ticket.update({
+        where: {
+          id: ticket.id
+        },
         data: {
           address: contract.contractAddr,
-          name: createTicketDto.name,
           metadataUrl,
-          slug,
           metadataPayload: {
             name: createTicketDto.name,
             symbol: createTicketDto.symbol,
             description: createTicketDto.description,
-            ...(metadataImageUrl && { metadataImageUrl }),
-          },
-          App: { connect: { id: appId } },
-          Event: { connect: { id: eventId } },
-          DevelopersAccount: { connect: { id: developerId } },
-        },
+            ...(metadataImageUrl && { metadataImageUrl })
+          }
+        }
       });
       return {
         success: true,
-        ticketId: ticket.id,
-        ticket,
+        ticketId: updatedTicket.id,
+        ticket: updatedTicket,
         contract,
         explorerUrls: {
           contract: getExplorerUrl(contract.contractAddr),
         },
       };
     } catch (e) {
-      throw new HttpException(e?.message, 500);
+      console.log("🚨 Error on TicketService.create:", e.message);
+      if (e?.name === "PrismaClientKnownRequestError") {
+        throw e;
+      } else {
+        if (ticketId) {
+          await this.database.ticket.delete({
+            where: {
+              id: ticketId
+            }
+          });
+        }
+        throw new HttpException(e?.message, HttpStatus.BAD_REQUEST);
+      }
     }
   }
 
