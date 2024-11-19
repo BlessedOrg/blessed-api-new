@@ -58,6 +58,7 @@ model User {
   TicketInteractions   TicketInteraction[]
   EntranceInteractions EntranceInteraction[]
   Apps                 App[]
+  Orders               Order[]
   AudienceUsers        AudienceUser[]
   createdAt            DateTime              @default(now())
   updatedAt            DateTime              @updatedAt
@@ -181,6 +182,7 @@ model Ticket {
   appId              String
   Event              Event               @relation(fields: [eventId], references: [id])
   eventId            String
+  Orders             Order[]
   TicketInteractions TicketInteraction[]
   Entrance           Entrance?
   Campaigns          Campaign[]
@@ -248,4 +250,25 @@ enum SmartContractInteractionType {
   gasless
   operator
   wallet
+}
+
+model Order {
+  id         String      @id @default(cuid())
+  providerId String
+  User       User        @relation(fields: [userId], references: [id])
+  userId     String
+  Ticket     Ticket      @relation(fields: [ticketId], references: [id])
+  ticketId   String
+  quantity   Float
+  priceCents Int
+  failReason String?
+  status     OrderStatus
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+enum OrderStatus {
+  PENDING
+  FAILED
+  COMPLETED
 }

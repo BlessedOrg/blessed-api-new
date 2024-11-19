@@ -8,6 +8,7 @@ import { DatabaseService } from "@/common/services/database/database.service";
 import { parseEventLogs } from "viem";
 import { getTicketUrl } from "@/utils/getTicketUrl";
 import { EmailService } from "@/common/services/email/email.service";
+import { OrderStatus } from "@prisma/client";
 
 @Injectable()
 export class WebhooksService {
@@ -22,7 +23,7 @@ export class WebhooksService {
     });
   }
 
-  async handleWebhook(request: any, signature: string): Promise<HttpStatus> {
+  async handleStripeWebhook(request: any, signature: string): Promise<HttpStatus> {
     let event: Stripe.Event;
 
     try {
@@ -35,31 +36,42 @@ export class WebhooksService {
       throw new BadRequestException(`Webhook signature verification failed: ${err.message}`);
     }
 
-    this.processWebhookEvent(event)
+    this.processStripeWebhookEvent(event)
       .catch(error => console.log("🚨 error /webhooks/stripe 1:", error.message));
 
     return HttpStatus.OK;
   }
 
-  private async processWebhookEvent(event: Stripe.Event): Promise<void> {
+  private async processStripeWebhookEvent(event: Stripe.Event): Promise<void> {
     switch (event.type) {
       case "payment_intent.succeeded":
         const paymentIntentSucceeded = event.data.object as Stripe.PaymentIntent;
-        await this.handlePaymentIntentSucceeded(paymentIntentSucceeded);
+        const { metadata, id, amount } = paymentIntentSucceeded;
+        await this.handlePaymentSucceeded(metadata.ticketId, metadata.userId, id, amount);
         break;
       default:
         console.log(`Unhandled event type ${event.type}`);
     }
   }
 
-  private async handlePaymentIntentSucceeded(paymentIntent: Stripe.PaymentIntent): Promise<void> {
-    console.log("🪩 webhook event:", paymentIntent);
+  private async handlePaymentSucceeded(ticketId: string, userId: string, providerId: string, priceCents: number): Promise<void> {
+    let orderId;
     try {
-      const metadata = paymentIntent.metadata;
+      const order = await this.database.order.create({
+        data: {
+          providerId,
+          ticketId,
+          userId,
+          priceCents,
+          quantity: 1,
+          status: OrderStatus.PENDING,
+        }
+      });
+      orderId = order.id;
 
       const ticket = await this.database.ticket.findUnique({
         where: {
-          id: metadata.ticketId,
+          id: ticketId,
         },
         include: {
           Event: {
@@ -98,7 +110,7 @@ export class WebhooksService {
 
       const user = await this.database.user.findUnique({
         where: {
-          id: metadata.userId,
+          id: userId
         },
         select: {
           id: true,
@@ -107,8 +119,6 @@ export class WebhooksService {
           smartWalletAddress: true,
         },
       });
-
-      console.log("🔥 user: ", user)
 
       await writeContract(
         erc20Address,
@@ -150,19 +160,22 @@ export class WebhooksService {
         user.email,
         "https://avatars.githubusercontent.com/u/164048341",
         ticket.Event.name,
-        getTicketUrl(
-          ticket.App.slug,
-          ticket.id,
-          tokenId,
-          user.id,
-          ticket.Event.id,
-        ),
+        getTicketUrl(ticket.App.slug, ticket.id, tokenId, user.id, ticket.Event.id),
       );
 
       console.log(`📨 email with ticket #${tokenId} sent!`)
 
     } catch (error) {
       console.log("🚨 error on /webhooks/stripe 2:", error.message);
+      await this.database.order.update({
+        where: {
+          id: orderId
+        },
+        data: {
+          status: OrderStatus.FAILED,
+          failReason: error.message
+        }
+      })
     }
   }
 }
