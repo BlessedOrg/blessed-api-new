@@ -12,6 +12,6 @@ export class WebhooksController {
     @Req() request: RawBodyRequest<Request>,
     @Headers("stripe-signature") signature: string,
   ) {
-    return this.webhooksService.handleWebhook(request, signature);
+    return this.webhooksService.handleStripeWebhook(request, signature);
   }
 }

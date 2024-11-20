@@ -1,14 +1,14 @@
-import { encodeFunctionData } from "viem";
+import { Abi, encodeFunctionData } from "viem";
 import { Bundler, createSmartAccountClient, LightSigner, PaymasterMode } from "@biconomy/account";
 import { getVaultItem } from "@/lib/1pwd-vault";
-import { contractArtifacts, getExplorerUrl, provider } from "@/lib/viem";
+import { getExplorerUrl, provider } from "@/lib/viem";
 import { Capsule } from "@usecapsule/server-sdk";
 import { CapsuleEthersV5Signer } from "@usecapsule/ethers-v5-integration";
 import { envVariables } from "@/common/env-variables";
 
 interface MetaTxParams {
-  contractAddress: string;
-  contractName: string;
+  abi: Abi;
+  address: string;
   functionName: string;
   args: any[];
   capsuleTokenVaultKey: string;
@@ -23,13 +23,7 @@ export const createSmartWallet = async (signer: LightSigner) =>
     rpcUrl: envVariables.rpcUrl // <-- read about this at https://docs.biconomy.io/account/methods#createsmartaccountclient
   });
 
-export const biconomyMetaTx = async ({
-  contractAddress,
-  contractName,
-  functionName,
-  args,
-  capsuleTokenVaultKey
-}: MetaTxParams) => {
+export const biconomyMetaTx = async ({ abi, address, functionName, args, capsuleTokenVaultKey }: MetaTxParams) => {
   const capsuleEnv = envVariables.capsuleEnv as any;
   const capsule = new Capsule(capsuleEnv, envVariables.capsuleApiKey);
   const vaultItem = await getVaultItem(capsuleTokenVaultKey, "capsuleKey");
@@ -39,9 +33,9 @@ export const biconomyMetaTx = async ({
   const smartWallet = await createSmartWallet(ethersSigner);
 
   const tx = {
-    to: contractAddress,
+    to: address,
     data: encodeFunctionData({
-      abi: contractArtifacts[contractName].abi,
+      abi: abi,
       functionName: functionName,
       args: args
     })
