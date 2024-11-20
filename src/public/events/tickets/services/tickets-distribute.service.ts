@@ -127,12 +127,10 @@ export class TicketsDistributeService {
         .filter((item) => item !== null);
 
       const metaTxResult = await biconomyMetaTx({
-        contractAddress: ticketContractAddress as PrefixedHexString,
-        contractName: "tickets",
+        abi: contractArtifacts["tickets"].abi,
+        address: ticketContractAddress as PrefixedHexString,
         functionName: "distribute",
-        args: [
-          distribution.map((dist) => [dist.smartWalletAddress, dist.amount])
-        ],
+        args: [distribution.map((dist) => [dist.smartWalletAddress, dist.amount])],
         capsuleTokenVaultKey,
         userWalletAddress: developerWalletAddress
       });

@@ -102,11 +102,11 @@ export class TicketsService {
 
       const contractName = "tickets";
 
-      const erc20Decimals = await readContract(
-        envVariables.erc20Address,
-        contractArtifacts["erc20"].abi,
-        "decimals",
-      );
+      const erc20Decimals = await readContract({
+        abi: contractArtifacts["erc20"].abi,
+        address: envVariables.erc20Address,
+        functionName: "decimals"
+      });
 
       const args = {
         owner: developerWalletAddress,
@@ -174,8 +174,8 @@ export class TicketsService {
     } = req;
     try {
       const metaTxResult = await biconomyMetaTx({
-        contractAddress: ticketContractAddress as PrefixedHexString,
-        contractName: "tickets",
+        abi: contractArtifacts["tickets"].abi,
+        address: ticketContractAddress as PrefixedHexString,
         functionName: "updateSupply",
         args: [supplyDto.additionalSupply],
         capsuleTokenVaultKey: capsuleTokenVaultKey,
@@ -232,8 +232,8 @@ export class TicketsService {
       ].filter((item): item is [string, boolean] => item !== null);
 
       const metaTxResult = await biconomyMetaTx({
-        contractAddress: ticketContractAddress as PrefixedHexString,
-        contractName: "tickets",
+        abi: contractArtifacts["tickets"].abi,
+        address: ticketContractAddress as PrefixedHexString,
         functionName: "updateWhitelist",
         args: [whitelistUpdates],
         capsuleTokenVaultKey,
@@ -298,12 +298,12 @@ export class TicketsService {
     try {
       while (true) {
         try {
-          const holders: any = await readContract(
-            ticketContractAddress,
-            contractArtifacts["tickets"].abi,
-            "getTicketHolders",
-            [start, pageSize],
-          );
+          const holders: any = await readContract({
+            abi: contractArtifacts["tickets"].abi,
+            address: ticketContractAddress,
+            functionName: "getTicketHolders",
+            args: [start, pageSize]
+        });
           allHolders = allHolders.concat(holders);
           start += holders.length;
 
@@ -369,12 +369,12 @@ export class TicketsService {
         throw new Error("User does not exist");
       }
 
-      const result = await readContract(
-        ticketContractAddress,
-        contractArtifacts["tickets"].abi,
-        "getTokensByUser",
-        [user.smartWalletAddress],
-      );
+      const result = await readContract({
+        abi: contractArtifacts["tickets"].abi,
+        address: ticketContractAddress,
+        functionName: "getTokensByUser",
+        args: [user.smartWalletAddress]
+      });
 
       return {
         user: {
@@ -424,12 +424,12 @@ export class TicketsService {
       if (!user) {
         throw new Error("User does not exist");
       }
-      const result = await readContract(
-        ticketContractAddress,
-        contractArtifacts["tickets"].abi,
-        "balanceOf",
-        [user.smartWalletAddress, tokenId],
-      );
+      const result = await readContract({
+        abi: contractArtifacts["tickets"].abi,
+        address: ticketContractAddress,
+        functionName: "balanceOf",
+        args: [user.smartWalletAddress, tokenId]
+    });
 
       return {
         eventName: eventData.name,
@@ -452,8 +452,8 @@ export class TicketsService {
   ) {
     try {
       const metaTxResult = await biconomyMetaTx({
-        contractAddress: ticketContractAddress as PrefixedHexString,
-        contractName: "tickets",
+        abi: contractArtifacts["tickets"].abi,
+        address: ticketContractAddress as PrefixedHexString,
         functionName: "distribute",
         args: [users.map((dist) => [dist.wallet, dist.amount])],
         capsuleTokenVaultKey,
@@ -495,12 +495,12 @@ export class TicketsService {
     });
 
     const readTicketContract = (functionName: string, args: [] | null = null) => {
-      return readContract(
-        ticketContractAddress,
-        contractArtifacts["tickets"].abi,
-        functionName,
-        args
-      );
+      return readContract({
+        abi: contractArtifacts["tickets"].abi,
+        address: ticketContractAddress,
+        functionName: functionName,
+        args: args
+      });
     };
 
     const name = await readTicketContract("name");
@@ -558,17 +558,17 @@ export class TicketsService {
         }
       });
 
-      const price = await readContract(
-        ticket.address,
-        contractArtifacts["tickets"].abi,
-        "price"
-      );
+      const price = await readContract({
+        abi: contractArtifacts["tickets"].abi,
+        address: ticket.address,
+        functionName: "price"
+      });
 
-      const erc20Decimals = await readContract(
-        envVariables.erc20Address,
-        contractArtifacts["erc20"].abi,
-        "decimals"
-      );
+      const erc20Decimals = await readContract({
+        abi: contractArtifacts["erc20"].abi,
+        address: envVariables.erc20Address,
+        functionName: "decimals"
+      });
 
       const denominatedPrice = Number(price) / 10 ** Number(erc20Decimals);
 

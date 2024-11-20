@@ -88,25 +88,19 @@ export class WebhooksService {
         },
       });
 
-      console.log("🔮 ticket: ", ticket)
-
       // 🏗️ TODO: buy ERC20 with the received fiat for Operator's wallet, or create a CRON that will do it?
 
-      const erc20Address = await readContract(
-        ticket.address,
-        contractArtifacts["tickets"].abi,
-        "erc20Address",
-      );
+      const erc20Address = await readContract({
+        abi: contractArtifacts["tickets"].abi,
+        address: ticket.address,
+        functionName: "erc20Address"
+      });
 
-      console.log("🐬 erc20Address: ", erc20Address)
-
-      const ticketPrice = await readContract(
-        ticket.address,
-        contractArtifacts["tickets"].abi,
-        "price",
-      );
-
-      console.log("🐬 ticketPrice: ", ticketPrice)
+      const ticketPrice = await readContract({
+        abi: contractArtifacts["tickets"].abi,
+        address: ticket.address,
+        functionName: "price"
+      });
 
       const user = await this.database.user.findUnique({
         where: {
@@ -120,24 +114,24 @@ export class WebhooksService {
         },
       });
 
-      await writeContract(
-        erc20Address,
-        "transfer",
-        [user.smartWalletAddress, ticketPrice],
-        contractArtifacts["erc20"].abi,
-      );
+      await writeContract({
+        abi: contractArtifacts["erc20"].abi,
+        address: erc20Address as PrefixedHexString,
+        functionName: "transfer",
+        args: [user.smartWalletAddress, ticketPrice]
+    });
 
       await biconomyMetaTx({
-        contractAddress: erc20Address as PrefixedHexString,
-        contractName: "erc20",
+        abi: contractArtifacts["erc20"].abi,
+        address: erc20Address as PrefixedHexString,
         functionName: "approve",
         args: [ticket.address, ticketPrice],
         capsuleTokenVaultKey: user.capsuleTokenVaultKey,
       });
 
       const getResult = await biconomyMetaTx({
-        contractAddress: ticket.address as PrefixedHexString,
-        contractName: "tickets",
+        abi: contractArtifacts["tickets"].abi,
+        address: ticket.address as PrefixedHexString,
         functionName: "get",
         args: [],
         capsuleTokenVaultKey: user.capsuleTokenVaultKey,
@@ -153,8 +147,6 @@ export class WebhooksService {
         .map((log) => (log as any)?.args);
 
       const tokenId = Number(transferSingleEventArgs[0].id);
-
-      console.log("🐥 tokenId: ", tokenId)
 
       await this.emailService.sendTicketPurchasedEmail(
         user.email,
