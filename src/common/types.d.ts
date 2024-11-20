@@ -1,5 +1,6 @@
-import { CanActivate, ExecutionContext } from '@nestjs/common';
-import { Request } from 'express';
+import { CanActivate, ExecutionContext } from "@nestjs/common";
+import { Request } from "express";
+import { PrefixedHexString } from "ethereumjs-util";
 
 export {};
 declare global {
@@ -7,15 +8,16 @@ declare global {
     canActivate(context: ExecutionContext): Promise<boolean>;
   }
 
-  type VaultItemType = 'accessToken' | 'capsuleKey' | 'apiKey';
-  type AccountType = 'user' | 'developer';
+  type VaultItemType = "accessToken" | "capsuleKey" | "apiKey";
+  type AccountType = "user" | "developer";
 
-  //jwt's payload
+  //JWT's payload
   type ApiTokenJWT = {
     appSlug: string;
     apiTokenId: string;
     developerId: string;
-    developerWalletAddress: string;
+    developerWalletAddress: PrefixedHexString;
+    developerSmartWalletAddress: PrefixedHexString;
     capsuleTokenVaultKey: string;
     appId: string;
   };
@@ -23,7 +25,7 @@ declare global {
   type UserAccessTokenJWT = {
     userId: string;
     capsuleTokenVaultKey: string;
-    walletAddress: `0x${string}`;
+    walletAddress: PrefixedHexString;
     email: string;
   };
   type AppValidate = {
@@ -31,7 +33,8 @@ declare global {
   };
   type DeveloperAccessTokenJWT = {
     developerId: string;
-    walletAddress: string;
+    walletAddress: PrefixedHexString;
+    smartWalletAddress: PrefixedHexString;
     accessTokenVaultKey: string;
     capsuleTokenVaultKey: string;
   };
@@ -43,16 +46,13 @@ declare global {
 
   type TicketValidate = {
     ticketId: string;
-    ticketContractAddress: string;
+    ticketContractAddress: PrefixedHexString;
   };
 
   // Requests
   type RequestWithDevAccessToken = Request & DeveloperAccessTokenJWT;
   type RequestWithUserAccessToken = Request & UserAccessTokenJWT;
   type RequestWithApiKey = Request & ApiTokenJWT;
-  type RequestWithApiKeyOrDevAccessToken = Request &
-    (DeveloperAccessTokenJWT | ApiTokenJWT);
-  type RequestWithApiKeyAndUserAccessToken = Request &
-    RequestWithApiKey &
-    RequestWithUserAccessToken;
+  type RequestWithApiKeyOrDevAccessToken = Request & (DeveloperAccessTokenJWT | ApiTokenJWT);
+  type RequestWithApiKeyAndUserAccessToken = Request & RequestWithApiKey & RequestWithUserAccessToken;
 }
