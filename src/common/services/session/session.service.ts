@@ -197,10 +197,13 @@ export class SessionService {
       return {
         accessToken,
         refreshToken,
-        walletAddress: user.walletAddress,
-        smartWalletAddress: user.smartWalletAddress,
-        userId: user.id,
-        message: "Logged in successfully"
+        user: {
+          id: user.id,
+          email: user.email,
+          walletAddress: user.walletAddress,
+          smartWalletAddress: user.smartWalletAddress,
+        },
+        message: "User logged in successfully",
       };
     } else {
       const { accessToken, refreshToken } = this.createSessionTokens({
