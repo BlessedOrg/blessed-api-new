@@ -1,4 +1,4 @@
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, Length, Min, registerDecorator, ValidateNested, ValidationArguments, ValidationOptions } from "class-validator";
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsUrl, Length, Min, registerDecorator, ValidateNested, ValidationArguments, ValidationOptions } from "class-validator";
 import { AirdropEnum } from "@/common/enums.enum";
 import { Type } from "class-transformer";
 import { NameDto } from "@/common/dto/name.dto";
@@ -62,6 +62,10 @@ export class CreateTicketDto extends NameDto {
   @IsBoolean({ message: "WhitelistOnly must be a boolean value" })
   @IsNotEmpty({ message: "WhitelistOnly field is required" })
   whitelistOnly: boolean;
+
+  @IsUrl()
+  @IsOptional()
+  imageUrl?: string;
 }
 
 function IsLessThanOrEqual(property: string, validationOptions?: ValidationOptions) {

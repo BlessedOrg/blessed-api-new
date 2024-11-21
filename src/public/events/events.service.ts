@@ -1,4 +1,4 @@
-import { HttpException, Injectable } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { CreateEventDto } from "@/public/events/dto/create-event.dto";
 import slugify from "slugify";
@@ -26,47 +26,124 @@ export class EventsService {
     });
   }
   async update(appId: string, eventId: string, updateEventDto: UpdateEventDto) {
-    if (updateEventDto.name) {
-      const slug = slugify(updateEventDto.name, {
-        lower: true,
-        strict: true,
-        trim: true
-      });
-      updateEventDto["slug"] = slug;
-    }
+    const { name, eventLocation, ...eventData } = updateEventDto;
 
-    const isNameExists = await this.database.event.findFirst({
-      where: {
-        slug: updateEventDto.slug,
-        appId,
-        NOT: {
-          id: eventId
-        }
-      }
-    });
-    if (isNameExists) {
-      throw new HttpException("Name already exists", 400);
-    }
-    return this.database.event.update({
+    const existingEvent = await this.database.event.findUnique({
       where: {
         id: eventId,
         appId
       },
-      data: updateEventDto
+      include: {
+        EventLocation: true
+      }
+    });
+
+    if (!existingEvent) {
+      throw new NotFoundException("Event not found");
+    }
+
+    const updateData: Partial<UpdateEventDto> = {
+      ...eventData
+    };
+
+    if (name && name !== existingEvent.name) {
+      const slug = slugify(name, {
+        lower: true,
+        strict: true,
+        trim: true
+      });
+
+      const isSlugTaken = await this.database.event.findFirst({
+        where: {
+          slug,
+          appId,
+          NOT: {
+            id: eventId
+          }
+        }
+      });
+
+      if (isSlugTaken) {
+        throw new ConflictException("Event with this name already exists");
+      }
+
+      updateData.name = name;
+      updateData.slug = slug;
+    }
+
+    return this.database.$transaction(async (tx) => {
+      if (eventLocation) {
+        await tx.eventLocation.update({
+          where: {
+            eventId
+          },
+          data: eventLocation
+        });
+      }
+
+      return tx.event.update({
+        where: {
+          id: eventId,
+          appId
+        },
+        data: updateData,
+        include: {
+          EventLocation: true
+        }
+      });
     });
   }
-  create(createEventDto: CreateEventDto, appId: string) {
-    const slug = slugify(createEventDto.name, {
+
+  async create(createEventDto: CreateEventDto, appId: string) {
+    const { eventLocation, name, ...eventData } = createEventDto;
+
+    const slug = slugify(name, {
       lower: true,
       strict: true,
       trim: true
     });
-    return this.database.event.create({
-      data: {
-        ...createEventDto,
+
+    const existingEvent = await this.database.event.findFirst({
+      where: {
         slug,
-        App: { connect: { id: appId } }
+        appId
       }
+    });
+
+    if (existingEvent) {
+      throw new ConflictException("Event with this name already exists");
+    }
+
+    return this.database.$transaction(async (tx) => {
+      const createdEvent = await tx.event.create({
+        data: {
+          ...eventData,
+          name,
+          slug,
+          App: {
+            connect: { id: appId }
+          }
+        },
+        include: {
+          EventLocation: true
+        }
+      });
+
+      if (eventLocation) {
+        await tx.eventLocation.create({
+          data: {
+            ...eventLocation,
+            Event: {
+              connect: { id: createdEvent.id }
+            }
+          }
+        });
+      }
+
+      return tx.event.findUnique({
+        where: { id: createdEvent.id },
+        include: { EventLocation: true }
+      });
     });
   }
 
@@ -127,7 +204,8 @@ export class EventsService {
         appId
       },
       include: {
-        Tickets: true
+        Tickets: true,
+        EventLocation: true
       }
     });
   }
