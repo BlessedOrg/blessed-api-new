@@ -64,6 +64,7 @@ export class ApiKeyService {
                 select: {
                   id: true,
                   walletAddress: true,
+                  smartWalletAddress: true,
                   capsuleTokenVaultKey: true
                 }
               }
@@ -85,8 +86,9 @@ export class ApiKeyService {
         developerId: apiToken.App.DeveloperAccount.id,
         appSlug: apiToken.App.slug,
         appId: apiToken.App.id,
-        capsuleTokenVaultKey: apiToken.App.DeveloperAccount.capsuleTokenVaultKey,
-        developerWalletAddress: apiToken.App.DeveloperAccount.walletAddress
+        developerSmartWalletAddress: apiToken.App.DeveloperAccount.smartWalletAddress,
+        developerWalletAddress: apiToken.App.DeveloperAccount.walletAddress,
+        capsuleTokenVaultKey: apiToken.App.DeveloperAccount.capsuleTokenVaultKey
       };
     } catch (e) {
       throw new HttpException(e.message, 401);

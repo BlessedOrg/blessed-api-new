@@ -19,6 +19,7 @@ import { TicketsDistributeCampaignService } from "@/public/events/tickets/servic
 import { WebhooksDto } from "@/webhooks/webhooks.dto";
 import { envVariables } from "@/common/env-variables";
 import Stripe from "stripe";
+import { v4 as uuidv4 } from "uuid";
 
 @Injectable()
 export class TicketsService {
@@ -67,103 +68,101 @@ export class TicketsService {
       eventId: string;
     },
   ) {
-    let ticketId: string;
-    try {
-      const { developerId, appId, capsuleTokenVaultKey, developerWalletAddress, eventId } = params;
+    const { developerId, appId, capsuleTokenVaultKey, developerWalletAddress, eventId } = params;
 
-      const slug = slugify(createTicketDto.name, {
-        lower: true,
-        strict: true,
-        trim: true,
-      });
-      const ticket = await this.database.ticket.create({
-        data: {
-          address: "",
-          name: createTicketDto.name,
-          metadataUrl: "",
-          slug,
-          metadataPayload: {},
-          App: { connect: { id: appId } },
-          Event: { connect: { id: eventId } },
-          DevelopersAccount: { connect: { id: developerId } },
-        },
-      });
-      ticketId = ticket.id;
-
-      const { metadataUrl, metadataImageUrl } = await uploadMetadata({
+    const slug = slugify(createTicketDto.name, {
+      lower: true,
+      strict: true,
+      trim: true,
+    });
+    const ticket = await this.database.ticket.create({
+      data: {
+        address: `${uuidv4()}-${new Date().getTime()}`,
         name: createTicketDto.name,
-        symbol: createTicketDto.symbol,
-        description: createTicketDto.description,
-        image: "",
-      });
-
-      const smartWallet = await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
-      const ownerSmartWallet = await smartWallet.getAccountAddress();
-
-      const contractName = "tickets";
-
-      const erc20Decimals = await readContract({
-        abi: contractArtifacts["erc20"].abi,
-        address: envVariables.erc20Address,
-        functionName: "decimals"
-      });
-
-      const args = {
-        owner: developerWalletAddress,
-        ownerSmartWallet,
-        baseURI: metadataUrl,
-        name: createTicketDto.name,
-        symbol: createTicketDto.symbol,
-        erc20Address: envVariables.erc20Address,
-        price: createTicketDto.price * 10 ** Number(erc20Decimals),
-        initialSupply: createTicketDto.initialSupply,
-        maxSupply: createTicketDto.maxSupply,
-        transferable: createTicketDto.transferable,
-        whitelistOnly: createTicketDto.whitelistOnly,
-      };
-
-      const contract = await deployContract(contractName, Object.values(args));
-      console.log("⛓️ Contract Explorer URL: ", getExplorerUrl(contract.contractAddr));
-
-      const updatedTicket = await this.database.ticket.update({
-        where: {
-          id: ticket.id
-        },
-        data: {
-          address: contract.contractAddr,
-          metadataUrl,
-          metadataPayload: {
-            name: createTicketDto.name,
-            symbol: createTicketDto.symbol,
-            description: createTicketDto.description,
-            ...(metadataImageUrl && { metadataImageUrl })
+        metadataUrl: "",
+        slug,
+        metadataPayload: {},
+        App: { connect: { id: appId } },
+        Event: { connect: { id: eventId } },
+        DevelopersAccount: { connect: { id: developerId } },
+      },
+      include: {
+        Event: {
+          select: {
+            contractAddress: true
           }
         }
-      });
-      return {
-        success: true,
-        ticketId: updatedTicket.id,
-        ticket: updatedTicket,
-        contract,
-        explorerUrls: {
-          contract: getExplorerUrl(contract.contractAddr),
-        },
-      };
-    } catch (e) {
-      console.log("🚨 Error on TicketService.create:", e.message);
-      if (e?.name === "PrismaClientKnownRequestError") {
-        throw e;
-      } else {
-        if (ticketId) {
-          await this.database.ticket.delete({
-            where: {
-              id: ticketId
-            }
-          });
-        }
-        throw new HttpException(e?.message, HttpStatus.BAD_REQUEST);
       }
-    }
+    });
+
+    const { metadataUrl, metadataImageUrl } = await uploadMetadata({
+      name: createTicketDto.name,
+      symbol: createTicketDto.symbol,
+      description: createTicketDto.description,
+      image: "",
+    });
+
+    const smartWallet = await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
+    const ownerSmartWallet = await smartWallet.getAccountAddress();
+
+    const contractName = "tickets";
+
+    const erc20Decimals = await readContract({
+      abi: contractArtifacts["erc20"].abi,
+      address: envVariables.erc20Address,
+      functionName: "decimals"
+    });
+
+    const args = {
+      _owner: developerWalletAddress,
+      _ownerSmartWallet: ownerSmartWallet,
+      _eventAddress: ticket.Event.contractAddress,
+      _baseURI: metadataUrl,
+      _name: createTicketDto.name,
+      _symbol: createTicketDto.symbol,
+      _erc20Address: envVariables.erc20Address,
+      _price: createTicketDto.price * 10 ** Number(erc20Decimals),
+      _initialSupply: createTicketDto.initialSupply,
+      _maxSupply: createTicketDto.maxSupply,
+      _transferable: createTicketDto.transferable,
+      _whitelistOnly: createTicketDto.whitelistOnly,
+    };
+
+    const contract = await deployContract(contractName, [args]);
+    console.log("⛓️ Contract Explorer URL: ", getExplorerUrl(contract.contractAddr));
+
+    await biconomyMetaTx({
+      abi: contractArtifacts["event"].abi,
+      address: ticket.Event.contractAddress as PrefixedHexString,
+      functionName: "addTicket",
+      args: [contract.contractAddr],
+      capsuleTokenVaultKey,
+      userWalletAddress: developerWalletAddress
+    });
+
+    const updatedTicket = await this.database.ticket.update({
+      where: {
+        id: ticket.id
+      },
+      data: {
+        address: contract.contractAddr,
+        metadataUrl,
+        metadataPayload: {
+          name: createTicketDto.name,
+          symbol: createTicketDto.symbol,
+          description: createTicketDto.description,
+          ...(metadataImageUrl && { metadataImageUrl })
+        }
+      }
+    });
+    return {
+      success: true,
+      ticket: updatedTicket,
+      contract,
+      explorerUrls: {
+        contract: getExplorerUrl(contract.contractAddr)
+      }
+    };
   }
 
   async supply(supplyDto: SupplyDto, req: RequestWithApiKey & TicketValidate) {

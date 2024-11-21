@@ -3,6 +3,10 @@ import { DatabaseService } from "@/common/services/database/database.service";
 import { CreateEventDto } from "@/public/events/dto/create-event.dto";
 import slugify from "slugify";
 import { UpdateEventDto } from "@/public/events/dto/update-event.dto";
+import { deployContract, getExplorerUrl } from "@/lib/viem";
+import { PrefixedHexString } from "ethereumjs-util";
+import { uploadMetadata } from "@/lib/irys";
+import { v4 as uuidv4 } from "uuid";
 
 @Injectable()
 export class EventsService {
@@ -55,19 +59,60 @@ export class EventsService {
       data: updateEventDto
     });
   }
-  create(createEventDto: CreateEventDto, appId: string) {
+  async create(
+    createEventDto: CreateEventDto,
+    appId: string,
+    developerWalletAddress: PrefixedHexString,
+    developerSmartWalletAddress: PrefixedHexString,
+  ) {
     const slug = slugify(createEventDto.name, {
       lower: true,
       strict: true,
       trim: true
     });
-    return this.database.event.create({
+
+    const event = await this.database.event.create({
       data: {
+        contractAddress: `${uuidv4()}-${new Date().getTime()}`,
         ...createEventDto,
         slug,
         App: { connect: { id: appId } }
       }
     });
+
+    const { metadataUrl } = await uploadMetadata({
+      name: CreateEventDto.name,
+      description: "",
+      image: ""
+    });
+    
+    const args = {
+      owner: developerWalletAddress,
+      ownerSmartWallet: developerSmartWalletAddress,
+      name: CreateEventDto.name,
+      uri: metadataUrl
+    };
+
+    const contract = await deployContract("event", Object.values(args));
+    console.log("⛓️ Contract Explorer URL: ", getExplorerUrl(contract.contractAddr));
+
+    const updatedEvent = await this.database.event.update({
+      where: {
+        id: event.id
+      },
+      data: {
+        contractAddress: contract.contractAddr,
+      }
+    });
+
+    return {
+      success: true,
+      event: updatedEvent,
+      contract,
+      explorerUrls: {
+        contract: getExplorerUrl(contract.contractAddr)
+      }
+    }
   }
 
   events(appId: string) {

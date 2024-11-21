@@ -106,18 +106,19 @@ model EmailVerificationCode {
 }
 
 model Event {
-  id          String     @id @default(cuid())
-  name        String
-  description String?
-  logoUrl     String?
-  slug        String     @unique
-  App         App        @relation(fields: [appId], references: [id])
-  appId       String
-  Tickets     Ticket[]
-  Entrances   Entrance[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  deletedAt   DateTime?
+  id              String     @id @default(cuid())
+  name            String
+  contractAddress String     @unique
+  description     String?
+  logoUrl         String?
+  slug            String     @unique
+  App             App        @relation(fields: [appId], references: [id])
+  appId           String
+  Tickets         Ticket[]
+  Entrances       Entrance[]
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  deletedAt       DateTime?
 }
 
 model Campaign {

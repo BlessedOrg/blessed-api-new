@@ -74,7 +74,8 @@ export class SessionService {
         developerId: developer?.id,
         capsuleTokenVaultKey: developer.capsuleTokenVaultKey,
         accessTokenVaultKey: developer.accessTokenVaultKey,
-        walletAddress: developer.walletAddress
+        walletAddress: developer.walletAddress,
+        smartWalletAddress: developer.smartWalletAddress
       });
       await this.database.developerSession.update({
         where: {
@@ -178,7 +179,8 @@ export class SessionService {
       } = this.createSessionTokens({
         userId: user?.id,
         capsuleTokenVaultKey: user.capsuleTokenVaultKey,
-        walletAddress: user.walletAddress
+        walletAddress: user.walletAddress,
+        smartWalletAddress: user.smartWalletAddress
       });
       const updatedSession = await this.database.userSession.update({
         where: {
@@ -209,7 +211,8 @@ export class SessionService {
       const { accessToken, refreshToken } = this.createSessionTokens({
         userId: user?.id,
         capsuleTokenVaultKey: user.capsuleTokenVaultKey,
-        walletAddress: user.walletAddress
+        walletAddress: user.walletAddress,
+        smartWalletAddress: user.smartWalletAddress
       });
       await this.database.userSession.create({
         data: {

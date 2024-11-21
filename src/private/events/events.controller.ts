@@ -42,6 +42,11 @@ export class EventsController {
     @Req() req: RequestWithDevAccessToken & AppValidate,
     @Body() createEventDto: CreateEventDto
   ) {
-    return this.eventsService.create(createEventDto, req.appId);
+    return this.eventsService.create(
+      createEventDto,
+      req.appId,
+      req.walletAddress,
+      req.smartWalletAddress
+    );
   }
 }

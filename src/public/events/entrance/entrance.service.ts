@@ -53,10 +53,7 @@ export class EntranceService {
       };
 
       const contract = await deployContract(contractName, Object.values(args));
-      console.log(
-        "⛓️ Contract Explorer URL: ",
-        getExplorerUrl(contract.contractAddr)
-      );
+      console.log("⛓️ Contract Explorer URL: ", getExplorerUrl(contract.contractAddr));
       const slug = slugify(createEntranceDto.name, {
         lower: true,
         strict: true,

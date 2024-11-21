@@ -14,7 +14,12 @@ export class EventsController {
     @Req() req: RequestWithApiKey,
     @Body() createEventDto: CreateEventDto
   ) {
-    return this.eventsService.create(createEventDto, req.appId);
+    return this.eventsService.create(
+      createEventDto,
+      req.appId,
+      req.developerWalletAddress,
+      req.developerSmartWalletAddress,
+    );
   }
 
   @Get()
