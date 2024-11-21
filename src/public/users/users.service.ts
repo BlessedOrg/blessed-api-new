@@ -86,11 +86,12 @@ export class UsersService {
         accessToken,
         refreshToken,
         user: {
+          id: createdUserAccount.id,
           email,
           walletAddress,
-          id: createdUserAccount.id
+          smartWalletAddress,
         },
-        message: "User account created successfully"
+        message: "User created successfully"
       };
     } catch (e) {
       throw new HttpException(e.message, 500);

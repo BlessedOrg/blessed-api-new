@@ -53,10 +53,7 @@ export class EntranceService {
       };
 
       const contract = await deployContract(contractName, Object.values(args));
-      console.log(
-        "⛓️ Contract Explorer URL: ",
-        getExplorerUrl(contract.contractAddr)
-      );
+      console.log("⛓️ Contract Explorer URL: ", getExplorerUrl(contract.contractAddr));
       const slug = slugify(createEntranceDto.name, {
         lower: true,
         strict: true,
@@ -109,21 +106,19 @@ export class EntranceService {
         );
       }
       const contractAddress = entranceRecord.address as PrefixedHexString;
-      const smartWallet = await getSmartWalletForCapsuleWallet(
-        req.capsuleTokenVaultKey
-      );
+      const smartWallet = await getSmartWalletForCapsuleWallet(req.capsuleTokenVaultKey);
       const ownerSmartWallet = await smartWallet.getAccountAddress();
-      const isAlreadyEntered = await readContract(
-        contractAddress,
-        contractArtifacts["entrance"].abi,
-        "hasEntry",
-        [ownerSmartWallet]
-      );
+      const isAlreadyEntered = await readContract({
+        abi: contractArtifacts["entrance"].abi,
+        address: contractAddress,
+        functionName: "hasEntry",
+        args: [ownerSmartWallet]
+      });
 
       if (!isAlreadyEntered) {
         const metaTxResult = await biconomyMetaTx({
-          contractAddress: contractAddress,
-          contractName: "entrance",
+          abi: contractArtifacts["entrance"].abi,
+          address: contractAddress,
           functionName: "entry",
           args: [ticketId],
           userWalletAddress: walletAddress as PrefixedHexString,
@@ -154,16 +149,15 @@ export class EntranceService {
           id: entranceId
         }
       });
-      const entries = (await readContract(
-        entranceRecord.address,
-        contractArtifacts["entrance"].abi,
-        "getEntries",
-        []
-      )) as any;
+      const entries = await readContract({
+        abi: contractArtifacts["entrance"].abi,
+        address: entranceRecord.address,
+        functionName: "getEntries"
+      });
       const formattedEntries = [];
       const notFoundAddresses = [];
 
-      for (const entry of entries) {
+      for (const entry of entries as any) {
         const user = await this.database.user.findUnique({
           where: {
             smartWalletAddress: entry.wallet?.toLowerCase()

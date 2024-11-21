@@ -3,6 +3,10 @@ import { DatabaseService } from "@/common/services/database/database.service";
 import { CreateEventDto } from "@/public/events/dto/create-event.dto";
 import slugify from "slugify";
 import { UpdateEventDto } from "@/public/events/dto/update-event.dto";
+import { deployContract, getExplorerUrl } from "@/lib/viem";
+import { PrefixedHexString } from "ethereumjs-util";
+import { uploadMetadata } from "@/lib/irys";
+import { v4 as uuidv4 } from "uuid";
 
 @Injectable()
 export class EventsService {
@@ -94,7 +98,12 @@ export class EventsService {
     });
   }
 
-  async create(createEventDto: CreateEventDto, appId: string) {
+  async create(
+    createEventDto: CreateEventDto,
+    appId: string,
+    developerWalletAddress: PrefixedHexString,
+    developerSmartWalletAddress: PrefixedHexString
+  ) {
     const { eventLocation, name, ...eventData } = createEventDto;
 
     const slug = slugify(name, {
@@ -113,16 +122,35 @@ export class EventsService {
     if (existingEvent) {
       throw new ConflictException("Event with this name already exists");
     }
+    const event = await this.database.event.create({
+      data: {
+        contractAddress: `${uuidv4()}-${new Date().getTime()}`,
+        ...createEventDto,
+        slug,
+        App: { connect: { id: appId } }
+      }
+    });
+    const { metadataUrl } = await uploadMetadata({
+      name: CreateEventDto.name,
+      description: "",
+      image: ""
+    });
 
+    const args = {
+      owner: developerWalletAddress,
+      ownerSmartWallet: developerSmartWalletAddress,
+      name: CreateEventDto.name,
+      uri: metadataUrl
+    };
+
+    const contract = await deployContract("event", Object.values(args));
+    console.log("⛓️ Contract Explorer URL: ", getExplorerUrl(contract.contractAddr));
     return this.database.$transaction(async (tx) => {
-      const createdEvent = await tx.event.create({
+      const createdEvent = await tx.event.update({
+        where: { id: event.id },
         data: {
           ...eventData,
-          name,
-          slug,
-          App: {
-            connect: { id: appId }
-          }
+          contractAddress: contract.contractAddr
         },
         include: {
           EventLocation: true

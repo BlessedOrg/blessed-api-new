@@ -13,7 +13,7 @@ export class PrismaExceptionFilter implements ExceptionFilter {
         const target = exception.meta?.target as string[];
         return response.status(HttpStatus.CONFLICT).json({
           statusCode: HttpStatus.CONFLICT,
-          message: `Value for field [${target[0]}] already exists, please choose another one.`
+          message: `Value for field [${target[0]}] already exists, please choose another one.${target.length > 1 ? ` Combination of [${target}] must be unique.` : ""}`
         });
 
       case "P2003":

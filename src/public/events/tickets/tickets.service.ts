@@ -1,4 +1,4 @@
-import { HttpException, Injectable } from "@nestjs/common";
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { CreateTicketDto, SnapshotDto } from "@/public/events/tickets/dto/create-ticket.dto";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { uploadMetadata } from "@/lib/irys";
@@ -19,23 +19,29 @@ import { TicketsDistributeCampaignService } from "@/public/events/tickets/servic
 import { WebhooksDto } from "@/webhooks/webhooks.dto";
 import { envVariables } from "@/common/env-variables";
 import Stripe from "stripe";
+import { v4 as uuidv4 } from "uuid";
+import { stripe } from "@/lib/stripe";
 
 @Injectable()
 export class TicketsService {
+  private readonly stripe: Stripe;
+
   constructor(
     private database: DatabaseService,
     private usersService: UsersService,
     private ticketSnapshotService: TicketsSnapshotService,
     private ticketDistributeService: TicketsDistributeService,
-    private ticketDistributeCampaignService: TicketsDistributeCampaignService
-  ) {}
+    private ticketDistributeCampaignService: TicketsDistributeCampaignService,
+  ) {
+    this.stripe = stripe;
+  }
 
   getEventTickets(appId: string, eventId: string) {
     return this.database.ticket.findMany({
       where: {
         eventId,
-        appId
-      }
+        appId,
+      },
     });
   }
   async snapshot(snapshotDto: SnapshotDto) {
@@ -48,12 +54,12 @@ export class TicketsService {
     req: {
       capsuleTokenVaultKey: string;
       developerWalletAddress: string;
-    }
+    },
   ) {
     return this.ticketDistributeCampaignService.distribute(
       campaignId,
       appId,
-      req
+      req,
     );
   }
 
@@ -65,114 +71,129 @@ export class TicketsService {
       capsuleTokenVaultKey: string;
       developerWalletAddress: string;
       eventId: string;
-    }
+    },
   ) {
-    try {
-      const {
-        developerId,
-        appId,
-        capsuleTokenVaultKey,
-        developerWalletAddress,
-        eventId
-      } = params;
-      const { metadataUrl, metadataImageUrl } = await uploadMetadata({
+    const { developerId, appId, capsuleTokenVaultKey, developerWalletAddress, eventId } = params;
+
+    const slug = slugify(createTicketDto.name, {
+      lower: true,
+      strict: true,
+      trim: true,
+    });
+    const ticket = await this.database.ticket.create({
+      data: {
+        address: `${uuidv4()}-${new Date().getTime()}`,
         name: createTicketDto.name,
-        symbol: createTicketDto.symbol,
-        description: createTicketDto.description,
-        image: createTicketDto?.imageUrl || ""
-      });
+        metadataUrl: "",
+        slug,
+        metadataPayload: {},
+        App: { connect: { id: appId } },
+        Event: { connect: { id: eventId } },
+        DevelopersAccount: { connect: { id: developerId } },
+      },
+      include: {
+        Event: {
+          select: {
+            contractAddress: true
+          }
+        }
+      }
+    });
 
-      const smartWallet =
-        await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
-      const ownerSmartWallet = await smartWallet.getAccountAddress();
+    const { metadataUrl, metadataImageUrl } = await uploadMetadata({
+      name: createTicketDto.name,
+      symbol: createTicketDto.symbol,
+      description: createTicketDto.description,
+      image: "",
+    });
 
-      const contractName = "tickets";
+    const smartWallet = await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
+    const ownerSmartWallet = await smartWallet.getAccountAddress();
 
-      const erc20Decimals = await readContract(
-        envVariables.erc20Address,
-        contractArtifacts["erc20"].abi,
-        "decimals"
-      );
+    const contractName = "tickets";
 
-      const args = {
-        owner: developerWalletAddress,
-        ownerSmartWallet,
-        baseURI: metadataUrl,
-        name: createTicketDto.name,
-        symbol: createTicketDto.symbol,
-        erc20Address: envVariables.erc20Address,
-        price: createTicketDto.price * 10 ** Number(erc20Decimals),
-        initialSupply: createTicketDto.initialSupply,
-        maxSupply: createTicketDto.maxSupply,
-        transferable: createTicketDto.transferable,
-        whitelistOnly: createTicketDto.whitelistOnly
-      };
+    const erc20Decimals = await readContract({
+      abi: contractArtifacts["erc20"].abi,
+      address: envVariables.erc20Address,
+      functionName: "decimals"
+    });
 
-      const contract = await deployContract(contractName, Object.values(args));
-      console.log(
-        "⛓️ Contract Explorer URL: ",
-        getExplorerUrl(contract.contractAddr)
-      );
-      const slug = slugify(createTicketDto.name, {
-        lower: true,
-        strict: true,
-        trim: true
-      });
-      const ticket = await this.database.ticket.create({
-        data: {
-          address: contract.contractAddr,
+    const args = {
+      _owner: developerWalletAddress,
+      _ownerSmartWallet: ownerSmartWallet,
+      _eventAddress: ticket.Event.contractAddress,
+      _baseURI: metadataUrl,
+      _name: createTicketDto.name,
+      _symbol: createTicketDto.symbol,
+      _erc20Address: envVariables.erc20Address,
+      _price: createTicketDto.price * 10 ** Number(erc20Decimals),
+      _initialSupply: createTicketDto.initialSupply,
+      _maxSupply: createTicketDto.maxSupply,
+      _transferable: createTicketDto.transferable,
+      _whitelistOnly: createTicketDto.whitelistOnly,
+    };
+
+    const contract = await deployContract(contractName, [args]);
+    console.log("⛓️ Contract Explorer URL: ", getExplorerUrl(contract.contractAddr));
+
+    await biconomyMetaTx({
+      abi: contractArtifacts["event"].abi,
+      address: ticket.Event.contractAddress as PrefixedHexString,
+      functionName: "addTicket",
+      args: [contract.contractAddr],
+      capsuleTokenVaultKey,
+      userWalletAddress: developerWalletAddress
+    });
+
+    const updatedTicket = await this.database.ticket.update({
+      where: {
+        id: ticket.id
+      },
+      data: {
+        address: contract.contractAddr,
+        metadataUrl,
+        metadataPayload: {
           name: createTicketDto.name,
-          metadataUrl,
-          slug,
-          metadataPayload: {
-            name: createTicketDto.name,
-            symbol: createTicketDto.symbol,
-            description: createTicketDto.description,
-            ...(metadataImageUrl && { metadataImageUrl })
-          },
-          App: { connect: { id: appId } },
-          Event: { connect: { id: eventId } },
-          DevelopersAccount: { connect: { id: developerId } }
+          symbol: createTicketDto.symbol,
+          description: createTicketDto.description,
+          ...(metadataImageUrl && { metadataImageUrl })
         }
-      });
-      return {
-        success: true,
-        ticketId: ticket.id,
-        ticket,
-        contract,
-        explorerUrls: {
-          contract: getExplorerUrl(contract.contractAddr)
-        }
-      };
-    } catch (e) {
-      throw new HttpException(e?.message, 500);
-    }
+      }
+    });
+    return {
+      success: true,
+      ticket: updatedTicket,
+      contract,
+      explorerUrls: {
+        contract: getExplorerUrl(contract.contractAddr)
+      }
+    };
   }
 
   async supply(supplyDto: SupplyDto, req: RequestWithApiKey & TicketValidate) {
     const {
       ticketContractAddress,
       capsuleTokenVaultKey,
-      developerWalletAddress
+      developerWalletAddress,
     } = req;
     try {
       const metaTxResult = await biconomyMetaTx({
-        contractAddress: ticketContractAddress as PrefixedHexString,
-        contractName: "tickets",
+        abi: contractArtifacts["tickets"].abi,
+        address: ticketContractAddress as PrefixedHexString,
         functionName: "updateSupply",
         args: [supplyDto.additionalSupply],
         capsuleTokenVaultKey: capsuleTokenVaultKey,
-        userWalletAddress: developerWalletAddress
+        userWalletAddress: developerWalletAddress,
       });
 
       return {
         success: true,
         explorerUrls: {
           tx: getExplorerUrl(
-            metaTxResult.data.transactionReceipt.transactionHash
-          )
+            metaTxResult.data.transactionReceipt.transactionHash,
+          ),
         },
-        transactionReceipt: metaTxResult.data.transactionReceipt
+        transactionReceipt: metaTxResult.data.transactionReceipt,
       };
     } catch (e) {
       throw new HttpException(e?.message, 500);
@@ -181,26 +202,26 @@ export class TicketsService {
 
   async whitelist(
     whitelistDto: WhitelistDto,
-    req: RequestWithApiKey & TicketValidate
+    req: RequestWithApiKey & TicketValidate,
   ) {
     try {
       const {
         capsuleTokenVaultKey,
         ticketContractAddress,
         developerWalletAddress,
-        appId
+        appId,
       } = req;
       const allEmails = [
         ...whitelistDto.addEmails,
-        ...whitelistDto.removeEmails
+        ...whitelistDto.removeEmails,
       ];
       const { users } = await this.usersService.createMany(
         { users: allEmails },
-        appId
+        appId,
       );
 
       const emailToWalletMap = new Map(
-        users.map((account) => [account.email, account.smartWalletAddress])
+        users.map((account) => [account.email, account.smartWalletAddress]),
       );
 
       const whitelistUpdates = [
@@ -211,33 +232,33 @@ export class TicketsService {
         ...(whitelistDto.removeEmails || []).map((user) => {
           const walletAddress = emailToWalletMap.get(user.email);
           return walletAddress ? [walletAddress, false] : null;
-        })
+        }),
       ].filter((item): item is [string, boolean] => item !== null);
 
       const metaTxResult = await biconomyMetaTx({
-        contractAddress: ticketContractAddress as PrefixedHexString,
-        contractName: "tickets",
+        abi: contractArtifacts["tickets"].abi,
+        address: ticketContractAddress as PrefixedHexString,
         functionName: "updateWhitelist",
         args: [whitelistUpdates],
         capsuleTokenVaultKey,
-        userWalletAddress: developerWalletAddress
+        userWalletAddress: developerWalletAddress,
       });
       const updatedUsersWhitelist = users.filter((user) => ({
         email: user.email,
-        walletAddress: user.smartWalletAddress
+        walletAddress: user.smartWalletAddress,
       }));
       const usersAndUpdatedWhitelistStatus = whitelistUpdates.map(
         (whitelistUpdate) => {
           const [walletAddress, isWhitelisted] = whitelistUpdate;
           const user = updatedUsersWhitelist.find(
-            (user) => user.smartWalletAddress === walletAddress
+            (user) => user.smartWalletAddress === walletAddress,
           );
           return {
             email: user?.email,
             walletAddress,
-            isWhitelisted
+            isWhitelisted,
           };
-        }
+        },
       );
       return {
         success: true,
@@ -245,9 +266,9 @@ export class TicketsService {
         transactionReceipt: metaTxResult.data.transactionReceipt,
         explorerUrls: {
           tx: getExplorerUrl(
-            metaTxResult.data.transactionReceipt.transactionHash
-          )
-        }
+            metaTxResult.data.transactionReceipt.transactionHash,
+          ),
+        },
       };
     } catch (e) {
       throw new HttpException(e.message, 500);
@@ -263,7 +284,7 @@ export class TicketsService {
       ticketId: string;
       capsuleTokenVaultKey: string;
       developerWalletAddress: string;
-    }
+    },
   ) {
     return this.ticketDistributeService.distribute(distributeDto, params);
   }
@@ -272,8 +293,8 @@ export class TicketsService {
     ticketContractAddress: string,
     pagination: { start?: number; pageSize?: number } = {
       start: 0,
-      pageSize: 100
-    }
+      pageSize: 100,
+    },
   ) {
     const pageSize = pagination.pageSize || 100;
     let allHolders = [];
@@ -281,12 +302,12 @@ export class TicketsService {
     try {
       while (true) {
         try {
-          const holders: any = await readContract(
-            ticketContractAddress,
-            contractArtifacts["tickets"].abi,
-            "getTicketHolders",
-            [start, pageSize]
-          );
+          const holders: any = await readContract({
+            abi: contractArtifacts["tickets"].abi,
+            address: ticketContractAddress,
+            functionName: "getTicketHolders",
+            args: [start, pageSize]
+        });
           allHolders = allHolders.concat(holders);
           start += holders.length;
 
@@ -303,19 +324,19 @@ export class TicketsService {
       const owners = await this.database.user.findMany({
         where: {
           smartWalletAddress: {
-            in: lowercaseHolders
-          }
+            in: lowercaseHolders,
+          },
         },
         select: {
           email: true,
           smartWalletAddress: true,
           walletAddress: true,
-          id: true
-        }
+          id: true,
+        },
       });
 
       const foundAddresses = new Set(
-        owners.map((owner) => owner.smartWalletAddress.toLowerCase())
+        owners.map((owner) => owner.smartWalletAddress.toLowerCase()),
       );
       const externalAddresses = lowercaseHolders
         .filter((address) => !foundAddresses.has(address))
@@ -323,7 +344,7 @@ export class TicketsService {
 
       return {
         owners,
-        externalAddresses
+        externalAddresses,
       };
     } catch (e) {
       throw new HttpException(e.message, 500);
@@ -332,43 +353,43 @@ export class TicketsService {
 
   async ownerByEmail(
     email: EmailDto["email"],
-    req: RequestWithApiKey & TicketValidate
+    req: RequestWithApiKey & TicketValidate,
   ) {
     const { ticketContractAddress } = req;
 
     try {
       const user = await this.database.user.findUnique({
         where: {
-          email
+          email,
         },
         select: {
           email: true,
           walletAddress: true,
-          smartWalletAddress: true
-        }
+          smartWalletAddress: true,
+        },
       });
 
       if (!user) {
         throw new Error("User does not exist");
       }
 
-      const result = await readContract(
-        ticketContractAddress,
-        contractArtifacts["tickets"].abi,
-        "getTokensByUser",
-        [user.smartWalletAddress]
-      );
+      const result = await readContract({
+        abi: contractArtifacts["tickets"].abi,
+        address: ticketContractAddress,
+        functionName: "getTokensByUser",
+        args: [user.smartWalletAddress]
+      });
 
       return {
         user: {
           hasTicket: !isEmpty(result),
           ...(!isEmpty(result) && {
-            ownedIds: [result].map((id) => id.toString())
+            ownedIds: [result].map((id) => id.toString()),
           }),
           email: user.email,
           walletAddress: user.walletAddress,
-          smartWalletAddress: user.smartWalletAddress
-        }
+          smartWalletAddress: user.smartWalletAddress,
+        },
       };
     } catch (e) {
       throw new HttpException(e.message, 500);
@@ -378,41 +399,41 @@ export class TicketsService {
   contracts(appId: string) {
     return this.database.ticket.findMany({
       where: {
-        appId
-      }
+        appId,
+      },
     });
   }
 
   async showTicket(
     req: RequestWithApiKey & TicketValidate & EventValidate,
     tokenId: string,
-    userId?: string
+    userId?: string,
   ) {
     const { ticketContractAddress, eventId } = req;
     try {
       const eventData = await this.database.event.findUnique({
         where: { id: eventId },
-        select: { id: true, name: true }
+        select: { id: true, name: true },
       });
       const user = await this.database.user?.findUnique({
         where: {
-          id: userId
+          id: userId,
         },
         select: {
           email: true,
           walletAddress: true,
-          smartWalletAddress: true
-        }
+          smartWalletAddress: true,
+        },
       });
       if (!user) {
         throw new Error("User does not exist");
       }
-      const result = await readContract(
-        ticketContractAddress,
-        contractArtifacts["tickets"].abi,
-        "balanceOf",
-        [user.smartWalletAddress, tokenId]
-      );
+      const result = await readContract({
+        abi: contractArtifacts["tickets"].abi,
+        address: ticketContractAddress,
+        functionName: "balanceOf",
+        args: [user.smartWalletAddress, tokenId]
+    });
 
       return {
         eventName: eventData.name,
@@ -420,7 +441,7 @@ export class TicketsService {
         userWalletAddress: user.walletAddress,
         userEmail: user.email,
         success: true,
-        result: Number(result)
+        result: Number(result),
       };
     } catch (e) {
       throw new HttpException(e.message, 500);
@@ -431,24 +452,24 @@ export class TicketsService {
     users: { wallet: string; amount: number }[],
     ticketContractAddress: string,
     developerWalletAddress: string,
-    capsuleTokenVaultKey: string
+    capsuleTokenVaultKey: string,
   ) {
     try {
       const metaTxResult = await biconomyMetaTx({
-        contractAddress: ticketContractAddress as PrefixedHexString,
-        contractName: "tickets",
+        abi: contractArtifacts["tickets"].abi,
+        address: ticketContractAddress as PrefixedHexString,
         functionName: "distribute",
         args: [users.map((dist) => [dist.wallet, dist.amount])],
         capsuleTokenVaultKey,
-        userWalletAddress: developerWalletAddress
+        userWalletAddress: developerWalletAddress,
       });
 
       return {
         explorerUrls: {
           tx: getExplorerUrl(
-            metaTxResult.data.transactionReceipt.transactionHash
-          )
-        }
+            metaTxResult.data.transactionReceipt.transactionHash,
+          ),
+        },
       };
     } catch (e) {
       throw new HttpException(e.message, 500);
@@ -460,30 +481,30 @@ export class TicketsService {
 
     const app = await this.database.app.findUnique({
       where: {
-        id: appId
-      }
+        id: appId,
+      },
     });
 
     const sc = await this.database.ticket.findUnique({
       where: {
-        id: ticketId
+        id: ticketId,
       },
       include: {
         Event: {
           select: {
-            name: true
-          }
-        }
-      }
+            name: true,
+          },
+        },
+      },
     });
 
     const readTicketContract = (functionName: string, args: [] | null = null) => {
-      return readContract(
-        ticketContractAddress,
-        contractArtifacts["tickets"].abi,
-        functionName,
-        args
-      );
+      return readContract({
+        abi: contractArtifacts["tickets"].abi,
+        address: ticketContractAddress,
+        functionName: functionName,
+        args: args
+      });
     };
 
     const name = await readTicketContract("name");
@@ -541,25 +562,21 @@ export class TicketsService {
         }
       });
 
-      const price = await readContract(
-        ticket.address,
-        contractArtifacts["tickets"].abi,
-        "price"
-      );
+      const price = await readContract({
+        abi: contractArtifacts["tickets"].abi,
+        address: ticket.address,
+        functionName: "price"
+      });
 
-      const erc20Decimals = await readContract(
-        envVariables.erc20Address,
-        contractArtifacts["erc20"].abi,
-        "decimals"
-      );
+      const erc20Decimals = await readContract({
+        abi: contractArtifacts["erc20"].abi,
+        address: envVariables.erc20Address,
+        functionName: "decimals"
+      });
 
       const denominatedPrice = Number(price) / 10 ** Number(erc20Decimals);
 
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-        apiVersion: "2024-10-28.acacia"
-      });
-
-      const session = await stripe.checkout.sessions.create({
+      const session = await this.stripe.checkout.sessions.create({
         payment_method_types: ["card"],
         line_items: [
           {
@@ -567,7 +584,7 @@ export class TicketsService {
               currency: "usd",
               product_data: {
                 name: `${ticket.Event.name} ticket`,
-                images: ["https://avatars.githubusercontent.com/u/164048341"]
+                images: ["https://avatars.githubusercontent.com/u/164048341"],
               },
               unit_amount: denominatedPrice
             },
