@@ -9,6 +9,7 @@ import { parseEventLogs } from "viem";
 import { getTicketUrl } from "@/utils/getTicketUrl";
 import { EmailService } from "@/common/services/email/email.service";
 import { OrderStatus } from "@prisma/client";
+import { stripe } from "@/lib/stripe";
 
 @Injectable()
 export class WebhooksService {
@@ -18,9 +19,7 @@ export class WebhooksService {
     private database: DatabaseService,
     private emailService: EmailService,
   ) {
-    this.stripe = new Stripe(envVariables.stripeSecretKey, {
-      apiVersion: "2024-10-28.acacia",
-    });
+    this.stripe = stripe;
   }
 
   async handleStripeWebhook(request: any, signature: string): Promise<HttpStatus> {

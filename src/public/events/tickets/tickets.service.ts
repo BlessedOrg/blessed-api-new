@@ -20,16 +20,21 @@ import { WebhooksDto } from "@/webhooks/webhooks.dto";
 import { envVariables } from "@/common/env-variables";
 import Stripe from "stripe";
 import { v4 as uuidv4 } from "uuid";
+import { stripe } from "@/lib/stripe";
 
 @Injectable()
 export class TicketsService {
+  private readonly stripe: Stripe;
+
   constructor(
     private database: DatabaseService,
     private usersService: UsersService,
     private ticketSnapshotService: TicketsSnapshotService,
     private ticketDistributeService: TicketsDistributeService,
     private ticketDistributeCampaignService: TicketsDistributeCampaignService,
-  ) {}
+  ) {
+    this.stripe = stripe;
+  }
 
   getEventTickets(appId: string, eventId: string) {
     return this.database.ticket.findMany({
@@ -571,11 +576,7 @@ export class TicketsService {
 
       const denominatedPrice = Number(price) / 10 ** Number(erc20Decimals);
 
-      const stripe = new Stripe(process.env.STRIPE_SECRET_KEY as string, {
-        apiVersion: "2024-10-28.acacia"
-      });
-
-      const session = await stripe.checkout.sessions.create({
+      const session = await this.stripe.checkout.sessions.create({
         payment_method_types: ["card"],
         line_items: [
           {
