@@ -125,13 +125,14 @@ export class EventsService {
     const event = await this.database.event.create({
       data: {
         contractAddress: `${uuidv4()}-${new Date().getTime()}`,
-        ...createEventDto,
+        name,
+        ...eventData,
         slug,
         App: { connect: { id: appId } }
       }
     });
     const { metadataUrl } = await uploadMetadata({
-      name: CreateEventDto.name,
+      name: createEventDto.name,
       description: "",
       image: ""
     });
@@ -139,7 +140,7 @@ export class EventsService {
     const args = {
       owner: developerWalletAddress,
       ownerSmartWallet: developerSmartWalletAddress,
-      name: CreateEventDto.name,
+      name: createEventDto.name,
       uri: metadataUrl
     };
 

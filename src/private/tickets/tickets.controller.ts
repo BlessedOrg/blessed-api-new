@@ -18,7 +18,6 @@ export class TicketsController {
     @Body() createTicketDto: CreateTicketDto,
     @Req() req: RequestWithDevAccessToken & AppValidate & EventValidate
   ) {
-
     return this.ticketsService.create(createTicketDto, {
       developerId: req.developerId,
       appId: req.appId,
