@@ -1,18 +1,14 @@
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, Length, Min, registerDecorator, ValidateNested, ValidationArguments, ValidationOptions } from "class-validator";
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsUrl, Length, Min, registerDecorator, ValidateNested, ValidationArguments, ValidationOptions } from "class-validator";
 import { AirdropEnum } from "@/common/enums.enum";
 import { Type } from "class-transformer";
 import { NameDto } from "@/common/dto/name.dto";
 
 export class AirdropDto {
-  @IsEnum(AirdropEnum, {
-    message: "Invalid airdrop type, available types: [attendees, holders]"
-  })
+  @IsEnum(AirdropEnum, { message: "Invalid airdrop type, available types: [attendees, holders]" })
   type: AirdropEnum;
 
   @IsNotEmpty({ message: "Event slug is required" })
-  @Length(1, 100, {
-    message: "Event slug must be between 1 and 100 characters"
-  })
+  @Length(1, 100, { message: "Event slug must be between 1 and 100 characters" })
   eventSlug: string;
 
   @IsNotEmpty({ message: "Ticket slug is required for holders type" })
@@ -41,9 +37,14 @@ export class CreateTicketDto extends NameDto {
   @IsNotEmpty({ message: "Symbol is required" })
   symbol: string;
 
-  @IsLessThanOrEqual("maxSupply", {
-    message: "Initial supply must be less than or equal to max supply"
-  })
+  // @IsNotEmpty({ message: "ERC20 Address is required" })
+  // erc20Address: string;
+
+  @IsNotEmpty({ message: "Price is required" })
+  @IsPositive({ message: "Price must be positive number (can be 0)" })
+  price: number;
+
+  @IsLessThanOrEqual("maxSupply", { message: "Initial supply must be less than or equal to max supply" })
   @Min(1, { message: "Initial supply must be a positive number" })
   @IsNumber({}, { message: "Initial supply must be a number" })
   @IsNotEmpty({ message: "Initial supply is required" })
@@ -61,12 +62,13 @@ export class CreateTicketDto extends NameDto {
   @IsBoolean({ message: "WhitelistOnly must be a boolean value" })
   @IsNotEmpty({ message: "WhitelistOnly field is required" })
   whitelistOnly: boolean;
+
+  @IsUrl()
+  @IsOptional()
+  imageUrl?: string;
 }
 
-function IsLessThanOrEqual(
-  property: string,
-  validationOptions?: ValidationOptions
-) {
+function IsLessThanOrEqual(property: string, validationOptions?: ValidationOptions) {
   return function (object: Object, propertyName: string) {
     registerDecorator({
       name: "isLessThanOrEqual",
@@ -78,11 +80,9 @@ function IsLessThanOrEqual(
         validate(value: any, args: ValidationArguments) {
           const [relatedPropertyName] = args.constraints;
           const relatedValue = (args.object as any)[relatedPropertyName];
-          return (
-            typeof value === "number" &&
+          return typeof value === "number" &&
             typeof relatedValue === "number" &&
-            value <= relatedValue
-          );
+            value <= relatedValue;
         },
         defaultMessage(args: ValidationArguments) {
           const [relatedPropertyName] = args.constraints;

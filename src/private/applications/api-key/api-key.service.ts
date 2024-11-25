@@ -1,7 +1,7 @@
 import { HttpException, Injectable } from "@nestjs/common";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { JwtService } from "@nestjs/jwt";
-import { envConstants } from "@/common/constants";
+import { envVariables } from "@/common/env-variables";
 import { createVaultApiKeyItem, getVaultItem } from "@/lib/1pwd-vault";
 import { isEqual } from "lodash";
 
@@ -20,7 +20,7 @@ export class ApiKeyService {
           apiTokenVaultKey: ""
         }
       });
-      const apiKey = this.jwtService.sign({ appId: app.id, appSlug: app.slug, apiTokenId: apiTokenRecord?.id, developerId }, { secret: envConstants.jwtSecret });
+      const apiKey = this.jwtService.sign({ appId: app.id, appSlug: app.slug, apiTokenId: apiTokenRecord?.id, developerId }, { secret: envVariables.jwtSecret });
       const vaultItem = await createVaultApiKeyItem(apiKey, app.slug);
       await this.database.apiToken.update({
         where: {
@@ -64,6 +64,7 @@ export class ApiKeyService {
                 select: {
                   id: true,
                   walletAddress: true,
+                  smartWalletAddress: true,
                   capsuleTokenVaultKey: true
                 }
               }
@@ -85,8 +86,9 @@ export class ApiKeyService {
         developerId: apiToken.App.DeveloperAccount.id,
         appSlug: apiToken.App.slug,
         appId: apiToken.App.id,
-        capsuleTokenVaultKey: apiToken.App.DeveloperAccount.capsuleTokenVaultKey,
-        developerWalletAddress: apiToken.App.DeveloperAccount.walletAddress
+        developerSmartWalletAddress: apiToken.App.DeveloperAccount.smartWalletAddress,
+        developerWalletAddress: apiToken.App.DeveloperAccount.walletAddress,
+        capsuleTokenVaultKey: apiToken.App.DeveloperAccount.capsuleTokenVaultKey
       };
     } catch (e) {
       throw new HttpException(e.message, 401);

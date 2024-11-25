@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { envConstants } from "@/common/constants";
+import { envVariables } from "@/common/env-variables";
 import { ApiKeyService } from "@/private/applications/api-key/api-key.service";
 
 @Injectable()
@@ -16,9 +16,7 @@ export class ApiKeyGuard implements IAuthGuard {
     }
 
     try {
-      const decoded = this.jwtService.verify(apiKey, {
-        secret: envConstants.jwtSecret
-      }) as ApiTokenJWT;
+      const decoded = this.jwtService.verify(apiKey, { secret: envVariables.jwtSecret }) as ApiTokenJWT;
 
       const data = await this.apiKeyService.validateApiKey(decoded.apiTokenId, apiKey);
 

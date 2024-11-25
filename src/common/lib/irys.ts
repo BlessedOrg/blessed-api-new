@@ -48,8 +48,8 @@ export const uploadFile = async ({ name, description, symbol, image }: Metadata)
 
 interface Metadata {
   name: string;
-  symbol: string;
-  description: string;
+  symbol?: string;
+  description?: string;
   image: string; // Base64 encoded image string
 }
 

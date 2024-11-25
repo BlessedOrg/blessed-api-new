@@ -1,6 +1,6 @@
 require("dotenv").config();
 
-const envConstants = {
+const envVariables = {
   jwtSecret: process.env.JWT_SECRET,
   vaultApiUrl: process.env.OP_VAULT_SERVER_HOST!,
   vaultToken: process.env.OP_API_TOKEN!,
@@ -22,7 +22,10 @@ const envConstants = {
     host: process.env.SMTP_HOST
   },
   port: parseInt(process.env.PORT, 10) || 3000,
-  landingPageUrl: process.env.LANDING_PAGE_URL
+  landingPageUrl: process.env.LANDING_PAGE_URL,
+  stripeSecretKey: process.env.STRIPE_SECRET_KEY,
+  stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+  erc20Address: process.env.ERC20_CONTRACT_ADDRESS
 };
 
-export { envConstants };
+export { envVariables };

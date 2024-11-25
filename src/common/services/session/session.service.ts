@@ -74,7 +74,8 @@ export class SessionService {
         developerId: developer?.id,
         capsuleTokenVaultKey: developer.capsuleTokenVaultKey,
         accessTokenVaultKey: developer.accessTokenVaultKey,
-        walletAddress: developer.walletAddress
+        walletAddress: developer.walletAddress,
+        smartWalletAddress: developer.smartWalletAddress
       });
       await this.database.developerSession.update({
         where: {
@@ -126,7 +127,8 @@ export class SessionService {
           developerId: developer?.id,
           accessTokenVaultKey: vaultItem.id,
           capsuleTokenVaultKey: developer.capsuleTokenVaultKey,
-          walletAddress: developer.walletAddress
+          walletAddress: developer.walletAddress,
+          smartWalletAddress: developer.smartWalletAddress
         });
         await updateVaultItem(
           vaultItem.id,
@@ -178,7 +180,8 @@ export class SessionService {
       } = this.createSessionTokens({
         userId: user?.id,
         capsuleTokenVaultKey: user.capsuleTokenVaultKey,
-        walletAddress: user.walletAddress
+        walletAddress: user.walletAddress,
+        smartWalletAddress: user.smartWalletAddress
       });
       const updatedSession = await this.database.userSession.update({
         where: {
@@ -197,15 +200,20 @@ export class SessionService {
       return {
         accessToken,
         refreshToken,
-        walletAddress: user.walletAddress,
-        userId: user.id,
-        message: "Logged in successfully"
+        user: {
+          id: user.id,
+          email: user.email,
+          walletAddress: user.walletAddress,
+          smartWalletAddress: user.smartWalletAddress
+        },
+        message: "User logged in successfully"
       };
     } else {
       const { accessToken, refreshToken } = this.createSessionTokens({
         userId: user?.id,
         capsuleTokenVaultKey: user.capsuleTokenVaultKey,
-        walletAddress: user.walletAddress
+        walletAddress: user.walletAddress,
+        smartWalletAddress: user.smartWalletAddress
       });
       await this.database.userSession.create({
         data: {
@@ -221,6 +229,7 @@ export class SessionService {
         accessToken,
         refreshToken,
         walletAddress: user.walletAddress,
+        smartWalletAddress: user.smartWalletAddress,
         userId: user.id
       };
     }

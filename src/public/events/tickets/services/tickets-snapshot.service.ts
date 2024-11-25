@@ -5,6 +5,7 @@ import { contractArtifacts, readContract } from "@/lib/viem";
 import { EntranceService } from "@/public/events/entrance/entrance.service";
 import { Entrance, Ticket } from "@prisma/client";
 import { TicketsService } from "@/public/events/tickets/tickets.service";
+import { PrefixedHexString } from "ethereumjs-util";
 
 @Injectable()
 export class TicketsSnapshotService {
@@ -127,7 +128,7 @@ export class TicketsSnapshotService {
     await Promise.all(
       tickets.map(async (ticket) => {
         try {
-          const totalSupply = await this.getTotalSupply(ticket.address);
+          const totalSupply = await this.getTotalSupply(ticket.address as PrefixedHexString);
           const { owners, externalAddresses } =
             await this.ticketsService.owners(ticket.address, {
               start: 0,
@@ -186,12 +187,12 @@ export class TicketsSnapshotService {
     );
   }
 
-  private async getTotalSupply(address: string): Promise<number> {
-    const result = await readContract(
+  private async getTotalSupply(address: PrefixedHexString): Promise<number> {
+    const result = await readContract({
+      abi: contractArtifacts["tickets"].abi,
       address,
-      contractArtifacts["tickets"].abi,
-      "totalSupply"
-    );
+      functionName: "totalSupply"
+    });
     return Number(result);
   }
 

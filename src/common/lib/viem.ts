@@ -1,13 +1,14 @@
 import { ethers } from "ethers";
 import { NonceManager } from "@ethersproject/experimental";
 import { importAllJsonContractsArtifacts } from "@/lib/contracts/interfaces";
-import { Chain, createPublicClient, createWalletClient, getAddress, http } from "viem";
+import { Abi, Chain, createPublicClient, createWalletClient, getAddress, http } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { envConstants } from "@/common/constants";
+import { envVariables } from "@/common/env-variables";
 import { base } from "viem/chains";
+import { PrefixedHexString } from "ethereumjs-util";
 
-export const rpcUrl = envConstants.rpcUrl || "define RPC URL env ";
-export const chainId = Number(envConstants.chainId) || 84532;
+export const rpcUrl = envVariables.rpcUrl || "define RPC URL env ";
+export const chainId = Number(envVariables.chainId) || 84532;
 export const ethNativeCurrency = {
   decimals: 18,
   name: "ETH",
@@ -42,7 +43,7 @@ export const account = privateKeyToAccount(`0x${process.env.OPERATOR_PRIVATE_KEY
 export const provider = new ethers.providers.JsonRpcProvider({
   skipFetchSetup: true,
   fetchOptions: {
-    referrer: envConstants.BASE_URL!
+    referrer: envVariables.BASE_URL!
   },
   url: rpcUrl!
 });
@@ -141,24 +142,31 @@ export const writeContractWithNonceGuard = async (contractAddr, functionName, ar
   }
 };
 
-export const readContract = async (address, abi, functionName, args = null) => {
+interface readWriteContractParams {
+  abi: Abi;
+  address: PrefixedHexString;
+  functionName: string;
+  args?: any[];
+}
+
+export const readContract = async ({ abi, address, functionName, args = null }: readWriteContractParams) => {
   return publicClient.readContract({
-    address,
     abi,
+    address: address as `0x${string}`,
     functionName,
-    args
+    args,
   });
 };
 
-export const writeContract = async (contractAddr, functionName, args, abi) => {
+export const writeContract = async ({ abi, address, functionName, args }: readWriteContractParams) => {
   await initializeNonce();
   const hash = await client.writeContract({
-    address: contractAddr,
+    address,
     functionName: functionName,
     args,
     abi,
     account,
-    nonce
+    nonce,
   } as any);
   console.log(`📟 ${functionName}TxHash: ${getExplorerUrl(hash)} 📟 Nonce: ${nonce}`);
   return waitForTransactionReceipt(hash);

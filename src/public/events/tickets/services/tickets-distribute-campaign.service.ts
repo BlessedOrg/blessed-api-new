@@ -1,9 +1,10 @@
 import { forwardRef, HttpException, Inject, Injectable } from "@nestjs/common";
-import { envConstants } from "@/common/constants";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { TicketsDistributeService } from "@/public/events/tickets/services/tickets-distribute.service";
 import { EmailService } from "@/common/services/email/email.service";
 import { TicketsService } from "@/public/events/tickets/tickets.service";
+import { envVariables } from "@/common/env-variables";
+import { contractArtifacts, readContract } from "@/lib/viem";
 
 @Injectable()
 export class TicketsDistributeCampaignService {
@@ -49,9 +50,9 @@ export class TicketsDistributeCampaignService {
       let allUsersIds = [];
       const distributions = await Promise.all(
         ticketsToDistribute.map(async (ticket) => {
-          const users = campaign.Audiences.flatMap(
-            (audienceUser) => audienceUser.AudienceUsers
-          );
+          const users = campaign.Audiences.reduce((acc, audienceUser) => {
+            return [...acc, ...audienceUser.AudienceUsers.filter((user) => !acc.some((u) => u.id === user.id))];
+          }, []);
           const externalUsers = users
             .filter((user) => !!user?.externalWalletAddress)
             .map((u) => ({
@@ -78,6 +79,28 @@ export class TicketsDistributeCampaignService {
           const event = await this.database.event.findUnique({
             where: { id: ticket.eventId }
           });
+          const allUsersCount = formattedUsers.length + externalUsers.length;
+          const currentSupply = await readContract({
+            abi: contractArtifacts["tickets"].abi,
+            address: ticket.address,
+            functionName: "currentSupply"
+          });
+          const additionalSupply = allUsersCount - Number(currentSupply);
+          const maxSupply = await readContract({
+            abi: contractArtifacts["tickets"].abi,
+            address: ticket.address,
+            functionName: "maxSupply"
+          });
+          if (Number(maxSupply) < additionalSupply + Number(currentSupply)) {
+            throw new Error("Not enough supply");
+          }
+          if (Number(currentSupply) < allUsersCount) {
+            await this.ticketsService.supply({ additionalSupply }, {
+              developerWalletAddress,
+              ticketContractAddress: ticket.address,
+              capsuleTokenVaultKey
+            });
+          }
           const { distribution } = await this.ticketDistributeService.distributeTickets(
             formattedUsers,
             ticket.address,
@@ -97,7 +120,7 @@ export class TicketsDistributeCampaignService {
               .map(async (dist) => {
                 const ticketUrls = dist.tokenIds.map(
                   (tokenId) =>
-                    `${envConstants.landingPageUrl}/show-ticket?contractId=${ticket.id}&tokenId=${tokenId}&userId=${dist.userId}&eventId=${event.id}`
+                    `${envVariables.landingPageUrl}/show-ticket?contractId=${ticket.id}&tokenId=${tokenId}&userId=${dist.userId}&eventId=${event.id}`
                 );
                 return {
                   recipientEmail: dist.email,
@@ -114,7 +137,7 @@ export class TicketsDistributeCampaignService {
           );
           await this.emailService.sendBatchEmails(
             emailsToSend,
-            envConstants.isDevelopment
+            envVariables.isDevelopment
           );
 
           return { distribution, externalDistribution };
