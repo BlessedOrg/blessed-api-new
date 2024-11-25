@@ -68,7 +68,7 @@ export class EventsService {
       });
 
       if (isSlugTaken) {
-        throw new ConflictException("Event with this name already exists");
+        throw new ConflictException(`Event with name ,,${name}" already exists`);
       }
 
       updateData.name = name;
