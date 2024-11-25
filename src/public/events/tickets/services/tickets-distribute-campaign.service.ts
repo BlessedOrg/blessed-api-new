@@ -4,6 +4,7 @@ import { TicketsDistributeService } from "@/public/events/tickets/services/ticke
 import { EmailService } from "@/common/services/email/email.service";
 import { TicketsService } from "@/public/events/tickets/tickets.service";
 import { envVariables } from "@/common/env-variables";
+import { contractArtifacts, readContract } from "@/lib/viem";
 
 @Injectable()
 export class TicketsDistributeCampaignService {
@@ -78,6 +79,28 @@ export class TicketsDistributeCampaignService {
           const event = await this.database.event.findUnique({
             where: { id: ticket.eventId }
           });
+          const allUsersCount = formattedUsers.length + externalUsers.length;
+          const currentSupply = await readContract({
+            abi: contractArtifacts["tickets"].abi,
+            address: ticket.address,
+            functionName: "currentSupply"
+          });
+          const additionalSupply = allUsersCount - Number(currentSupply);
+          const maxSupply = await readContract({
+            abi: contractArtifacts["tickets"].abi,
+            address: ticket.address,
+            functionName: "maxSupply"
+          });
+          if (Number(maxSupply) < additionalSupply + Number(currentSupply)) {
+            throw new Error("Not enough supply");
+          }
+          if (Number(currentSupply) < allUsersCount) {
+            await this.ticketsService.supply({ additionalSupply }, {
+              developerWalletAddress,
+              ticketContractAddress: ticket.address,
+              capsuleTokenVaultKey
+            });
+          }
           const { distribution } = await this.ticketDistributeService.distributeTickets(
             formattedUsers,
             ticket.address,

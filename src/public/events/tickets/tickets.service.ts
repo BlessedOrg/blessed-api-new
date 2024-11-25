@@ -199,12 +199,16 @@ export class TicketsService {
     };
   }
 
-  async supply(supplyDto: SupplyDto, req: RequestWithApiKey & TicketValidate) {
+  async supply(supplyDto: SupplyDto, params: {
+    ticketContractAddress: string;
+    capsuleTokenVaultKey: string;
+    developerWalletAddress: string;
+  }) {
     const {
       ticketContractAddress,
       capsuleTokenVaultKey,
       developerWalletAddress
-    } = req;
+    } = params;
     try {
       const metaTxResult = await biconomyMetaTx({
         abi: contractArtifacts["tickets"].abi,
