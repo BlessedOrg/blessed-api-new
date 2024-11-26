@@ -62,6 +62,10 @@ export class CreateTicketDto extends NameDto {
   @IsBoolean({ message: "WhitelistOnly must be a boolean value" })
   @IsNotEmpty({ message: "WhitelistOnly field is required" })
   whitelistOnly: boolean;
+
+  @IsOptional()
+  @IsOptional()
+  imageUrl?: string;
 }
 
 function IsLessThanOrEqual(property: string, validationOptions?: ValidationOptions) {

@@ -1,4 +1,4 @@
-import { HttpException, Injectable } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { CreateEventDto } from "@/public/events/dto/create-event.dto";
 import slugify from "slugify";
@@ -30,89 +30,150 @@ export class EventsService {
     });
   }
   async update(appId: string, eventId: string, updateEventDto: UpdateEventDto) {
-    if (updateEventDto.name) {
-      const slug = slugify(updateEventDto.name, {
-        lower: true,
-        strict: true,
-        trim: true
-      });
-      updateEventDto["slug"] = slug;
-    }
+    const { name, eventLocation, ...eventData } = updateEventDto;
 
-    const isNameExists = await this.database.event.findFirst({
-      where: {
-        slug: updateEventDto.slug,
-        appId,
-        NOT: {
-          id: eventId
-        }
-      }
-    });
-    if (isNameExists) {
-      throw new HttpException("Name already exists", 400);
-    }
-    return this.database.event.update({
+    const existingEvent = await this.database.event.findUnique({
       where: {
         id: eventId,
         appId
       },
-      data: updateEventDto
+      include: {
+        EventLocation: true
+      }
+    });
+
+    if (!existingEvent) {
+      throw new NotFoundException("Event not found");
+    }
+
+    const updateData: Partial<UpdateEventDto> = {
+      ...eventData
+    };
+
+    if (name && name !== existingEvent.name) {
+      const slug = slugify(name, {
+        lower: true,
+        strict: true,
+        trim: true
+      });
+
+      const isSlugTaken = await this.database.event.findFirst({
+        where: {
+          slug,
+          appId,
+          NOT: {
+            id: eventId
+          }
+        }
+      });
+
+      if (isSlugTaken) {
+        throw new ConflictException(`Event with name ,,${name}" already exists`);
+      }
+
+      updateData.name = name;
+      updateData.slug = slug;
+    }
+
+    return this.database.$transaction(async (tx) => {
+      if (eventLocation) {
+        await tx.eventLocation.update({
+          where: {
+            eventId
+          },
+          data: eventLocation
+        });
+      }
+
+      return tx.event.update({
+        where: {
+          id: eventId,
+          appId
+        },
+        data: updateData,
+        include: {
+          EventLocation: true
+        }
+      });
     });
   }
+
   async create(
     createEventDto: CreateEventDto,
     appId: string,
     developerWalletAddress: PrefixedHexString,
-    developerSmartWalletAddress: PrefixedHexString,
+    developerSmartWalletAddress: PrefixedHexString
   ) {
-    const slug = slugify(createEventDto.name, {
+    const { eventLocation, name, ...eventData } = createEventDto;
+
+    const slug = slugify(name, {
       lower: true,
       strict: true,
       trim: true
     });
 
+    const existingEvent = await this.database.event.findFirst({
+      where: {
+        slug,
+        appId
+      }
+    });
+
+    if (existingEvent) {
+      throw new ConflictException("Event with this name already exists");
+    }
     const event = await this.database.event.create({
       data: {
         contractAddress: `${uuidv4()}-${new Date().getTime()}`,
-        ...createEventDto,
+        name,
+        ...eventData,
         slug,
         App: { connect: { id: appId } }
       }
     });
-
     const { metadataUrl } = await uploadMetadata({
-      name: CreateEventDto.name,
+      name: createEventDto.name,
       description: "",
       image: ""
     });
-    
+
     const args = {
       owner: developerWalletAddress,
       ownerSmartWallet: developerSmartWalletAddress,
-      name: CreateEventDto.name,
+      name: createEventDto.name,
       uri: metadataUrl
     };
 
     const contract = await deployContract("event", Object.values(args));
     console.log("⛓️ Contract Explorer URL: ", getExplorerUrl(contract.contractAddr));
+    return this.database.$transaction(async (tx) => {
+      const createdEvent = await tx.event.update({
+        where: { id: event.id },
+        data: {
+          ...eventData,
+          contractAddress: contract.contractAddr
+        },
+        include: {
+          EventLocation: true
+        }
+      });
 
-    const updatedEvent = await this.database.event.update({
-      where: {
-        id: event.id
-      },
-      data: {
-        contractAddress: contract.contractAddr,
+      if (eventLocation) {
+        await tx.eventLocation.create({
+          data: {
+            ...eventLocation,
+            Event: {
+              connect: { id: createdEvent.id }
+            }
+          }
+        });
       }
+
+      return tx.event.findUnique({
+        where: { id: createdEvent.id },
+        include: { EventLocation: true }
+      });
     });
-
-    return {
-      success: true,
-      event: updatedEvent,
-      contract,
-      explorerUrls: {
-        contract: getExplorerUrl(contract.contractAddr)
-      }
-    }
   }
 
   events(appId: string) {
@@ -172,7 +233,8 @@ export class EventsService {
         appId
       },
       include: {
-        Tickets: true
+        Tickets: true,
+        EventLocation: true
       }
     });
   }

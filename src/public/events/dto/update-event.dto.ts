@@ -1,4 +1,6 @@
-import { IsNotEmpty, IsOptional, IsString, IsUrl } from "class-validator";
+import { IsISO8601, IsNotEmpty, IsOptional, IsString, IsUrl, ValidateNested } from "class-validator";
+import { Type } from "class-transformer";
+import { EventLocationDto } from "@/public/events/dto/create-event.dto";
 
 export class UpdateEventDto {
   @IsString()
@@ -16,4 +18,21 @@ export class UpdateEventDto {
   @IsUrl()
   @IsOptional()
   logoUrl?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => EventLocationDto)
+  eventLocation?: EventLocationDto;
+
+  @IsString()
+  @IsOptional()
+  timezoneIdentifier?: string;
+
+  @IsISO8601()
+  @IsOptional()
+  startsAt?: Date;
+
+  @IsISO8601()
+  @IsOptional()
+  endsAt?: Date;
 }
