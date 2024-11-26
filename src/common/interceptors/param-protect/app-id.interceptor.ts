@@ -13,7 +13,7 @@ export class AppIdInterceptor implements NestInterceptor {
 
     if (appParam) {
       const isCuid = (str: string) => /^c[a-z0-9]{24}$/.test(str);
-      const select = { id: true, DeveloperAccount: { select: { walletAddress: true } } };
+      const select = { id: true, Developer: { select: { walletAddress: true } } };
 
       let app;
       if (!isCuid(appParam)) {
@@ -30,7 +30,7 @@ export class AppIdInterceptor implements NestInterceptor {
 
       if (app?.id) {
         request["appId"] = app.id;
-        request["appOwnerWalletAddress"] = app.DeveloperAccount.walletAddress;
+        request["appOwnerWalletAddress"] = app.Developer.walletAddress;
       } else {
         throw new HttpException("App not found", 404);
       }

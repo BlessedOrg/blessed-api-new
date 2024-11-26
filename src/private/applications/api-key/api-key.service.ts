@@ -60,7 +60,7 @@ export class ApiKeyService {
         include: {
           App: {
             include: {
-              DeveloperAccount: {
+              Developer: {
                 select: {
                   id: true,
                   walletAddress: true,
@@ -83,12 +83,12 @@ export class ApiKeyService {
       }
 
       return {
-        developerId: apiToken.App.DeveloperAccount.id,
+        developerId: apiToken.App.Developer.id,
         appSlug: apiToken.App.slug,
         appId: apiToken.App.id,
-        developerSmartWalletAddress: apiToken.App.DeveloperAccount.smartWalletAddress,
-        developerWalletAddress: apiToken.App.DeveloperAccount.walletAddress,
-        capsuleTokenVaultKey: apiToken.App.DeveloperAccount.capsuleTokenVaultKey
+        developerSmartWalletAddress: apiToken.App.Developer.smartWalletAddress,
+        developerWalletAddress: apiToken.App.Developer.walletAddress,
+        capsuleTokenVaultKey: apiToken.App.Developer.capsuleTokenVaultKey
       };
     } catch (e) {
       throw new HttpException(e.message, 401);
