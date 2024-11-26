@@ -68,6 +68,9 @@ export class CreateTicketDto extends NameDto {
   @IsArray()
   @IsValidStakeholder({ each: true })
   stakeholders: [string, number][];
+
+  @IsOptional()
+  imageUrl?: string;
 }
 
 function IsLessThanOrEqual(property: string, validationOptions?: ValidationOptions) {

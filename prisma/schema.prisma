@@ -106,20 +106,46 @@ model EmailVerificationCode {
 }
 
 model Event {
-  id              String        @id @default(cuid())
-  name            String
-  contractAddress String        @unique
-  description     String?
-  logoUrl         String?
-  slug            String        @unique
-  App             App           @relation(fields: [appId], references: [id])
-  appId           String
-  Tickets         Ticket[]
-  Entrances       Entrance[]
-  Stakeholders    Stakeholder[]
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-  deletedAt       DateTime?
+  id                 String         @id @default(cuid())
+  name               String
+  description        String?
+  contractAddress    String         @unique
+  logoUrl            String?
+  slug               String         @unique
+  timezoneIdentifier String?
+  startsAt           DateTime?
+  endsAt             DateTime?
+  App                App            @relation(fields: [appId], references: [id])
+  appId              String
+  EventLocation      EventLocation?
+  Tickets            Ticket[]
+  Entrances          Entrance[]
+  Stakeholders       Stakeholder[]
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  deletedAt          DateTime?
+}
+
+model EventLocation {
+  id               String   @id @default(cuid())
+  Event            Event    @relation(fields: [eventId], references: [id])
+  eventId          String   @unique
+  street1stLine    String?
+  street2ndLine    String?
+  postalCode       String?
+  city             String
+  countryCode      String?
+  country          String
+  locationDetails  String?
+  continent        String?
+  stateCode        String?
+  countryLatitude  String?
+  countryLongitude String?
+  cityLatitude     String?
+  cityLongitude    String?
+  countryFlag      String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model Stakeholder {

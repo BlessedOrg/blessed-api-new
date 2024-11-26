@@ -127,7 +127,8 @@ export class SessionService {
           developerId: developer?.id,
           accessTokenVaultKey: vaultItem.id,
           capsuleTokenVaultKey: developer.capsuleTokenVaultKey,
-          walletAddress: developer.walletAddress
+          walletAddress: developer.walletAddress,
+          smartWalletAddress: developer.smartWalletAddress
         });
         await updateVaultItem(
           vaultItem.id,
@@ -203,9 +204,9 @@ export class SessionService {
           id: user.id,
           email: user.email,
           walletAddress: user.walletAddress,
-          smartWalletAddress: user.smartWalletAddress,
+          smartWalletAddress: user.smartWalletAddress
         },
-        message: "User logged in successfully",
+        message: "User logged in successfully"
       };
     } else {
       const { accessToken, refreshToken } = this.createSessionTokens({

@@ -22,6 +22,7 @@ import Stripe from "stripe";
 import { v4 as uuidv4 } from "uuid";
 import { stripe } from "@/lib/stripe";
 import { EventsService } from "@/public/events/events.service";
+import { logoBase64 } from "@/utils/logo_base64";
 
 @Injectable()
 export class TicketsService {
@@ -38,13 +39,47 @@ export class TicketsService {
     this.stripe = stripe;
   }
 
-  getEventTickets(appId: string, eventId: string) {
-    return this.database.ticket.findMany({
+  async getEventTickets(appId: string, eventId: string) {
+    const readTicketContract = (functionName: string, address: string, args: [] | null = null) => {
+      return readContract({
+        abi: contractArtifacts["tickets"].abi,
+        address,
+        functionName: functionName,
+        args: args
+      });
+    };
+    const tickets = await this.database.ticket.findMany({
       where: {
         eventId,
-        appId
+        appId,
+        address: {
+          contains: "0x"
+        }
       }
     });
+    let formattedTickets = [];
+    for (const ticket of tickets) {
+      const erc20Decimals = await readContract({
+        abi: contractArtifacts["erc20"].abi,
+        address: envVariables.erc20Address,
+        functionName: "decimals"
+      });
+
+      const ticketSupply = await readTicketContract("currentSupply", ticket.address);
+      const maxSupply = await readTicketContract("maxSupply", ticket.address);
+      const price = await readTicketContract("price", ticket.address);
+      const ticketOwners = await this.getTicketHolders(ticket.address, { start: 0, pageSize: Number(ticketSupply) });
+      const denominatedPrice = Number(price) / 10 ** Number(erc20Decimals);
+
+      formattedTickets.push({
+        ...ticket,
+        ticketSupply: Number(ticketSupply),
+        maxSupply: Number(maxSupply),
+        price: denominatedPrice,
+        ticketOwners
+      });
+    }
+    return formattedTickets;
   }
   async snapshot(snapshotDto: SnapshotDto) {
     return this.ticketSnapshotService.snapshot(snapshotDto);
@@ -111,7 +146,7 @@ export class TicketsService {
       name: createTicketDto.name,
       symbol: createTicketDto.symbol,
       description: createTicketDto.description,
-      image: ""
+      image: createTicketDto?.imageUrl || logoBase64
     });
 
     const smartWallet = await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
@@ -201,8 +236,12 @@ export class TicketsService {
     };
   }
 
-  async supply(supplyDto: SupplyDto, req: RequestWithApiKey & TicketValidate) {
-    const { ticketContractAddress, capsuleTokenVaultKey, developerWalletAddress } = req;
+  async supply(supplyDto: SupplyDto, params: {
+    ticketContractAddress: string;
+    capsuleTokenVaultKey: string;
+    developerWalletAddress: string;
+  }) {
+    const { ticketContractAddress, capsuleTokenVaultKey, developerWalletAddress } = params;
     try {
       const metaTxResult = await biconomyMetaTx({
         abi: contractArtifacts["tickets"].abi,
@@ -233,6 +272,7 @@ export class TicketsService {
   ) {
     try {
       const { capsuleTokenVaultKey, ticketContractAddress, developerWalletAddress, appId } = req;
+
       const allEmails = [
         ...whitelistDto.addEmails,
         ...whitelistDto.removeEmails
@@ -316,30 +356,8 @@ export class TicketsService {
       pageSize: 100
     }
   ) {
-    const pageSize = pagination.pageSize || 100;
-    let allHolders = [];
-    let start = pagination.start || 0;
     try {
-      while (true) {
-        try {
-          const holders: any = await readContract({
-            abi: contractArtifacts["tickets"].abi,
-            address: ticketContractAddress,
-            functionName: "getTicketHolders",
-            args: [start, pageSize]
-          });
-          allHolders = allHolders.concat(holders);
-          start += holders.length;
-
-          if (holders.length < pageSize) {
-            break;
-          }
-        } catch (error) {
-          console.error("Error fetching ticket holders:", error);
-          break;
-        }
-      }
-      const lowercaseHolders = allHolders.map((a: string) => a.toLowerCase());
+      const lowercaseHolders = await this.getTicketHolders(ticketContractAddress, pagination);
 
       const owners = await this.database.user.findMany({
         where: {
@@ -492,7 +510,7 @@ export class TicketsService {
         }
       };
     } catch (e) {
-      throw new HttpException(e.message, 500);
+      throw new HttpException(e["reason"], 500);
     }
   }
 
@@ -631,6 +649,43 @@ export class TicketsService {
       return session;
     } catch (err: any) {
       console.log("🚨 error on /checkout-session", err.message);
+    }
+  }
+
+  private async getTicketHolders(
+    ticketContractAddress: string,
+    pagination: { start?: number; pageSize?: number } = {
+      start: 0,
+      pageSize: 100
+    }
+  ) {
+    const pageSize = pagination.pageSize || 100;
+    let allHolders = [];
+    let start = pagination.start || 0;
+    try {
+      while (true) {
+        try {
+          const holders: any = await readContract({
+            abi: contractArtifacts["tickets"].abi,
+            address: ticketContractAddress,
+            functionName: "getTicketHolders",
+            args: [start, pageSize]
+          });
+          allHolders = allHolders.concat(holders);
+          start += holders.length;
+
+          if (holders.length < pageSize) {
+            break;
+          }
+        } catch (error) {
+          console.error("Error fetching ticket holders:", error);
+          break;
+        }
+      }
+      return allHolders.map((a: string) => a.toLowerCase());
+    } catch (error) {
+      console.error("Error fetching ticket holders:", error);
+      return [];
     }
   }
 }
