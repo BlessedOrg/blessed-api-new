@@ -124,9 +124,9 @@ export class TicketsService {
         metadataUrl: "",
         slug,
         metadataPayload: {},
-        App: { connect: { id: appId } },
-        Event: { connect: { id: eventId } },
-        DevelopersAccount: { connect: { id: developerId } }
+        appId,
+        eventId,
+        developerId
       },
       include: {
         Event: {

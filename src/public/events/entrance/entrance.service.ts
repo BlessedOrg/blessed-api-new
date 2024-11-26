@@ -71,7 +71,7 @@ export class EntranceService {
           },
           App: { connect: { id: appId } },
           Event: { connect: { id: req.eventId } },
-          DevelopersAccount: { connect: { id: req.developerId } },
+          Developer: { connect: { id: req.developerId } },
           Ticket: { connect: { id: ticket.id } }
         }
       });
