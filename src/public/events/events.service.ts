@@ -7,10 +7,16 @@ import { deployContract, getExplorerUrl } from "@/lib/viem";
 import { PrefixedHexString } from "ethereumjs-util";
 import { uploadMetadata } from "@/lib/irys";
 import { v4 as uuidv4 } from "uuid";
+import { isEmpty } from "lodash";
+import { isAddress } from "viem";
+import { UsersService } from "@/public/users/users.service";
 
 @Injectable()
 export class EventsService {
-  constructor(private database: DatabaseService) {}
+  constructor(
+    private database: DatabaseService,
+    private usersService: UsersService,
+  ) {}
 
   getAllEvents(developerId: string) {
     return this.database.event.findMany({
@@ -29,6 +35,7 @@ export class EventsService {
       }
     });
   }
+
   async update(appId: string, eventId: string, updateEventDto: UpdateEventDto) {
     const { name, eventLocation, ...eventData } = updateEventDto;
 
@@ -98,6 +105,32 @@ export class EventsService {
     });
   }
 
+  async transformStakeholders(
+    stakeholders: [string, number][],
+    appId: string): Promise<{ wallet: PrefixedHexString; feePercentage: number }[]> {
+    const stakeholderPromises = stakeholders.map(
+      async ([identifier, amount]) => {
+        let walletAddress: PrefixedHexString;
+        if (isAddress(identifier)) {
+          walletAddress = identifier;
+        } else {
+          const { users } = await this.usersService.createMany(
+            { users: [{ email: identifier }] },
+            appId
+          );
+          walletAddress = users[0].smartWalletAddress;
+        }
+
+        return {
+          wallet: walletAddress,
+          feePercentage: amount
+        };
+      }
+    );
+
+    return Promise.all(stakeholderPromises);
+  }
+
   async create(
     createEventDto: CreateEventDto,
     appId: string,
@@ -131,6 +164,22 @@ export class EventsService {
         App: { connect: { id: appId } }
       }
     });
+
+    if (createEventDto?.stakeholders && !isEmpty(createEventDto.stakeholders)) {
+      const stakeholders = await this.transformStakeholders(
+        createEventDto.stakeholders,
+        appId
+      );
+
+      await this.database.stakeholder.createMany({
+        data: stakeholders.map(sh => ({
+          walletAddress: sh.wallet,
+          feePercentage: sh.feePercentage,
+          eventId: event.id
+        }))
+      });
+    }
+
     const { metadataUrl } = await uploadMetadata({
       name: createEventDto.name,
       description: "",
@@ -146,7 +195,7 @@ export class EventsService {
 
     const contract = await deployContract("event", Object.values(args));
     console.log("⛓️ Contract Explorer URL: ", getExplorerUrl(contract.contractAddr));
-    return this.database.$transaction(async (tx) => {
+    await this.database.$transaction(async (tx) => {
       const createdEvent = await tx.event.update({
         where: { id: event.id },
         data: {
@@ -174,6 +223,32 @@ export class EventsService {
         include: { EventLocation: true }
       });
     });
+
+    const updatedEvent = await this.database.event.update({
+      where: {
+        id: event.id
+      },
+      data: {
+        contractAddress: contract.contractAddr,
+      },
+      include: {
+        Stakeholders: {
+          select: {
+            walletAddress: true,
+            feePercentage: true
+          }
+        }
+      }
+    });
+
+    return {
+      success: true,
+      event: updatedEvent,
+      contract,
+      explorerUrls: {
+        contract: getExplorerUrl(contract.contractAddr)
+      }
+    }
   }
 
   events(appId: string) {

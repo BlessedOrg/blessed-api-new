@@ -21,6 +21,7 @@ import { envVariables } from "@/common/env-variables";
 import Stripe from "stripe";
 import { v4 as uuidv4 } from "uuid";
 import { stripe } from "@/lib/stripe";
+import { EventsService } from "@/public/events/events.service";
 import { logoBase64 } from "@/utils/logo_base64";
 
 @Injectable()
@@ -30,6 +31,7 @@ export class TicketsService {
   constructor(
     private database: DatabaseService,
     private usersService: UsersService,
+    private eventsService: EventsService,
     private ticketSnapshotService: TicketsSnapshotService,
     private ticketDistributeService: TicketsDistributeService,
     private ticketDistributeCampaignService: TicketsDistributeCampaignService
@@ -129,7 +131,12 @@ export class TicketsService {
       include: {
         Event: {
           select: {
-            contractAddress: true
+            contractAddress: true,
+            Stakeholders: {
+              where: {
+                ticketId: null
+              }
+            }
           }
         }
       }
@@ -153,6 +160,19 @@ export class TicketsService {
       functionName: "decimals"
     });
 
+    let stakeholders = [];
+    if (createTicketDto?.stakeholders && !isEmpty(createTicketDto.stakeholders)) {
+      stakeholders = await this.eventsService.transformStakeholders(
+        createTicketDto.stakeholders,
+        appId
+      );
+    } else {
+      stakeholders = ticket.Event.Stakeholders.map(sh => ({
+        wallet: sh.walletAddress,
+        feePercentage: sh.feePercentage
+      }));
+    }
+
     const args = {
       _owner: developerWalletAddress,
       _ownerSmartWallet: ownerSmartWallet,
@@ -165,7 +185,8 @@ export class TicketsService {
       _initialSupply: createTicketDto.initialSupply,
       _maxSupply: createTicketDto.maxSupply,
       _transferable: createTicketDto.transferable,
-      _whitelistOnly: createTicketDto.whitelistOnly
+      _whitelistOnly: createTicketDto.whitelistOnly,
+      _stakeholders: stakeholders
     };
 
     const contract = await deployContract(contractName, [args]);
@@ -195,9 +216,19 @@ export class TicketsService {
         }
       }
     });
+    
+    const createdStakeholders = await this.database.stakeholder.createMany({
+      data: stakeholders.map(sh => ({
+        walletAddress: sh.wallet,
+        feePercentage: sh.feePercentage,
+        eventId: eventId,
+        ticketId: updatedTicket.id
+      }))
+    });
+    
     return {
       success: true,
-      ticket: updatedTicket,
+      ticket: { ...updatedTicket, stakeholders: stakeholders },
       contract,
       explorerUrls: {
         contract: getExplorerUrl(contract.contractAddr)
@@ -210,11 +241,7 @@ export class TicketsService {
     capsuleTokenVaultKey: string;
     developerWalletAddress: string;
   }) {
-    const {
-      ticketContractAddress,
-      capsuleTokenVaultKey,
-      developerWalletAddress
-    } = params;
+    const { ticketContractAddress, capsuleTokenVaultKey, developerWalletAddress } = params;
     try {
       const metaTxResult = await biconomyMetaTx({
         abi: contractArtifacts["tickets"].abi,
@@ -244,12 +271,8 @@ export class TicketsService {
     req: RequestWithApiKey & TicketValidate
   ) {
     try {
-      const {
-        capsuleTokenVaultKey,
-        ticketContractAddress,
-        developerWalletAddress,
-        appId
-      } = req;
+      const { capsuleTokenVaultKey, ticketContractAddress, developerWalletAddress, appId } = req;
+
       const allEmails = [
         ...whitelistDto.addEmails,
         ...whitelistDto.removeEmails
@@ -259,9 +282,7 @@ export class TicketsService {
         appId
       );
 
-      const emailToWalletMap = new Map(
-        users.map((account) => [account.email, account.smartWalletAddress])
-      );
+      const emailToWalletMap = new Map(users.map((account) => [account.email, account.smartWalletAddress]));
 
       const whitelistUpdates = [
         ...whitelistDto.addEmails.map((user) => {
@@ -515,7 +536,10 @@ export class TicketsService {
       }
     });
 
-    const readTicketContract = (functionName: string, args: [] | null = null) => {
+    const readTicketContract = (
+      functionName: string,
+      args: [] | null = null
+    ) => {
       return readContract({
         abi: contractArtifacts["tickets"].abi,
         address: ticketContractAddress,

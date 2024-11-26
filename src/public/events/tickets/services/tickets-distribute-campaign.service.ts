@@ -8,7 +8,13 @@ import { contractArtifacts, readContract } from "@/lib/viem";
 
 @Injectable()
 export class TicketsDistributeCampaignService {
-  constructor(private database: DatabaseService, private ticketDistributeService: TicketsDistributeService, private emailService: EmailService, @Inject(forwardRef(() => TicketsService)) private ticketsService: TicketsService) {}
+  constructor(
+    private database: DatabaseService,
+    private ticketDistributeService: TicketsDistributeService,
+    private emailService: EmailService,
+    @Inject(
+      forwardRef(() => TicketsService)) private ticketsService: TicketsService
+    ) {}
 
   async distribute(
     campaignId: string,
@@ -46,7 +52,8 @@ export class TicketsDistributeCampaignService {
       }
 
       const ticketsToDistribute = campaign.Tickets;
-      const { capsuleTokenVaultKey, developerWalletAddress } = req;
+      const { capsuleTokenVaultKey,
+        developerWalletAddress } = req;
       let allUsersIds = [];
       const distributions = await Promise.all(
         ticketsToDistribute.map(async (ticket) => {
