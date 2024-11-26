@@ -21,6 +21,7 @@ import { envVariables } from "@/common/env-variables";
 import Stripe from "stripe";
 import { v4 as uuidv4 } from "uuid";
 import { stripe } from "@/lib/stripe";
+import { logoBase64 } from "@/utils/logo_base64";
 
 @Injectable()
 export class TicketsService {
@@ -48,7 +49,10 @@ export class TicketsService {
     const tickets = await this.database.ticket.findMany({
       where: {
         eventId,
-        appId
+        appId,
+        address: {
+          contains: "0x"
+        }
       }
     });
     let formattedTickets = [];
@@ -60,6 +64,7 @@ export class TicketsService {
       });
 
       const ticketSupply = await readTicketContract("currentSupply", ticket.address);
+      const maxSupply = await readTicketContract("maxSupply", ticket.address);
       const price = await readTicketContract("price", ticket.address);
       const ticketOwners = await this.getTicketHolders(ticket.address, { start: 0, pageSize: Number(ticketSupply) });
       const denominatedPrice = Number(price) / 10 ** Number(erc20Decimals);
@@ -67,6 +72,7 @@ export class TicketsService {
       formattedTickets.push({
         ...ticket,
         ticketSupply: Number(ticketSupply),
+        maxSupply: Number(maxSupply),
         price: denominatedPrice,
         ticketOwners
       });
@@ -133,7 +139,7 @@ export class TicketsService {
       name: createTicketDto.name,
       symbol: createTicketDto.symbol,
       description: createTicketDto.description,
-      image: ""
+      image: createTicketDto?.imageUrl || logoBase64
     });
 
     const smartWallet = await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
@@ -483,7 +489,7 @@ export class TicketsService {
         }
       };
     } catch (e) {
-      throw new HttpException(e.message, 500);
+      throw new HttpException(e["reason"], 500);
     }
   }
 
