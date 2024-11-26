@@ -7,10 +7,16 @@ import { deployContract, getExplorerUrl } from "@/lib/viem";
 import { PrefixedHexString } from "ethereumjs-util";
 import { uploadMetadata } from "@/lib/irys";
 import { v4 as uuidv4 } from "uuid";
+import { isEmpty } from "lodash";
+import { isAddress } from "viem";
+import { UsersService } from "@/public/users/users.service";
 
 @Injectable()
 export class EventsService {
-  constructor(private database: DatabaseService) {}
+  constructor(
+    private database: DatabaseService,
+    private usersService: UsersService,
+  ) {}
 
   getAllEvents(developerId: string) {
     return this.database.event.findMany({
@@ -29,6 +35,7 @@ export class EventsService {
       }
     });
   }
+
   async update(appId: string, eventId: string, updateEventDto: UpdateEventDto) {
     if (updateEventDto.name) {
       const slug = slugify(updateEventDto.name, {
@@ -59,6 +66,34 @@ export class EventsService {
       data: updateEventDto
     });
   }
+
+  async transformStakeholders(
+    stakeholders: [string, number][],
+    appId: string
+  ): Promise<{ wallet: PrefixedHexString; feePercentage: number }[]> {
+    const stakeholderPromises = stakeholders.map(
+      async ([identifier, amount]) => {
+        let walletAddress: PrefixedHexString;
+        if (isAddress(identifier)) {
+          walletAddress = identifier;
+        } else {
+          const { users } = await this.usersService.createMany(
+            { users: [{ email: identifier }] },
+            appId
+          );
+          walletAddress = users[0].smartWalletAddress;
+        }
+
+        return {
+          wallet: walletAddress,
+          feePercentage: amount
+        };
+      }
+    );
+
+    return Promise.all(stakeholderPromises);
+  }
+
   async create(
     createEventDto: CreateEventDto,
     appId: string,
@@ -70,22 +105,39 @@ export class EventsService {
       strict: true,
       trim: true
     });
-
+    
     const event = await this.database.event.create({
       data: {
         contractAddress: `${uuidv4()}-${new Date().getTime()}`,
-        ...createEventDto,
+        name: createEventDto.name,
+        description: createEventDto.description,
+        logoUrl: createEventDto.logoUrl,
         slug,
         App: { connect: { id: appId } }
       }
     });
+
+    if (createEventDto?.stakeholders && !isEmpty(createEventDto.stakeholders)) {
+      const stakeholders = await this.transformStakeholders(
+        createEventDto.stakeholders,
+        appId
+      );
+
+      await this.database.stakeholder.createMany({
+        data: stakeholders.map(sh => ({
+          walletAddress: sh.wallet,
+          feePercentage: sh.feePercentage,
+          eventId: event.id
+        }))
+      });
+    }
 
     const { metadataUrl } = await uploadMetadata({
       name: CreateEventDto.name,
       description: "",
       image: ""
     });
-    
+
     const args = {
       owner: developerWalletAddress,
       ownerSmartWallet: developerSmartWalletAddress,
@@ -102,9 +154,17 @@ export class EventsService {
       },
       data: {
         contractAddress: contract.contractAddr,
+      },
+      include: {
+        Stakeholders: {
+          select: {
+            walletAddress: true,
+            feePercentage: true
+          }
+        }
       }
     });
-
+    
     return {
       success: true,
       event: updatedEvent,

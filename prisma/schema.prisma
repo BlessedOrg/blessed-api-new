@@ -106,19 +106,33 @@ model EmailVerificationCode {
 }
 
 model Event {
-  id              String     @id @default(cuid())
+  id              String        @id @default(cuid())
   name            String
-  contractAddress String     @unique
+  contractAddress String        @unique
   description     String?
   logoUrl         String?
-  slug            String     @unique
-  App             App        @relation(fields: [appId], references: [id])
+  slug            String        @unique
+  App             App           @relation(fields: [appId], references: [id])
   appId           String
   Tickets         Ticket[]
   Entrances       Entrance[]
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @updatedAt
+  Stakeholders    Stakeholder[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
   deletedAt       DateTime?
+}
+
+model Stakeholder {
+  id            String    @id @default(cuid())
+  walletAddress String
+  feePercentage Int
+  Event         Event     @relation(fields: [eventId], references: [id])
+  eventId       String
+  Ticket        Ticket?   @relation(fields: [ticketId], references: [id])
+  ticketId      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
 }
 
 model Campaign {
@@ -187,6 +201,7 @@ model Ticket {
   TicketInteractions TicketInteraction[]
   Entrance           Entrance?
   Campaigns          Campaign[]
+  Stakeholders       Stakeholder[]
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
 

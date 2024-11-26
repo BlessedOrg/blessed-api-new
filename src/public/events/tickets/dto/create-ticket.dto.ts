@@ -1,7 +1,8 @@
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, Length, Min, registerDecorator, ValidateNested, ValidationArguments, ValidationOptions } from "class-validator";
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, Length, Min, registerDecorator, isEmail, ValidateNested, ValidationArguments, ValidationOptions } from "class-validator";
 import { AirdropEnum } from "@/common/enums.enum";
 import { Type } from "class-transformer";
 import { NameDto } from "@/common/dto/name.dto";
+import { isAddress } from "viem";
 
 export class AirdropDto {
   @IsEnum(AirdropEnum, { message: "Invalid airdrop type, available types: [attendees, holders]" })
@@ -62,6 +63,11 @@ export class CreateTicketDto extends NameDto {
   @IsBoolean({ message: "WhitelistOnly must be a boolean value" })
   @IsNotEmpty({ message: "WhitelistOnly field is required" })
   whitelistOnly: boolean;
+
+  @IsOptional()
+  @IsArray()
+  @IsValidStakeholder({ each: true })
+  stakeholders: [string, number][];
 }
 
 function IsLessThanOrEqual(property: string, validationOptions?: ValidationOptions) {
@@ -85,6 +91,31 @@ function IsLessThanOrEqual(property: string, validationOptions?: ValidationOptio
           return `${propertyName} must be less than or equal to ${relatedPropertyName}`;
         }
       }
+    });
+  };
+}
+
+export function IsValidStakeholder(validationOptions?: ValidationOptions) {
+  return function (object: Object, propertyName: string) {
+    registerDecorator({
+      name: 'isValidStakeholder',
+      target: object.constructor,
+      propertyName: propertyName,
+      options: validationOptions,
+      validator: {
+        validate(value: any, args: ValidationArguments) {
+          if (!Array.isArray(value) || value.length !== 2) {
+            return false;
+          }
+          const [address, percentage] = value;
+          const isValidAddress = isEmail(address) || isAddress(address);
+          const isValidPercentage = typeof percentage === 'number' && percentage >= 1 && percentage <= 10000;
+          return isValidAddress && isValidPercentage;
+        },
+        defaultMessage(args: ValidationArguments) {
+          return `${args.property} must be an array with a valid email or Ethereum address and a number between 1 and 10000`;
+        },
+      },
     });
   };
 }

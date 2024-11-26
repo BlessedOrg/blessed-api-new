@@ -1,4 +1,5 @@
-import { IsNotEmpty, IsOptional, IsString, IsUrl } from "class-validator";
+import { IsArray, IsNotEmpty, IsOptional, IsString, IsUrl } from "class-validator";
+import { IsValidStakeholder } from "@/public/events/tickets/dto/create-ticket.dto";
 
 export class CreateEventDto {
   @IsString()
@@ -12,4 +13,9 @@ export class CreateEventDto {
   @IsUrl()
   @IsOptional()
   logoUrl?: string;
+
+  @IsOptional()
+  @IsArray()
+  @IsValidStakeholder({ each: true })
+  stakeholders: [string, number][];
 }

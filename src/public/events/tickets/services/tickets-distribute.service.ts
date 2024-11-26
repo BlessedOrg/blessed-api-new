@@ -24,28 +24,18 @@ export class TicketsDistributeService {
     }
   ) {
     try {
-      const {
-        capsuleTokenVaultKey,
-        developerWalletAddress,
-        ticketContractAddress,
-        ticketId,
-        appId,
-        eventId
-      } = params;
+      const { capsuleTokenVaultKey, developerWalletAddress, ticketContractAddress, ticketId, appId, eventId } = params;
       const app = await this.database.app.findUnique({ where: { id: appId } });
       const { users } = await this.usersService.createMany(
-        {
-          users: distributeDto.distributions
-        },
+        { users: distributeDto.distributions },
         appId
       );
       const usersWithAmount = users.map((user) => ({
         ...user,
         userId: user.id,
-        amount: distributeDto.distributions.find((d) => d.email === user.email)
-          ?.amount
+        amount: distributeDto.distributions.find((d) => d.email === user.email)?.amount
       }));
-      const { distribution, transactionReceipt, explorerUrls } =
+      const { distribution, explorerUrls } =
         await this.distributeTickets(
           usersWithAmount,
           ticketContractAddress,
