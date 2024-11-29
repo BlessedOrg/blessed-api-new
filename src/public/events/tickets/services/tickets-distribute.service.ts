@@ -30,6 +30,8 @@ export class TicketsDistributeService {
         { users: distributeDto.distributions },
         appId
       );
+      const eventData = await this.database.event.findUnique({ where: { id: eventId } });
+      const ticketData = await this.database.ticket.findUnique({ where: { id: ticketId } }) as any;
       const usersWithAmount = users.map((user) => ({
         ...user,
         userId: user.id,
@@ -45,18 +47,14 @@ export class TicketsDistributeService {
 
       const emailsToSend = await Promise.all(
         distribution.map(async (dist) => {
-          const ticketUrls = dist.tokenIds.map(
-            (tokenId) =>
-              `${envVariables.landingPageUrl}/show-ticket?app=${app.slug}&contractId=${ticketId}&tokenId=${tokenId}&userId=${dist.userId}&eventId=${eventId}`
-          );
           return {
             recipientEmail: dist.email,
             subject: `Your ticket${dist.tokenIds.length > 0 ? "s" : ""} to ${app.name}!`,
             template: "./ticketReceive",
             context: {
-              eventName: app.name,
-              ticketUrls,
-              imageUrl: app.imageUrl ?? null,
+              eventName: eventData.name,
+              ticketsUrl: envVariables.ticketerAppUrl,
+              imageUrl: ticketData.metadataPayload?.metadataImageUrl ?? null,
               tokenIds: dist.tokenIds
             }
           };

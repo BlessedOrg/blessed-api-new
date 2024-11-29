@@ -259,7 +259,8 @@ export class EventsService {
         appId
       },
       include: {
-        Tickets: true
+        Tickets: true,
+        EventLocation: true
       }
     });
   }
