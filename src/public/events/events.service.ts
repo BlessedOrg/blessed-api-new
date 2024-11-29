@@ -17,7 +17,7 @@ import { isAddress } from "viem";
 export class EventsService {
   constructor(
     private database: DatabaseService,
-    private usersService: UsersService,
+    private usersService: UsersService
   ) {}
 
   getAllEvents(developerId: string) {
@@ -238,7 +238,7 @@ export class EventsService {
         id: event.id
       },
       data: {
-        contractAddress: contract.contractAddr,
+        contractAddress: contract.contractAddr
       },
       include: {
         Stakeholders: {
@@ -250,14 +250,7 @@ export class EventsService {
       }
     });
 
-    return {
-      success: true,
-      event: updatedEvent,
-      contract,
-      explorerUrls: {
-        contract: getExplorerUrl(contract.contractAddr)
-      }
-    }
+    return updatedEvent;
   }
 
   events(appId: string) {
