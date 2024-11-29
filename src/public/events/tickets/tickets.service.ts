@@ -201,8 +201,7 @@ export class TicketsService {
       address: ticket.Event.contractAddress as PrefixedHexString,
       functionName: "addTicket",
       args: [contract.contractAddr],
-      capsuleTokenVaultKey,
-      userWalletAddress: developerWalletAddress
+      capsuleTokenVaultKey
     });
 
     const updatedTicket = await this.database.ticket.update({
@@ -220,9 +219,9 @@ export class TicketsService {
         }
       }
     });
-    this.entranceService.create(ticket.id, { appId, eventId, developerWalletAddress, capsuleTokenVaultKey });
+    await this.entranceService.create(ticket.id, { appId, eventId, developerWalletAddress, capsuleTokenVaultKey });
 
-    const createdStakeholders = await this.database.stakeholder.createMany({
+    await this.database.stakeholder.createMany({
       data: stakeholders.map(sh => ({
         walletAddress: sh.wallet,
         feePercentage: sh.feePercentage,
