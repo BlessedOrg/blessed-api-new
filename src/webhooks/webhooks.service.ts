@@ -118,7 +118,7 @@ export class WebhooksService {
         address: erc20Address as PrefixedHexString,
         functionName: "transfer",
         args: [user.smartWalletAddress, ticketPrice]
-    });
+      });
 
       await biconomyMetaTx({
         abi: contractArtifacts["erc20"].abi,

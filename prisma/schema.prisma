@@ -13,7 +13,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model DeveloperAccount {
+model Developer {
   id                   String             @id @default(cuid())
   email                String             @unique
   walletAddress        String?            @unique
@@ -28,39 +28,38 @@ model DeveloperAccount {
 }
 
 model App {
-  id               String           @id @default(cuid())
-  slug             String           @unique
-  name             String           @unique
-  description      String?
-  imageUrl         String?
-  domainUrl        String?
-  Tickets          Ticket[]
-  DeveloperAccount DeveloperAccount @relation(fields: [developerId], references: [id])
-  developerId      String
-  Users            User[]
-  ApiTokens        ApiToken[]
-  Events           Event[]
-  Campaigns        Campaign[]
-  Audiences        Audience[]
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  name        String     @unique
+  description String?
+  imageUrl    String?
+  domainUrl   String?
+  Tickets     Ticket[]
+  Developer   Developer  @relation(fields: [developerId], references: [id])
+  developerId String
+  Users       User[]
+  ApiTokens   ApiToken[]
+  Events      Event[]
+  Campaigns   Campaign[]
+  Audiences   Audience[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 model User {
-  id                   String                @id @default(cuid())
-  email                String                @unique
-  walletAddress        String?               @unique
-  smartWalletAddress   String?               @unique
+  id                   String         @id @default(cuid())
+  email                String         @unique
+  walletAddress        String?        @unique
+  smartWalletAddress   String?        @unique
   capsuleTokenVaultKey String?
   Sessions             UserSession[]
-  TicketInteractions   TicketInteraction[]
-  EntranceInteractions EntranceInteraction[]
+  Interactions         Interaction[]
   Apps                 App[]
   Orders               Order[]
   AudienceUsers        AudienceUser[]
   EventsBouncer        EventBouncer[]
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
 }
 
 model ApiToken {
@@ -87,12 +86,12 @@ model UserSession {
 }
 
 model DeveloperSession {
-  id               String            @id @default(cuid())
-  DeveloperAccount DeveloperAccount? @relation(fields: [developerId], references: [id])
-  developerId      String?
-  expiresAt        DateTime
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  id          String     @id @default(cuid())
+  Developer   Developer? @relation(fields: [developerId], references: [id])
+  developerId String?
+  expiresAt   DateTime
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 }
 
 model EmailVerificationCode {
@@ -121,6 +120,7 @@ model Event {
   Tickets            Ticket[]
   Entrances          Entrance[]
   EventBouncers      EventBouncer[]
+  Stakeholders       Stakeholder[]
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   deletedAt          DateTime?
@@ -167,6 +167,19 @@ model EventLocation {
   countryFlag      String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+}
+
+model Stakeholder {
+  id            String    @id @default(cuid())
+  walletAddress String
+  feePercentage Int
+  Event         Event     @relation(fields: [eventId], references: [id])
+  eventId       String
+  Ticket        Ticket?   @relation(fields: [ticketId], references: [id])
+  ticketId      String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  deletedAt     DateTime?
 }
 
 model Campaign {
@@ -219,67 +232,54 @@ model AudienceUser {
 }
 
 model Ticket {
-  id                 String              @id @default(cuid())
-  address            String              @unique
-  name               String
-  slug               String
-  DevelopersAccount  DeveloperAccount?   @relation(fields: [developerId], references: [id])
-  developerId        String?
-  metadataUrl        String?
-  metadataPayload    Json
-  App                App                 @relation(fields: [appId], references: [id])
-  appId              String
-  Event              Event               @relation(fields: [eventId], references: [id])
-  eventId            String
-  Orders             Order[]
-  TicketInteractions TicketInteraction[]
-  Entrance           Entrance?
-  entranceId         String?             @unique
-  Campaigns          Campaign[]
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
+  id              String        @id @default(cuid())
+  address         String        @unique
+  name            String
+  slug            String
+  Developer       Developer?    @relation(fields: [developerId], references: [id])
+  developerId     String?
+  metadataUrl     String?
+  metadataPayload Json
+  App             App           @relation(fields: [appId], references: [id])
+  appId           String
+  Event           Event         @relation(fields: [eventId], references: [id])
+  eventId         String
+  Orders          Order[]
+  Interactions    Interaction[]
+  Entrance        Entrance?
+  entranceId      String?       @unique
+  Campaigns       Campaign[]
+  Stakeholders    Stakeholder[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@unique([slug, eventId])
 }
 
 model Entrance {
-  id                  String                @id @default(cuid())
-  address             String                @unique
-  metadataUrl         String?
-  metadataPayload     Json
-  Event               Event                 @relation(fields: [eventId], references: [id])
-  eventId             String
-  Ticket              Ticket?               @relation(fields: [ticketId], references: [id])
-  ticketId            String?               @unique
-  EntranceInteraction EntranceInteraction[]
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
+  id              String        @id @default(cuid())
+  address         String        @unique
+  metadataUrl     String?
+  metadataPayload Json
+  Event           Event         @relation(fields: [eventId], references: [id])
+  eventId         String
+  Ticket          Ticket?       @relation(fields: [ticketId], references: [id])
+  ticketId        String?       @unique
+  Interactions    Interaction[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
 
   @@unique([ticketId, eventId])
 }
 
-model TicketInteraction {
-  id        String                       @id @default(cuid())
-  User      User                         @relation(fields: [userId], references: [id])
-  userId    String
-  Ticket    Ticket                       @relation(fields: [ticketId], references: [id])
-  ticketId  String
-  method    String
-  txHash    String
-  output    Json?
-  input     Json?
-  fees      String?
-  type      SmartContractInteractionType
-  createdAt DateTime                     @default(now())
-  updatedAt DateTime                     @updatedAt
-}
-
-model EntranceInteraction {
+model Interaction {
   id         String                       @id @default(cuid())
   User       User                         @relation(fields: [userId], references: [id])
   userId     String
-  Entrance   Entrance                     @relation(fields: [entranceId], references: [id])
-  entranceId String
+  Ticket     Ticket?                      @relation(fields: [ticketId], references: [id])
+  ticketId   String?
+  Entrance   Entrance?                    @relation(fields: [entranceId], references: [id])
+  entranceId String?
   method     String
   txHash     String
   output     Json?

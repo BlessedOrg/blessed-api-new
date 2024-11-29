@@ -1,5 +1,6 @@
-import { IsISO8601, IsNotEmpty, IsOptional, IsString, IsUrl, ValidateNested } from "class-validator";
+import { IsArray, IsISO8601, IsNotEmpty, IsOptional, IsString, IsUrl, ValidateNested } from "class-validator";
 import { Type } from "class-transformer";
+import { IsValidStakeholder } from "@/public/events/tickets/dto/create-ticket.dto";
 
 export class EventLocationDto {
   @IsString()
@@ -88,4 +89,9 @@ export class CreateEventDto {
   @IsISO8601()
   @IsOptional()
   endsAt?: Date;
+
+  @IsOptional()
+  @IsArray()
+  @IsValidStakeholder({ each: true })
+  stakeholders: [string, number][];
 }
