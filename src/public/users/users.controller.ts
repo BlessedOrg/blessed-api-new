@@ -36,9 +36,9 @@ export class UsersController {
 
   @RequireApiKey()
   @Get(":userId")
-  user(@Req() req: RequestWithApiKey, @Param("userId") userId: string) {
+  getUserData(@Req() req: RequestWithApiKey, @Param("userId") userId: string) {
     const { appId } = req;
-    return this.usersService.user(appId, userId);
+    return this.usersService.getUserData(appId, userId);
   }
 
   @RequireApiKey()

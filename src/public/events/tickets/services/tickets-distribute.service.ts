@@ -24,28 +24,20 @@ export class TicketsDistributeService {
     }
   ) {
     try {
-      const {
-        capsuleTokenVaultKey,
-        developerWalletAddress,
-        ticketContractAddress,
-        ticketId,
-        appId,
-        eventId
-      } = params;
+      const { capsuleTokenVaultKey, developerWalletAddress, ticketContractAddress, ticketId, appId, eventId } = params;
       const app = await this.database.app.findUnique({ where: { id: appId } });
       const { users } = await this.usersService.createMany(
-        {
-          users: distributeDto.distributions
-        },
+        { users: distributeDto.distributions },
         appId
       );
+      const eventData = await this.database.event.findUnique({ where: { id: eventId } });
+      const ticketData = await this.database.ticket.findUnique({ where: { id: ticketId } }) as any;
       const usersWithAmount = users.map((user) => ({
         ...user,
         userId: user.id,
-        amount: distributeDto.distributions.find((d) => d.email === user.email)
-          ?.amount
+        amount: distributeDto.distributions.find((d) => d.email === user.email)?.amount
       }));
-      const { distribution, transactionReceipt, explorerUrls } =
+      const { distribution, explorerUrls } =
         await this.distributeTickets(
           usersWithAmount,
           ticketContractAddress,
@@ -55,18 +47,14 @@ export class TicketsDistributeService {
 
       const emailsToSend = await Promise.all(
         distribution.map(async (dist) => {
-          const ticketUrls = dist.tokenIds.map(
-            (tokenId) =>
-              `${envVariables.landingPageUrl}/show-ticket?app=${app.slug}&contractId=${ticketId}&tokenId=${tokenId}&userId=${dist.userId}&eventId=${eventId}`
-          );
           return {
             recipientEmail: dist.email,
             subject: `Your ticket${dist.tokenIds.length > 0 ? "s" : ""} to ${app.name}!`,
             template: "./ticketReceive",
             context: {
-              eventName: app.name,
-              ticketUrls,
-              imageUrl: app.imageUrl ?? null,
+              eventName: eventData.name,
+              ticketsUrl: envVariables.ticketerAppUrl,
+              imageUrl: ticketData.metadataPayload?.metadataImageUrl ?? null,
               tokenIds: dist.tokenIds
             }
           };

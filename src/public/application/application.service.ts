@@ -6,7 +6,7 @@ export class ApplicationService {
   constructor(private database: DatabaseService) {}
 
   getOwner(developerId: string) {
-    return this.database.developerAccount.findUnique({
+    return this.database.developer.findUnique({
       where: { id: developerId },
       include: {
         Apps: {

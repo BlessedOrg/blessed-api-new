@@ -1,32 +1,38 @@
 import { HttpException, Injectable } from "@nestjs/common";
 import { DatabaseService } from "@/common/services/database/database.service";
-import { CreateEntranceDto } from "@/public/events/entrance/dto/create-entrance.dto";
 import { uploadMetadata } from "@/lib/irys";
 import { getSmartWalletForCapsuleWallet } from "@/lib/capsule";
 import { contractArtifacts, deployContract, getExplorerUrl, readContract } from "@/lib/viem";
-import { EntryDto } from "@/public/events/entrance/dto/entry.dto";
 import { biconomyMetaTx } from "@/lib/biconomy";
 import { PrefixedHexString } from "ethereumjs-util";
-import slugify from "slugify";
 
 @Injectable()
 export class EntranceService {
   constructor(private database: DatabaseService) {}
 
-  all(appId: string) {
+  all(eventId: string) {
     return this.database.entrance.findMany({
       where: {
-        appId
+        eventId
       }
     });
   }
 
   async create(
-    createEntranceDto: CreateEntranceDto,
-    req: RequestWithApiKey & EventValidate
+    ticketId: string,
+    req: {
+      developerWalletAddress: string;
+      capsuleTokenVaultKey: string;
+      eventId: string;
+      appId: string;
+    }
   ) {
-    const { appId, developerWalletAddress, capsuleTokenVaultKey, eventId } =
+    const { developerWalletAddress, capsuleTokenVaultKey, eventId, appId } =
       req;
+    const ticket = await this.database.ticket.findUnique({ where: { id: ticketId, appId }, include: { Entrance: true } });
+    if (ticket?.Entrance) {
+      throw new HttpException("Entrance already exists for this ticket", 400);
+    }
     const event = await this.database.event.findUnique({
       where: { id: eventId }
     });
@@ -43,35 +49,24 @@ export class EntranceService {
       const smartWallet = await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
       const ownerSmartWallet = await smartWallet.getAccountAddress();
 
-      const ticket = await this.database.ticket.findUnique({
-        where: { address: createEntranceDto.ticketAddress }
-      });
       const args = {
         owner: developerWalletAddress,
         ownerSmartWallet,
-        ticketAddress: createEntranceDto.ticketAddress
+        ticketAddress: ticket.address
       };
 
       const contract = await deployContract(contractName, Object.values(args));
       console.log("⛓️ Contract Explorer URL: ", getExplorerUrl(contract.contractAddr));
-      const slug = slugify(createEntranceDto.name, {
-        lower: true,
-        strict: true,
-        trim: true
-      });
+
       const entrance = await this.database.entrance.create({
         data: {
           address: contract.contractAddr,
-          name: createEntranceDto.name,
           metadataUrl,
-          slug,
           metadataPayload: {
             ...metadataPayload,
             ...(metadataImageUrl && { metadataImageUrl })
           },
-          App: { connect: { id: appId } },
           Event: { connect: { id: req.eventId } },
-          DevelopersAccount: { connect: { id: req.developerId } },
           Ticket: { connect: { id: ticket.id } }
         }
       });
@@ -90,23 +85,22 @@ export class EntranceService {
   }
 
   async entry(
-    entryDto: EntryDto,
-    entranceId: string,
-    req: RequestWithApiKeyAndUserAccessToken
+    decodedCodeData: ITicketQrCodePayload
   ) {
     try {
-      const { walletAddress, capsuleTokenVaultKey } = req;
-      const { ticketId } = entryDto;
+      const { eventId, ticketId, tokenId, ticketHolderId } = decodedCodeData;
       const entranceRecord = await this.database.entrance.findUnique({
-        where: { id: entranceId }
+        where: { eventId, ticketId }
       });
       if (!entranceRecord.address) {
         throw new Error(
-          `Wrong parameters. Smart contract entrance from app ${req.appSlug} not found.`
+          `Wrong parameters. Smart contract entrance not found.`
         );
       }
+      const ticketHolder = await this.database.user.findUnique({ where: { id: ticketHolderId } });
+      const { capsuleTokenVaultKey } = ticketHolder;
       const contractAddress = entranceRecord.address as PrefixedHexString;
-      const smartWallet = await getSmartWalletForCapsuleWallet(req.capsuleTokenVaultKey);
+      const smartWallet = await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
       const ownerSmartWallet = await smartWallet.getAccountAddress();
       const isAlreadyEntered = await readContract({
         abi: contractArtifacts["entrance"].abi,
@@ -120,8 +114,7 @@ export class EntranceService {
           abi: contractArtifacts["entrance"].abi,
           address: contractAddress,
           functionName: "entry",
-          args: [ticketId],
-          userWalletAddress: walletAddress as PrefixedHexString,
+          args: [tokenId],
           capsuleTokenVaultKey
         });
 
@@ -135,23 +128,26 @@ export class EntranceService {
           transactionReceipt: metaTxResult.data.transactionReceipt
         };
       } else {
-        return { message: "Already entered" };
+        throw new Error("Already entered");
       }
     } catch (e) {
       throw new HttpException(e.message, 500);
     }
   }
 
-  async entries(entranceId: string) {
+  async entries(ticketId: string) {
     try {
-      const entranceRecord = await this.database.entrance.findUnique({
+      const ticketEntranceRecord = await this.database.ticket.findUnique({
         where: {
-          id: entranceId
+          id: ticketId
+        },
+        include: {
+          Entrance: true
         }
       });
       const entries = await readContract({
         abi: contractArtifacts["entrance"].abi,
-        address: entranceRecord.address,
+        address: ticketEntranceRecord.Entrance.address,
         functionName: "getEntries"
       });
       const formattedEntries = [];

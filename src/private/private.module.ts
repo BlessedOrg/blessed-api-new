@@ -5,6 +5,7 @@ import { AudiencesModule } from "@/private/audiences/audiences.module";
 import { TicketsModule } from "@/private/tickets/tickets.module";
 import { EventsModule } from "@/private/events/events.module";
 import { CampaignsModule } from "@/private/campaigns/campaigns.module";
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -13,7 +14,8 @@ import { CampaignsModule } from "@/private/campaigns/campaigns.module";
     AudiencesModule,
     TicketsModule,
     EventsModule,
-    CampaignsModule
+    CampaignsModule,
+    UsersModule
   ],
   controllers: [],
   providers: []

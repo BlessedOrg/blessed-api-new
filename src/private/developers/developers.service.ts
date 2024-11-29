@@ -15,7 +15,7 @@ export class DevelopersService {
     private database: DatabaseService
   ) {}
   getDeveloper(developerId: string) {
-    return this.database.developerAccount.findUnique({ where: { id: developerId } });
+    return this.database.developer.findUnique({ where: { id: developerId } });
   }
   login(emailDto: EmailDto) {
     const { email } = emailDto;
@@ -59,7 +59,7 @@ export class DevelopersService {
     try {
       const { code } = codeDto;
       const { email } = await this.emailService.verifyEmailVerificationCode(code);
-      const developerExists = await this.database.developerAccount.findUnique({ where: { email } });
+      const developerExists = await this.database.developer.findUnique({ where: { email } });
       if (!developerExists) {
         return this.createDeveloperAccount(email);
       }
@@ -71,7 +71,7 @@ export class DevelopersService {
 
   private createDeveloperAccount = async (email: string) => {
     const createdDeveloperAccount: any =
-      await this.database.developerAccount.create({
+      await this.database.developer.create({
         data: {
           email
         }
@@ -83,7 +83,7 @@ export class DevelopersService {
         "developer"
       );
       const { capsuleTokenVaultKey, walletAddress, smartWalletAddress } = capsuleData;
-      await this.database.developerAccount.update({
+      await this.database.developer.update({
         where: { id: createdDeveloperAccount.id },
         data: {
           walletAddress,
@@ -105,7 +105,7 @@ export class DevelopersService {
         message: "Account created successfully"
       };
     } catch (e) {
-      await this.database.developerAccount.delete({
+      await this.database.developer.delete({
         where: { id: createdDeveloperAccount.id }
       });
       throw new HttpException(e.message, HttpStatus.INTERNAL_SERVER_ERROR);

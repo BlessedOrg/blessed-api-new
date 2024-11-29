@@ -20,6 +20,9 @@ export class SessionService {
   ) {}
 
   async checkIsSessionValid(id: string, type: AccountType) {
+    if (!id) {
+      throw new UnauthorizedException("Invalid session token");
+    }
     let session;
     if (type === "developer") {
       session = await this.database.developerSession.findFirst({
@@ -56,7 +59,7 @@ export class SessionService {
   }
 
   private updateDeveloperSession = async (email: string) => {
-    const developer = await this.database.developerAccount.findUnique({
+    const developer = await this.database.developer.findUnique({
       where: { email }
     });
     if (!developer) {
@@ -117,7 +120,7 @@ export class SessionService {
       if (!vaultItem?.id) {
         throw new Error("❌VAULT ITEM NOT CREATED");
       } else {
-        await this.database.developerAccount.update({
+        await this.database.developer.update({
           where: { id: developer.id },
           data: {
             accessTokenVaultKey: vaultItem.id

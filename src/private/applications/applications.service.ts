@@ -75,7 +75,6 @@ export class ApplicationsService {
         _count: {
           select: {
             Tickets: true,
-            Entrances: true,
             Users: true
           }
         }
