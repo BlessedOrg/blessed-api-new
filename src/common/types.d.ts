@@ -55,4 +55,12 @@ declare global {
   type RequestWithApiKey = Request & ApiTokenJWT;
   type RequestWithApiKeyOrDevAccessToken = Request & (DeveloperAccessTokenJWT | ApiTokenJWT);
   type RequestWithApiKeyAndUserAccessToken = Request & RequestWithApiKey & RequestWithUserAccessToken;
+
+  // tickets
+  interface ITicketQrCodePayload {
+    eventId: string,
+    ticketId: string,
+    tokenId: number,
+    ticketHolderId: string
+  }
 }

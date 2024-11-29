@@ -1,4 +1,4 @@
-import { HttpException, Injectable } from "@nestjs/common";
+import { BadRequestException, HttpException, Injectable } from "@nestjs/common";
 import { CreateTicketDto, SnapshotDto } from "@/public/events/tickets/dto/create-ticket.dto";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { uploadMetadata } from "@/lib/irys";
@@ -22,6 +22,8 @@ import Stripe from "stripe";
 import { v4 as uuidv4 } from "uuid";
 import { stripe } from "@/lib/stripe";
 import { logoBase64 } from "@/utils/logo_base64";
+import { EntranceService } from "@/public/events/entrance/entrance.service";
+import { decryptQrCodePayload, encryptQrCodePayload } from "@/utils/eventKey";
 
 @Injectable()
 export class TicketsService {
@@ -30,6 +32,7 @@ export class TicketsService {
   constructor(
     private database: DatabaseService,
     private usersService: UsersService,
+    private entranceService: EntranceService,
     private ticketSnapshotService: TicketsSnapshotService,
     private ticketDistributeService: TicketsDistributeService,
     private ticketDistributeCampaignService: TicketsDistributeCampaignService
@@ -79,6 +82,7 @@ export class TicketsService {
     }
     return formattedTickets;
   }
+
   async snapshot(snapshotDto: SnapshotDto) {
     return this.ticketSnapshotService.snapshot(snapshotDto);
   }
@@ -195,6 +199,8 @@ export class TicketsService {
         }
       }
     });
+    this.entranceService.create(ticket.id, { appId, eventId, developerWalletAddress, capsuleTokenVaultKey });
+
     return {
       success: true,
       ticket: updatedTicket,
@@ -413,10 +419,10 @@ export class TicketsService {
     }
   }
 
-  contracts(appId: string) {
+  getAllEventTickets(eventId: string) {
     return this.database.ticket.findMany({
       where: {
-        appId
+        eventId
       }
     });
   }
@@ -628,6 +634,99 @@ export class TicketsService {
     }
   }
 
+  async getOwnedTickets(userId: string) {
+    const user = await this.database.user.findUnique({ where: { id: userId }, include: { Apps: { include: { Events: { include: { EventLocation: true, Tickets: { where: { address: { contains: "0x" } }, include: { Entrance: true } } } } } } } });
+    if (!user) {
+      throw new HttpException("User does not exist", 404);
+    }
+    let ownedTickets = [];
+    try {
+      for (const event of user.Apps.flatMap(app => app.Events)) {
+        const { Tickets, ...eventData } = event;
+        const eventKey = await this.database.eventKey.findUnique({ where: { eventId: event.id } });
+        let ownedTicketsOfEvent = [];
+        let hasEventEntry = false;
+
+        for (const ticket of event.Tickets) {
+          const { Entrance, ...ticketData } = ticket;
+          const ownedTokens = await readContract({
+            abi: contractArtifacts["tickets"].abi,
+            address: ticket.address,
+            functionName: "getTokensByUser",
+            args: [user.smartWalletAddress]
+          }) as BigInt[];
+          const ownedTokenIds = ownedTokens.map(i => Number(i));
+          let usedTokenIds = [];
+          if (ticket?.Entrance) {
+            const entranceEntries = await readContract({
+              abi: contractArtifacts["entrance"].abi,
+              address: ticket.Entrance.address,
+              functionName: "getEntries",
+              args: []
+            }) as { ticketId: BigInt, timestamp: BigInt, wallet: string }[];
+            const usedToken = entranceEntries.find((entry: any) => ownedTokenIds.includes(Number(entry?.ticketId)));
+
+            if (!!usedToken?.ticketId) {
+              usedTokenIds.push(Number(usedToken?.ticketId));
+            }
+            hasEventEntry = usedToken?.wallet?.toLowerCase() === user.smartWalletAddress.toLowerCase();
+          }
+          if (!!ownedTokenIds.length) {
+            const qrCodesPerToken = [];
+            for (const tokenId of ownedTokenIds) {
+              qrCodesPerToken.push({
+                code: encryptQrCodePayload({
+                  eventId: eventData.id,
+                  ticketId: ticketData.id,
+                  ticketHolderId: user.id,
+                  tokenId
+                }, eventKey.key),
+                tokenId,
+                eventId: eventData.id,
+                ticketId: ticketData.id
+              });
+            }
+            ownedTicketsOfEvent.push({
+              ticket: ticketData,
+              usedTokenIds,
+              ownedTokenIds,
+              qrCodesPerToken
+            });
+          }
+        }
+        if (!!ownedTicketsOfEvent.length) {
+          ownedTickets.push({
+            event: eventData,
+            ownedTicketsOfEvent,
+            hasEventEntry
+          });
+        }
+      }
+    } catch (e) {
+      console.log(e);
+      throw new HttpException(e.message, 500);
+    }
+    return ownedTickets;
+  }
+
+  eventTicketEntries(ticketId: string) {
+    return this.entranceService.entries(ticketId);
+  }
+
+  async verifyUserTicket(body: { code: string, eventId: string, ticketId: string }, bouncerId: string) {
+    const { code, eventId, ticketId } = body;
+    const bouncerData = await this.database.user.findUnique({ where: { id: bouncerId }, include: { EventsBouncer: { include: { Event: { include: { Tickets: true } } } } } });
+
+    if (!bouncerData.EventsBouncer.some(eventBouncer => eventBouncer.eventId === eventId && eventBouncer.Event.Tickets.some(ticket => ticket.id === ticketId))) {
+      throw new HttpException("User is not allowed to verify tickets", 403);
+    }
+    const eventKey = await this.database.eventKey.findUnique({ where: { eventId } });
+    const decodedCodeData = decryptQrCodePayload(code, eventKey.key);
+    if (!decodedCodeData?.ticketHolderId) {
+      throw new BadRequestException("Invalid QR code");
+    }
+    return this.entranceService.entry(decodedCodeData);
+  }
   private async getTicketHolders(
     ticketContractAddress: string,
     pagination: { start?: number; pageSize?: number } = {

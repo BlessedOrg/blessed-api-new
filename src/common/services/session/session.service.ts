@@ -20,6 +20,9 @@ export class SessionService {
   ) {}
 
   async checkIsSessionValid(id: string, type: AccountType) {
+    if (!id) {
+      throw new UnauthorizedException("Invalid session token");
+    }
     let session;
     if (type === "developer") {
       session = await this.database.developerSession.findFirst({

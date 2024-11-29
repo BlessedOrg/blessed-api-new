@@ -110,8 +110,8 @@ export class TicketsController {
   }
 
   @Get()
-  contracts(@Req() req: RequestWithApiKey) {
-    return this.ticketsService.contracts(req.appId);
+  getAllEventTickets(@Req() req: RequestWithApiKey & EventValidate) {
+    return this.ticketsService.getAllEventTickets(req.eventId);
   }
 
   @UseTicketIdInterceptor()
