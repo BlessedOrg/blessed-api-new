@@ -49,7 +49,7 @@ export class TicketsDistributeService {
         distribution.map(async (dist) => {
           return {
             recipientEmail: dist.email,
-            subject: `Your ticket${dist.tokenIds.length > 0 ? "s" : ""} to ${app.name}!`,
+            subject: `Your ticket${dist.tokenIds.length > 0 ? "s" : ""} to ${eventData.name}!`,
             template: "./ticketReceive",
             context: {
               eventName: eventData.name,
