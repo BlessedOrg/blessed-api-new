@@ -15,9 +15,9 @@ export class UsersController {
   }
 
   @RequireUserAuth()
-  @Get("events-permissions")
-  async getUserEventsPermissions(@Req() req: RequestWithUserAccessToken) {
-    return await this.usersService.getUserEventsPermissions(req.userId);
+  @Get("events-bouncer")
+  async getUserEventsBouncer(@Req() req: RequestWithUserAccessToken) {
+    return await this.usersService.getUserEventsBouncer(req.userId);
   }
 
   @Post("login")

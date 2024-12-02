@@ -42,7 +42,7 @@ export class UsersService {
     return user;
   }
 
-  async getUserEventsPermissions(userId: string) {
+  async getUserEventsBouncer(userId: string) {
     const userWithEventsData = await this.database.event.findMany({ where: { EventBouncers: { some: { userId } } }, include: { EventLocation: true } });
     if (!userWithEventsData) {
       throw new HttpException("User does not exist", 404);

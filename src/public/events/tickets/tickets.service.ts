@@ -657,7 +657,26 @@ export class TicketsService {
   }
 
   async getOwnedTickets(userId: string) {
-    const user = await this.database.user.findUnique({ where: { id: userId }, include: { Apps: { include: { Events: { include: { EventLocation: true, Tickets: { where: { address: { contains: "0x" } }, include: { Entrance: true } } } } } } } });
+    const user = await this.database.user.findUnique({
+      where: {
+        id: userId
+      },
+      include: {
+        Apps: {
+          include: {
+            Events: {
+              include: {
+                EventLocation: true,
+                Tickets: {
+                  where: { address: { contains: "0x" } },
+                  include: { Entrance: true }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
     if (!user) {
       throw new HttpException("User does not exist", 404);
     }
