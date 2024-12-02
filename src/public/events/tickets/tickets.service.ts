@@ -737,7 +737,7 @@ export class TicketsService {
 
   async verifyUserTicket(body: { code: string, eventId: string, ticketId: string }, bouncerId: string) {
     const { code, eventId, ticketId } = body;
-    const bouncerData = await this.database.user.findUnique({ where: { id: bouncerId }, include: { EventsBouncer: { include: { Event: { include: { Tickets: true } } } } } });
+    const bouncerData = await this.database.user.findUnique({ where: { id: bouncerId }, include: { EventBouncers: { include: { Event: { include: { Tickets: true } } } } } });
 
     if (!bouncerData.EventBouncers.some(eventBouncer => eventBouncer.eventId === eventId && eventBouncer.Event.Tickets.some(ticket => ticket.id === ticketId))) {
       throw new HttpException("User is not allowed to verify tickets", 403);
