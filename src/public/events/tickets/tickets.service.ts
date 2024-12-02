@@ -739,7 +739,7 @@ export class TicketsService {
     const { code, eventId, ticketId } = body;
     const bouncerData = await this.database.user.findUnique({ where: { id: bouncerId }, include: { EventsBouncer: { include: { Event: { include: { Tickets: true } } } } } });
 
-    if (!bouncerData.EventsBouncer.some(eventBouncer => eventBouncer.eventId === eventId && eventBouncer.Event.Tickets.some(ticket => ticket.id === ticketId))) {
+    if (!bouncerData.EventBouncers.some(eventBouncer => eventBouncer.eventId === eventId && eventBouncer.Event.Tickets.some(ticket => ticket.id === ticketId))) {
       throw new HttpException("User is not allowed to verify tickets", 403);
     }
     const eventKey = await this.database.eventKey.findUnique({ where: { eventId } });

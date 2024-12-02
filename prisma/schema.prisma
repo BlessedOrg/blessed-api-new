@@ -57,7 +57,7 @@ model User {
   Apps                 App[]
   Orders               Order[]
   AudienceUsers        AudienceUser[]
-  EventsBouncer        EventBouncer[]
+  EventBouncers        EventBouncer[]
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
 }

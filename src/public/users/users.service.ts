@@ -78,11 +78,13 @@ export class UsersService {
   }
 
   private async createUserAccount(email: string, appId: string) {
+    const app = await this.database.app.findUnique({ where: { id: appId } });
+    const creationPayload = app?.id ? { Apps: { connect: { id: app.id } } } : {};
     try {
       const createdUserAccount: any = await this.database.user.create({
         data: {
           email,
-          Apps: { connect: { id: appId } }
+          ...creationPayload
         }
       });
       const { data } = await createCapsuleAccount(createdUserAccount.id, email, "user");
