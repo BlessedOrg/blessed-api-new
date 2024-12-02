@@ -19,9 +19,7 @@ export class TicketsSnapshotService {
   async snapshot(snapshotDto: SnapshotDto) {
     try {
       const { snapshot } = snapshotDto;
-
-      const { tickets, entrances } =
-        await this.getTicketsAndEntrances(snapshot);
+      const { tickets, entrances } = await this.getTicketsAndEntrances(snapshot);
 
       const [eligibleUsersForTicketHold, eligibleUsersForEntrance] = await Promise.all([
         this.getEligibleUsersForTicketHold(tickets),
@@ -174,8 +172,7 @@ export class TicketsSnapshotService {
     return Promise.all(
       entrances.map(async (entrance) => {
         try {
-          const { entries, externalAddresses } =
-            await this.entranceService.entries(entrance.id);
+          const { entries, externalAddresses } = await this.entranceService.entries(entrance.ticketId);
           return {
             externalAddresses,
             entries

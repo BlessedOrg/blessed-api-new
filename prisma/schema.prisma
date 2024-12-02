@@ -21,7 +21,6 @@ model Developer {
   accessTokenVaultKey  String?
   capsuleTokenVaultKey String?
   Tickets              Ticket[]
-  Entrances            Entrance[]
   Apps                 App[]
   Sessions             DeveloperSession[]
   createdAt            DateTime           @default(now())
@@ -36,7 +35,6 @@ model App {
   imageUrl    String?
   domainUrl   String?
   Tickets     Ticket[]
-  Entrances   Entrance[]
   Developer   Developer  @relation(fields: [developerId], references: [id])
   developerId String
   Users       User[]
@@ -59,6 +57,7 @@ model User {
   Apps                 App[]
   Orders               Order[]
   AudienceUsers        AudienceUser[]
+  EventBouncers        EventBouncer[]
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
 }
@@ -117,12 +116,35 @@ model Event {
   App                App            @relation(fields: [appId], references: [id])
   appId              String
   EventLocation      EventLocation?
+  EventKey           EventKey?
   Tickets            Ticket[]
   Entrances          Entrance[]
+  EventBouncers      EventBouncer[]
   Stakeholders       Stakeholder[]
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   deletedAt          DateTime?
+}
+
+model EventKey {
+  id        String   @id @default(cuid())
+  key       String
+  Event     Event    @relation(fields: [eventId], references: [id])
+  eventId   String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EventBouncer {
+  id        String    @id @default(cuid())
+  User      User      @relation(fields: [userId], references: [id])
+  userId    String
+  Event     Event     @relation(fields: [eventId], references: [id])
+  eventId   String
+  isActive  Boolean   @default(true)
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 }
 
 model EventLocation {
@@ -225,6 +247,7 @@ model Ticket {
   Orders          Order[]
   Interactions    Interaction[]
   Entrance        Entrance?
+  entranceId      String?       @unique
   Campaigns       Campaign[]
   Stakeholders    Stakeholder[]
   createdAt       DateTime      @default(now())
@@ -236,14 +259,8 @@ model Ticket {
 model Entrance {
   id              String        @id @default(cuid())
   address         String        @unique
-  name            String
-  slug            String
-  Developer       Developer?    @relation(fields: [developerId], references: [id])
-  developerId     String?
   metadataUrl     String?
   metadataPayload Json
-  App             App           @relation(fields: [appId], references: [id])
-  appId           String
   Event           Event         @relation(fields: [eventId], references: [id])
   eventId         String
   Ticket          Ticket?       @relation(fields: [ticketId], references: [id])
@@ -252,7 +269,7 @@ model Entrance {
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
-  @@unique([slug, eventId])
+  @@unique([ticketId, eventId])
 }
 
 model Interaction {

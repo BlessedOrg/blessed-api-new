@@ -34,13 +34,30 @@ export class UsersService {
   allUsers(appId: string) {
     return this.database.user.findMany({ where: { Apps: { some: { id: appId } } } });
   }
-  async user(appId: string, userId: string) {
+  async getUserData(appId: string, userId: string) {
     const user = await this.database.user.findUnique({ where: { id: userId, Apps: { some: { id: appId } } } });
     if (!user) {
       throw new HttpException("User does not exist", 404);
     }
     return user;
   }
+
+  async getUserEventsBouncer(userId: string) {
+    const userWithEventsData = await this.database.event.findMany({ where: { EventBouncers: { some: { userId } } }, include: { EventLocation: true } });
+    if (!userWithEventsData) {
+      throw new HttpException("User does not exist", 404);
+    }
+    return userWithEventsData;
+  }
+
+  async getUserById(userId: string) {
+    const user = await this.database.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      throw new HttpException("User does not exist", 404);
+    }
+    return user;
+  }
+
   login(emailDto: EmailDto) {
     const { email } = emailDto;
     return this.emailService.sendVerificationCodeEmail(email);
@@ -61,11 +78,13 @@ export class UsersService {
   }
 
   private async createUserAccount(email: string, appId: string) {
+    const app = await this.database.app.findUnique({ where: { id: appId } });
+    const creationPayload = app?.id ? { Apps: { connect: { id: app.id } } } : {};
     try {
       const createdUserAccount: any = await this.database.user.create({
         data: {
           email,
-          Apps: { connect: { id: appId } }
+          ...creationPayload
         }
       });
       const { data } = await createCapsuleAccount(createdUserAccount.id, email, "user");
@@ -89,7 +108,7 @@ export class UsersService {
           id: createdUserAccount.id,
           email,
           walletAddress,
-          smartWalletAddress,
+          smartWalletAddress
         },
         message: "User created successfully"
       };

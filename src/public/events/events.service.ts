@@ -7,15 +7,17 @@ import { deployContract, getExplorerUrl } from "@/lib/viem";
 import { PrefixedHexString } from "ethereumjs-util";
 import { uploadMetadata } from "@/lib/irys";
 import { v4 as uuidv4 } from "uuid";
+import { EmailDto } from "@/common/dto/email.dto";
+import { UsersService } from "@/public/users/users.service";
+import { generateEventKey } from "@/utils/eventKey";
 import { isEmpty } from "lodash";
 import { isAddress } from "viem";
-import { UsersService } from "@/public/users/users.service";
 
 @Injectable()
 export class EventsService {
   constructor(
     private database: DatabaseService,
-    private usersService: UsersService,
+    private usersService: UsersService
   ) {}
 
   getAllEvents(developerId: string) {
@@ -155,6 +157,7 @@ export class EventsService {
     if (existingEvent) {
       throw new ConflictException("Event with this name already exists");
     }
+
     const event = await this.database.event.create({
       data: {
         contractAddress: `${uuidv4()}-${new Date().getTime()}`,
@@ -162,6 +165,12 @@ export class EventsService {
         ...eventData,
         slug,
         App: { connect: { id: appId } }
+      }
+    });
+    await this.database.eventKey.create({
+      data: {
+        eventId: event.id,
+        key: generateEventKey()
       }
     });
 
@@ -229,7 +238,7 @@ export class EventsService {
         id: event.id
       },
       data: {
-        contractAddress: contract.contractAddr,
+        contractAddress: contract.contractAddr
       },
       include: {
         Stakeholders: {
@@ -241,14 +250,7 @@ export class EventsService {
       }
     });
 
-    return {
-      success: true,
-      event: updatedEvent,
-      contract,
-      explorerUrls: {
-        contract: getExplorerUrl(contract.contractAddr)
-      }
-    }
+    return updatedEvent;
   }
 
   events(appId: string) {
@@ -257,7 +259,8 @@ export class EventsService {
         appId
       },
       include: {
-        Tickets: true
+        Tickets: true,
+        EventLocation: true
       }
     });
   }
@@ -280,8 +283,6 @@ export class EventsService {
             Entrance: {
               select: {
                 id: true,
-                name: true,
-                slug: true,
                 address: true,
                 createdAt: true
               }
@@ -291,8 +292,6 @@ export class EventsService {
         Entrances: {
           select: {
             id: true,
-            name: true,
-            slug: true,
             address: true,
             createdAt: true
           }
@@ -309,7 +308,43 @@ export class EventsService {
       },
       include: {
         Tickets: true,
-        EventLocation: true
+        EventLocation: true,
+        EventBouncers: {
+          include: {
+            User: {
+              select: {
+                id: true,
+                email: true
+              }
+            }
+          }
+        }
+      }
+    });
+  }
+
+  async addEventBouncer(appId: string, eventId: string, emailDto: EmailDto) {
+    let userAccount = await this.database.user.findUnique({ where: { email: emailDto.email } }) as any;
+    if (!userAccount) {
+      const createdUsers = await this.usersService.createMany({ users: [emailDto] }, appId);
+      userAccount = createdUsers.users[0];
+    }
+    return this.database.eventBouncer.create({
+      data: {
+        Event: { connect: { id: eventId } },
+        User: { connect: { id: userAccount.id } }
+      }
+    });
+  }
+
+  async removeEventBouncer(appId: string, eventId: string, emailDto: EmailDto) {
+    const bouncer = await this.database.eventBouncer.findFirst({ where: { User: { email: emailDto.email }, eventId } }) as any;
+    if (!bouncer) {
+      throw new NotFoundException("Bouncer not found");
+    }
+    return this.database.eventBouncer.delete({
+      where: {
+        id: bouncer.id
       }
     });
   }
