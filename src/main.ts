@@ -14,6 +14,7 @@ async function bootstrap() {
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true
   });
+  app.use("/api/v1/webhooks/stripe", express.raw({ type: "application/json" }));
   app.setGlobalPrefix("/api/v1");
   app.useGlobalPipes(
     new ValidationPipe({
@@ -24,8 +25,6 @@ async function bootstrap() {
   );
   app.use(json({ limit: "5mb" }));
   app.use(urlencoded({ extended: true, limit: "5mb" }));
-
-  app.use("/api/v1/webhooks/stripe", express.raw({ type: "application/json" }));
 
   const server = app.getHttpServer();
   const timeout = 2 * 60 * 1000; // 2 minutes

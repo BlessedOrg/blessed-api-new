@@ -1,6 +1,7 @@
 require("dotenv").config();
 
 const envVariables = {
+  baseUrl: process.env.baseUrl,
   jwtSecret: process.env.JWT_SECRET,
   vaultApiUrl: process.env.OP_VAULT_SERVER_HOST!,
   vaultToken: process.env.OP_API_TOKEN!,
@@ -26,7 +27,9 @@ const envVariables = {
   stripeSecretKey: process.env.STRIPE_SECRET_KEY,
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
   erc20Address: process.env.ERC20_CONTRACT_ADDRESS,
-  ticketerAppUrl: process.env.TICKETER_APP_URL
+  ticketerAppUrl: process.env.TICKETER_APP_URL,
+  reclaimAppSecret: process.env.RECLAIM_APP_SECRET,
+  reclaimAppId: process.env.RECLAIM_APP_ID
 };
 
 export { envVariables };

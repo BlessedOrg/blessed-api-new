@@ -116,7 +116,7 @@ export class TicketsController {
 
   @UseTicketIdInterceptor()
   @Post(":ticketId/checkout-session")
-  checkoutSession(@Req() req: RequestWithApiKey & TicketValidate, @Body() webhooksDto: WebhooksDto) {
-    return this.ticketsService.getCheckoutSession(webhooksDto, req);
+  checkoutSession(@Body() webhooksDto: WebhooksDto) {
+    return this.ticketsService.getCheckoutSession(webhooksDto);
   }
 }
