@@ -66,7 +66,7 @@ export class CreateTicketDto extends NameDto {
 
   @IsOptional()
   @IsArray()
-  @IsValidStakeholder({ each: true })
+  @isEmailOrEthAddress({ each: true })
   stakeholders: [string, number][];
 
   @IsOptional()
@@ -98,10 +98,10 @@ function IsLessThanOrEqual(property: string, validationOptions?: ValidationOptio
   };
 }
 
-export function IsValidStakeholder(validationOptions?: ValidationOptions) {
+export function isEmailOrEthAddress(validationOptions?: ValidationOptions) {
   return function (object: Object, propertyName: string) {
     registerDecorator({
-      name: 'isValidStakeholder',
+      name: "isEmailOrEthAddress",
       target: object.constructor,
       propertyName: propertyName,
       options: validationOptions,

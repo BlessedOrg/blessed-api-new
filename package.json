@@ -6,7 +6,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "build": "prisma generate && prisma migrate deploy && nest build",
+    "build": "prisma generate && prisma migrate deploy && node node_modules/@reclaimprotocol/zk-symmetric-crypto/lib/scripts/download-files && nest build",
     "seed": "ts-node prisma/seed.ts",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
@@ -32,6 +32,8 @@
     "@nestjs/mapped-types": "*",
     "@nestjs/platform-express": "^10.0.0",
     "@prisma/client": "^5.16.1",
+    "@reclaimprotocol/js-sdk": "^2.1.1",
+    "@reclaimprotocol/zk-fetch": "^0.2.1",
     "@usecapsule/core-sdk": "^2.3.2",
     "@usecapsule/ethers-v5-integration": "^2.3.2",
     "@usecapsule/server-sdk": "^2.3.2",

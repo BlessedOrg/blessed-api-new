@@ -105,6 +105,7 @@ export const deployContract = async (contractName, args) => {
     contractAddr = getAddress(receipt.contractAddress);
   }
 
+  console.log("⛓️ Contract Explorer URL: ", getExplorerUrl(contractAddr));
   return { hash, contractAddr };
 };
 

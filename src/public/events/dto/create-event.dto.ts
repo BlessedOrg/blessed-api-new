@@ -1,6 +1,6 @@
 import { IsArray, IsISO8601, IsNotEmpty, IsOptional, IsString, IsUrl, ValidateNested } from "class-validator";
 import { Type } from "class-transformer";
-import { IsValidStakeholder } from "@/public/events/tickets/dto/create-ticket.dto";
+import { isEmailOrEthAddress } from "@/public/events/tickets/dto/create-ticket.dto";
 
 export class EventLocationDto {
   @IsString()
@@ -92,6 +92,11 @@ export class CreateEventDto {
 
   @IsOptional()
   @IsArray()
-  @IsValidStakeholder({ each: true })
+  @isEmailOrEthAddress({ each: true })
   stakeholders: [string, number][];
+
+  @IsOptional()
+  @IsArray()
+  @isEmailOrEthAddress({ each: true })
+  bouncers?: string[]
 }
