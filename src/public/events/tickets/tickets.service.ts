@@ -649,7 +649,7 @@ export class TicketsService {
         }
       });
 
-      console.log("💳 session: ", session);
+      console.log("💳 checkout session: ", session);
 
       return session;
     } catch (e: any) {

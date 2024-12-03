@@ -55,7 +55,7 @@ export class WebhooksService {
   }
 
   private async handlePaymentSucceeded(ticketId: string, userId: string, providerId: string, priceCents: number): Promise<void> {
-    let orderId: any;
+    let orderId: string;
     try {
       const order = await this.database.order.create({
         data: {

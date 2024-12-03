@@ -139,7 +139,7 @@ export class EventsService {
     developerWalletAddress: PrefixedHexString,
     developerSmartWalletAddress: PrefixedHexString
   ) {
-    let eventId;
+    let eventId: string;
     try {
       const { eventLocation, name, ...eventData } = createEventDto;
 
@@ -149,17 +149,12 @@ export class EventsService {
         trim: true
       });
 
-      console.log("🌳 slug: ", slug)
-
-      // Check if event already exists (from Updated upstream)
       const existingEvent = await this.database.event.findFirst({
         where: {
           slug,
           appId
         }
       });
-
-      console.log("🐥 existingEvent: ", existingEvent)
 
       if (existingEvent) {
         throw new ConflictException("Event with this name already exists");
@@ -175,8 +170,6 @@ export class EventsService {
         }
       });
       eventId = event.id;
-
-      console.log("🐮 event (newly created): ", event)
 
       await this.database.eventKey.create({
         data: {
@@ -214,11 +207,8 @@ export class EventsService {
         initialBouncers: createEventDto.bouncers ?? []
       };
 
-      console.log("🔮 args: ", args)
-
       const contract = await deployContract("event", Object.values(args));
 
-      console.log(`💽 done deploying`)
       await this.database.$transaction(async (tx) => {
         const createdEvent = await tx.event.update({
           where: { id: event.id },
@@ -229,8 +219,6 @@ export class EventsService {
             EventLocation: true
           }
         });
-
-        console.log("🔮 createdEvent: ", createdEvent)
 
         if (eventLocation) {
           await tx.eventLocation.create({
@@ -277,21 +265,11 @@ export class EventsService {
     } catch (error) {
       console.log("🚨 Error on events/create: ", error.message);
       if (eventId) {
-        const eventToDelete = await this.database.event.findUnique({
+        await this.database.event.delete({
           where: {
             id: eventId
           }
         });
-
-        console.log("🔮 eventToDelete: ", eventToDelete)
-
-        if (eventToDelete) {
-          await this.database.event.delete({
-            where: {
-              id: eventToDelete.id
-            }
-          });
-        }
       }
       if (error.name === "ConflictException") {
         throw new ConflictException(`Event with this name or slug already exists`);
