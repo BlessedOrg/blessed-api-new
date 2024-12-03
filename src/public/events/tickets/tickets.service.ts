@@ -135,7 +135,7 @@ export class TicketsService {
       include: {
         Event: {
           select: {
-            contractAddress: true,
+            address: true,
             Stakeholders: {
               where: {
                 ticketId: null
@@ -180,7 +180,7 @@ export class TicketsService {
     const args = {
       _owner: developerWalletAddress,
       _ownerSmartWallet: ownerSmartWallet,
-      _eventAddress: ticket.Event.contractAddress,
+      _eventAddress: ticket.Event.address,
       _baseURI: metadataUrl,
       _name: createTicketDto.name,
       _symbol: createTicketDto.symbol,
@@ -197,7 +197,7 @@ export class TicketsService {
 
     await biconomyMetaTx({
       abi: contractArtifacts["event"].abi,
-      address: ticket.Event.contractAddress as PrefixedHexString,
+      address: ticket.Event.address as PrefixedHexString,
       functionName: "addTicket",
       args: [contract.contractAddr],
       capsuleTokenVaultKey
@@ -671,7 +671,7 @@ export class TicketsService {
                 EventLocation: true,
                 Tickets: {
                   where: { address: { contains: "0x" } },
-                  include: { Entrance: true }
+                  include: { Event: true }
                 }
               }
             }
@@ -691,7 +691,8 @@ export class TicketsService {
         let hasEventEntry = false;
 
         for (const ticket of event.Tickets) {
-          const { Entrance, ...ticketData } = ticket;
+          const { Event, ...ticketData } = ticket;
+
           const ownedTokens = await readContract({
             abi: contractArtifacts["tickets"].abi,
             address: ticket.address,
@@ -699,14 +700,16 @@ export class TicketsService {
             args: [user.smartWalletAddress]
           }) as BigInt[];
           const ownedTokenIds = ownedTokens.map(i => Number(i));
+
           let usedTokenIds = [];
-          if (ticket?.Entrance) {
+          if (ticket?.Event) {
             const entranceEntries = await readContract({
               abi: contractArtifacts["entrance"].abi,
-              address: ticket.Entrance.address,
+              address: ticket.Event.address,
               functionName: "getEntries",
               args: []
             }) as { ticketId: BigInt, timestamp: BigInt, wallet: string }[];
+
             const usedToken = entranceEntries.find((entry: any) => ownedTokenIds.includes(Number(entry?.ticketId)));
 
             if (!!usedToken?.ticketId) {

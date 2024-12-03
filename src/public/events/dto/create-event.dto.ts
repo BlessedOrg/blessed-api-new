@@ -99,4 +99,7 @@ export class CreateEventDto {
   @IsArray()
   @isEmailOrEthAddress({ each: true })
   bouncers?: string[]
+
+  @IsOptional()
+  imageUrl?: string;
 }

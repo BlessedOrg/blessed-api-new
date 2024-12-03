@@ -133,13 +133,12 @@ export class WebhooksService {
       if (!isVerified) {
         throw new BadRequestException("Proof is not verified");
       }
-      const proofData = transformForOnchain(proof);
 
       const verifyProofAndMintResult= await writeContract({
         abi: contractArtifacts["tickets"].abi,
         address: ticketAddress as PrefixedHexString,
         functionName: "verifyProofAndMint",
-        args: [proofData],
+        args: [transformForOnchain(proof)],
       });
 
       const logs = parseEventLogs({

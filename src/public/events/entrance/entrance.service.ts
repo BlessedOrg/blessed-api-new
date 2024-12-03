@@ -11,11 +11,11 @@ export class EntranceService {
   constructor(private database: DatabaseService) {}
 
   all(eventId: string) {
-    return this.database.entrance.findMany({
-      where: {
-        eventId
-      }
-    });
+    // return this.database.entrance.findMany({
+    //   where: {
+    //     eventId
+    //   }
+    // });
   }
 
   async create(
@@ -27,11 +27,17 @@ export class EntranceService {
       appId: string;
     }
   ) {
-    const { developerWalletAddress, capsuleTokenVaultKey, eventId, appId } =
-      req;
-    const ticket = await this.database.ticket.findUnique({ where: { id: ticketId, appId }, include: { Entrance: true } });
-    if (ticket?.Entrance) {
-      throw new HttpException("Entrance already exists for this ticket", 400);
+    const { developerWalletAddress, capsuleTokenVaultKey, eventId, appId } = req;
+    const ticket = await this.database.ticket.findUnique({
+      where: {
+        id: ticketId, appId
+      },
+      include: {
+        Event: true
+      }
+    });
+    if (ticket?.Event) {
+      throw new HttpException("Event already exists for this ticket", 400);
     }
     const event = await this.database.event.findUnique({
       where: { id: eventId }
@@ -57,18 +63,20 @@ export class EntranceService {
 
       const contract = await deployContract(contractName, Object.values(args));
 
-      const entrance = await this.database.entrance.create({
-        data: {
-          address: contract.contractAddr,
-          metadataUrl,
-          metadataPayload: {
-            ...metadataPayload,
-            ...(metadataImageUrl && { metadataImageUrl })
-          },
-          Event: { connect: { id: req.eventId } },
-          Ticket: { connect: { id: ticket.id } }
-        }
-      });
+      const entrance = {}
+
+      //   await this.database.entrance.create({
+      //   data: {
+      //     address: contract.contractAddr,
+      //     metadataUrl,
+      //     metadataPayload: {
+      //       ...metadataPayload,
+      //       ...(metadataImageUrl && { metadataImageUrl })
+      //     },
+      //     Event: { connect: { id: req.eventId } },
+      //     Ticket: { connect: { id: ticket.id } }
+      //   }
+      // });
 
       return {
         success: true,
@@ -85,16 +93,16 @@ export class EntranceService {
 
   async entry(decodedCodeData: ITicketQrCodePayload) {
     try {
-      const { eventId, ticketId, tokenId, ticketHolderId } = decodedCodeData;
-      const entranceRecord = await this.database.entrance.findUnique({
-        where: { eventId, ticketId }
+      const { eventId, tokenId, ticketHolderId } = decodedCodeData;
+      const event = await this.database.event.findUnique({
+        where: { id: eventId }
       });
-      if (!entranceRecord.address) {
+      if (!event.address) {
         throw new HttpException(`Wrong parameters. Smart contract entrance not found.`, HttpStatus.BAD_REQUEST);
       }
       const ticketHolder = await this.database.user.findUnique({ where: { id: ticketHolderId } });
       const { capsuleTokenVaultKey } = ticketHolder;
-      const contractAddress = entranceRecord.address as PrefixedHexString;
+      const contractAddress = event.address as PrefixedHexString;
       const smartWallet = await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
       const ownerSmartWallet = await smartWallet.getAccountAddress();
       const isAlreadyEntered = await readContract({
@@ -137,12 +145,12 @@ export class EntranceService {
           id: ticketId
         },
         include: {
-          Entrance: true
+          Event: true
         }
       });
       const entries = await readContract({
-        abi: contractArtifacts["entrance"].abi,
-        address: ticketEntranceRecord.Entrance.address,
+        abi: contractArtifacts["event"].abi,
+        address: ticketEntranceRecord.Event.address,
         functionName: "getEntries"
       });
       const formattedEntries = [];
