@@ -684,7 +684,6 @@ export class TicketsService {
     try {
       for (const event of user.Apps.flatMap(app => app.Events)) {
         const { Tickets, ...eventData } = event;
-        const eventKey = await this.database.eventKey.findUnique({ where: { eventId: event.id } });
         let ownedTicketsOfEvent = [];
         let hasEventEntry = false;
 
@@ -713,25 +712,10 @@ export class TicketsService {
             hasEventEntry = usedToken?.wallet?.toLowerCase() === user.smartWalletAddress.toLowerCase();
           }
           if (!!ownedTokenIds.length) {
-            const qrCodesPerToken = [];
-            for (const tokenId of ownedTokenIds) {
-              qrCodesPerToken.push({
-                code: encryptQrCodePayload({
-                  eventId: eventData.id,
-                  ticketId: ticketData.id,
-                  ticketHolderId: user.id,
-                  tokenId
-                }, eventKey.key),
-                tokenId,
-                eventId: eventData.id,
-                ticketId: ticketData.id
-              });
-            }
             ownedTicketsOfEvent.push({
               ticket: ticketData,
               usedTokenIds,
-              ownedTokenIds,
-              qrCodesPerToken
+              ownedTokenIds
             });
           }
         }
@@ -750,24 +734,62 @@ export class TicketsService {
     return ownedTickets;
   }
 
+  async getTicketQrCode(params: {
+    ticketId: string, eventId: string, userId: string, userSmartWalletAddress: string, tokenId: number
+  }) {
+    const { ticketId, eventId, userId, userSmartWalletAddress, tokenId } = params;
+    const ticket = await this.database.ticket.findUnique({ where: { id: ticketId, eventId }, include: { Event: { select: { id: true, EventKey: true } } } });
+    if (!ticket) {
+      throw new HttpException("Ticket not found", 404);
+    }
+    const ownedTokensRes = await readContract({
+      abi: contractArtifacts["tickets"].abi,
+      address: ticket.address,
+      functionName: "getTokensByUser",
+      args: [userSmartWalletAddress]
+    }) as any;
+    const ownedTokens = ownedTokensRes.map((i: BigInt) => Number(i));
+    if (!ownedTokens.includes(tokenId)) {
+      throw new HttpException("User does not own this token", 403);
+    }
+    return {
+      code: encryptQrCodePayload({
+        eventId: ticket.eventId,
+        ticketId: ticket.id,
+        ticketHolderId: userId,
+        tokenId,
+        timestamp: new Date().getTime()
+      }, ticket.Event.EventKey.key),
+      tokenId,
+      eventId: ticket.eventId,
+      ticketId: ticket.id,
+      validBySeconds: 10
+    };
+  }
+
   eventTicketEntries(ticketId: string) {
     return this.entranceService.entries(ticketId);
   }
 
   async verifyUserTicket(body: { code: string, eventId: string, ticketId: string }, bouncerId: string) {
     const { code, eventId, ticketId } = body;
+    const eventKey = await this.database.eventKey.findUnique({ where: { eventId } });
+    const decodedCodeData = decryptQrCodePayload(code, eventKey.key);
+    const { timestamp } = decodedCodeData;
+    if (new Date().getTime() - timestamp > 11000) {
+      throw new BadRequestException("QR code is expired");
+    }
+    if (!decodedCodeData?.ticketHolderId) {
+      throw new BadRequestException("Invalid QR code");
+    }
     const bouncerData = await this.database.user.findUnique({ where: { id: bouncerId }, include: { EventBouncers: { include: { Event: { include: { Tickets: true } } } } } });
 
     if (!bouncerData.EventBouncers.some(eventBouncer => eventBouncer.eventId === eventId && eventBouncer.Event.Tickets.some(ticket => ticket.id === ticketId))) {
       throw new HttpException("User is not allowed to verify tickets", 403);
     }
-    const eventKey = await this.database.eventKey.findUnique({ where: { eventId } });
-    const decodedCodeData = decryptQrCodePayload(code, eventKey.key);
-    if (!decodedCodeData?.ticketHolderId) {
-      throw new BadRequestException("Invalid QR code");
-    }
     return this.entranceService.entry(decodedCodeData);
   }
+
   private async getTicketHolders(
     ticketContractAddress: string,
     pagination: { start?: number; pageSize?: number } = {

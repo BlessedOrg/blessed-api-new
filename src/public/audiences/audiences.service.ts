@@ -2,8 +2,7 @@ import { HttpException, Injectable } from "@nestjs/common";
 import { DatabaseService } from "@/common/services/database/database.service";
 import slugify from "slugify";
 import { UsersService } from "@/public/users/users.service";
-import { CreateAudienceDto } from "@/public/audiences/dto/create-audience.dto";
-import { AssignAudiencesDto } from "@/public/audiences/dto/assign-audiences.dto";
+import { CreateAudiencesDto } from "@/public/audiences/dto/create-audience.dto";
 
 @Injectable()
 export class AudiencesService {
@@ -30,22 +29,27 @@ export class AudiencesService {
     });
   }
 
-  create(createAudienceDto: CreateAudienceDto, appId: string) {
+  async create(createAudienceDto: CreateAudiencesDto, appId: string) {
     const slug = slugify(createAudienceDto.name, {
       lower: true,
       strict: true,
       trim: true
     });
-    return this.database.audience.create({
+    const createdAudience = await this.database.audience.create({
       data: { appId, name: createAudienceDto.name, slug }
     });
+
+    await this.createOrAssignUsers(appId, createdAudience.id, createAudienceDto);
+
+    return createdAudience;
   }
 
-  async createOrAssignUsers(
+  private createOrAssignUsers(
     appId: string,
     audienceId: string,
-    usersToAssign: AssignAudiencesDto
+    usersToAssign: CreateAudiencesDto
   ) {
+    console.log(usersToAssign);
     return this.database.$transaction(async (prisma) => {
       const { users } = await this.usersService.createMany(
         { users: usersToAssign?.emails || [] },

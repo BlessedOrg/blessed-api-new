@@ -18,10 +18,7 @@ export class TicketsController {
   constructor(private readonly ticketsService: TicketsService) {}
 
   @Post()
-  create(
-    @Body() createTicketDto: CreateTicketDto,
-    @Req() req: RequestWithApiKey & EventValidate
-  ) {
+  create(@Body() createTicketDto: CreateTicketDto, @Req() req: RequestWithApiKey & EventValidate) {
     return this.ticketsService.create(createTicketDto, req);
   }
 

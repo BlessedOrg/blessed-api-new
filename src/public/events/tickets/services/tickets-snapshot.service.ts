@@ -104,17 +104,17 @@ export class TicketsSnapshotService {
 
     const tickets = await this.database.ticket.findMany({
       where: {
-        slug: { in: ticketsAirdrop.map((i) => i.ticketSlug) },
-        Event: { slug: { in: ticketsAirdrop.map((i) => i.eventSlug) } }
+        id: { in: ticketsAirdrop.map((i) => i.ticketId) },
+        Event: { id: { in: ticketsAirdrop.map((i) => i.eventId) } }
       }
     });
 
     const entrances = await this.database.entrance.findMany({
       where: {
         Ticket: {
-          slug: { in: entranceAirdrop.map((i) => i.ticketSlug) }
+          id: { in: entranceAirdrop.map((i) => i.ticketId) }
         },
-        Event: { slug: { in: entranceAirdrop.map((i) => i.eventSlug) } }
+        Event: { id: { in: entranceAirdrop.map((i) => i.eventId) } }
       }
     });
 
