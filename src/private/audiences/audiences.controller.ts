@@ -2,8 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Req } from "@nestjs/
 import { RequireDeveloperAuth } from "@/common/decorators/auth.decorator";
 import { UseAppIdInterceptor } from "@/common/decorators/use-app-id.decorator";
 import { AudiencesService } from "@/public/audiences/audiences.service";
-import { CreateCampaignDto } from "@/public/campaigns/dto/create-campaign.dto";
-import { AssignAudiencesDto } from "@/public/audiences/dto/assign-audiences.dto";
+import { CreateAudiencesDto } from "@/public/audiences/dto/create-audience.dto";
 
 @RequireDeveloperAuth()
 @UseAppIdInterceptor()
@@ -19,7 +18,7 @@ export class AudiencesController {
   @Post()
   createAudience(
     @Req() req: RequestWithDevAccessToken & AppValidate,
-    @Body() createCampaignDto: CreateCampaignDto
+    @Body() createCampaignDto: CreateAudiencesDto
   ) {
     return this.audienceService.create(createCampaignDto, req.appId);
   }
@@ -43,18 +42,5 @@ export class AudiencesController {
     @Param("audienceId") audienceId: string
   ) {
     return this.audienceService.deleteAudience(req.appId, audienceId);
-  }
-
-  @Post(":audienceId/assign")
-  createOrAssignUsers(
-    @Req() req: RequestWithDevAccessToken & AppValidate,
-    @Param("audienceId") audienceId: string,
-    @Body() updateAudienceDto: AssignAudiencesDto
-  ) {
-    return this.audienceService.createOrAssignUsers(
-      req.appId,
-      audienceId,
-      updateAudienceDto
-    );
   }
 }

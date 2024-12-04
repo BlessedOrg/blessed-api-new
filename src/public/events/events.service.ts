@@ -28,6 +28,7 @@ export class EventsService {
         }
       },
       include: {
+        EventLocation: true,
         Tickets: {
           include: {
             Entrance: true
@@ -299,6 +300,13 @@ export class EventsService {
         slug: true,
         description: true,
         logoUrl: true,
+        createdAt: true,
+        contractAddress: true,
+        deletedAt: true,
+        updatedAt: true,
+        endsAt: true,
+        startsAt: true,
+        timezoneIdentifier: true,
         Tickets: {
           select: {
             id: true,
@@ -306,6 +314,10 @@ export class EventsService {
             slug: true,
             address: true,
             createdAt: true,
+            metadataUrl: true,
+            metadataPayload: true,
+            eventId: true,
+            updatedAt: true,
             Entrance: {
               select: {
                 id: true,
@@ -315,13 +327,7 @@ export class EventsService {
             }
           }
         },
-        Entrances: {
-          select: {
-            id: true,
-            address: true,
-            createdAt: true
-          }
-        }
+        EventLocation: true
       }
     });
   }

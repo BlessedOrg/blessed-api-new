@@ -1,4 +1,4 @@
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, Length, Min, registerDecorator, isEmail, ValidateNested, ValidationArguments, ValidationOptions } from "class-validator";
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, isEmail, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, Length, Min, registerDecorator, ValidateNested, ValidationArguments, ValidationOptions } from "class-validator";
 import { AirdropEnum } from "@/common/enums.enum";
 import { Type } from "class-transformer";
 import { NameDto } from "@/common/dto/name.dto";
@@ -8,15 +8,15 @@ export class AirdropDto {
   @IsEnum(AirdropEnum, { message: "Invalid airdrop type, available types: [attendees, holders]" })
   type: AirdropEnum;
 
-  @IsNotEmpty({ message: "Event slug is required" })
-  @Length(1, 100, { message: "Event slug must be between 1 and 100 characters" })
-  eventSlug: string;
+  @IsNotEmpty({ message: "Event id is required" })
+  @Length(1, 100, { message: "Event id must be between 1 and 100 characters" })
+  eventId: string;
 
-  @IsNotEmpty({ message: "Ticket slug is required for holders type" })
+  @IsNotEmpty({ message: "Ticket id is required for holders type" })
   @Length(1, 100, {
-    message: "Ticket slug must be between 1 and 100 characters"
+    message: "Ticket id must be between 1 and 100 characters"
   })
-  ticketSlug: string;
+  ticketId: string;
 }
 
 export class SnapshotDto {
@@ -112,13 +112,13 @@ export function isEmailOrEthAddress(validationOptions?: ValidationOptions) {
           }
           const [address, percentage] = value;
           const isValidAddress = isEmail(address) || isAddress(address);
-          const isValidPercentage = typeof percentage === 'number' && percentage >= 1 && percentage <= 10000;
+          const isValidPercentage = typeof percentage === "number" && percentage >= 1 && percentage <= 10000;
           return isValidAddress && isValidPercentage;
         },
         defaultMessage(args: ValidationArguments) {
           return `${args.property} must be an array with a valid email or Ethereum address and a number between 1 and 10000`;
-        },
-      },
+        }
+      }
     });
   };
 }

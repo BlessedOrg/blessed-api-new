@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req, UseInterceptors } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Req, UseInterceptors } from "@nestjs/common";
 import { TicketsService } from "@/public/events/tickets/tickets.service";
 import { CreateTicketDto, SnapshotDto } from "@/public/events/tickets/dto/create-ticket.dto";
 import { RequireApiKey, RequireDeveloperAuth, RequireUserAuth } from "@/common/decorators/auth.decorator";
@@ -89,6 +89,20 @@ export class TicketsController {
   @Post("verify")
   async verifyUserTicket(@Body() body: { code: string, eventId: string, ticketId: string }, @Req() req: RequestWithUserAccessToken) {
     return await this.ticketsService.verifyUserTicket(body, req.userId);
+  }
+
+  @RequireUserAuth()
+  @UseEventIdInterceptor()
+  @UseTicketIdInterceptor()
+  @Get(":event/:ticketId/:tokenId/qrcode")
+  async getTicketQRCode(@Req() req: RequestWithUserAccessToken & EventValidate & TicketValidate, @Param("tokenId") tokenId: string) {
+    return await this.ticketsService.getTicketQrCode({
+      userId: req.userId,
+      userSmartWalletAddress: req.smartWalletAddress,
+      eventId: req.eventId,
+      ticketId: req.ticketId,
+      tokenId: Number(tokenId)
+    });
   }
 
   @RequireApiKey()
