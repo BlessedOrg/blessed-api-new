@@ -1,4 +1,4 @@
-import { BadRequestException, HttpException, Injectable } from "@nestjs/common";
+import { BadRequestException, HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { CreateTicketDto, SnapshotDto } from "@/public/events/tickets/dto/create-ticket.dto";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { uploadMetadata } from "@/lib/irys";
@@ -194,7 +194,6 @@ export class TicketsService {
     };
 
     const contract = await deployContract(contractName, [args]);
-    console.log("⛓️ Contract Explorer URL: ", getExplorerUrl(contract.contractAddr));
 
     await biconomyMetaTx({
       abi: contractArtifacts["event"].abi,
@@ -219,7 +218,8 @@ export class TicketsService {
         }
       }
     });
-    await this.entranceService.create(ticket.id, { appId, eventId, developerWalletAddress, capsuleTokenVaultKey });
+    // 🏗️ TODO: merge logic of EntranceChecker into Event (contract is already done)
+    // await this.entranceService.create(ticket.id, { appId, eventId, developerWalletAddress, capsuleTokenVaultKey });
 
     await this.database.stakeholder.createMany({
       data: stakeholders.map(sh => ({
@@ -581,7 +581,7 @@ export class TicketsService {
     };
   }
 
-  async getCheckoutSession(webhooksDto: WebhooksDto, req: RequestWithApiKey & TicketValidate) {
+  async getCheckoutSession(webhooksDto: WebhooksDto) {
     try {
       const user = await this.database.user.findUnique({
         where: {
@@ -628,7 +628,7 @@ export class TicketsService {
             price_data: {
               currency: "usd",
               product_data: {
-                name: `${ticket.Event.name} ticket`,
+                name: `${ticket.Event.name} ticket (${ticket.name})`,
                 images: ["https://avatars.githubusercontent.com/u/164048341"]
               },
               unit_amount: denominatedPrice
@@ -642,17 +642,19 @@ export class TicketsService {
         payment_intent_data: {
           metadata: {
             userSmartWalletAddress: user.smartWalletAddress,
+            ticketAddress: ticket.address,
             userId: user.id,
             ticketId: ticket.id
           }
         }
       });
 
-      console.log("💳 session: ", session);
+      console.log("💳 checkout session: ", session);
 
       return session;
-    } catch (err: any) {
-      console.log("🚨 error on /checkout-session", err.message);
+    } catch (e: any) {
+      console.log("🚨 error on /checkout-session", e.message);
+      throw new HttpException(e.message, e.status ?? HttpStatus.BAD_REQUEST);
     }
   }
 

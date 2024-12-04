@@ -10,7 +10,7 @@ import { v4 as uuidv4 } from "uuid";
 import { EmailDto } from "@/common/dto/email.dto";
 import { UsersService } from "@/public/users/users.service";
 import { generateEventKey } from "@/utils/eventKey";
-import { isEmpty } from "lodash";
+import { isEmpty, omit } from "lodash";
 import { isAddress } from "viem";
 
 @Injectable()
@@ -140,118 +140,144 @@ export class EventsService {
     developerWalletAddress: PrefixedHexString,
     developerSmartWalletAddress: PrefixedHexString
   ) {
-    const { eventLocation, name, ...eventData } = createEventDto;
+    let eventId: string;
+    try {
+      const { eventLocation, name, ...eventData } = createEventDto;
 
-    const slug = slugify(name, {
-      lower: true,
-      strict: true,
-      trim: true
-    });
-
-    const existingEvent = await this.database.event.findFirst({
-      where: {
-        slug,
-        appId
-      }
-    });
-
-    if (existingEvent) {
-      throw new ConflictException("Event with this name already exists");
-    }
-
-    const event = await this.database.event.create({
-      data: {
-        contractAddress: `${uuidv4()}-${new Date().getTime()}`,
-        name,
-        ...eventData,
-        slug,
-        App: { connect: { id: appId } }
-      }
-    });
-    await this.database.eventKey.create({
-      data: {
-        eventId: event.id,
-        key: generateEventKey()
-      }
-    });
-
-    if (createEventDto?.stakeholders && !isEmpty(createEventDto.stakeholders)) {
-      const stakeholders = await this.transformStakeholders(
-        createEventDto.stakeholders,
-        appId
-      );
-
-      await this.database.stakeholder.createMany({
-        data: stakeholders.map(sh => ({
-          walletAddress: sh.wallet,
-          feePercentage: sh.feePercentage,
-          eventId: event.id
-        }))
+      const slug = slugify(name, {
+        lower: true,
+        strict: true,
+        trim: true
       });
-    }
 
-    const { metadataUrl } = await uploadMetadata({
-      name: createEventDto.name,
-      description: "",
-      image: ""
-    });
-
-    const args = {
-      owner: developerWalletAddress,
-      ownerSmartWallet: developerSmartWalletAddress,
-      name: createEventDto.name,
-      uri: metadataUrl
-    };
-
-    const contract = await deployContract("event", Object.values(args));
-    console.log("⛓️ Contract Explorer URL: ", getExplorerUrl(contract.contractAddr));
-    await this.database.$transaction(async (tx) => {
-      const createdEvent = await tx.event.update({
-        where: { id: event.id },
-        data: {
-          ...eventData,
-          contractAddress: contract.contractAddr
-        },
-        include: {
-          EventLocation: true
+      const existingEvent = await this.database.event.findFirst({
+        where: {
+          slug,
+          appId
         }
       });
 
-      if (eventLocation) {
-        await tx.eventLocation.create({
-          data: {
-            ...eventLocation,
-            Event: {
-              connect: { id: createdEvent.id }
-            }
-          }
+      if (existingEvent) {
+        throw new ConflictException("Event with this name already exists");
+      }
+
+      const event = await this.database.event.create({
+        data: {
+          contractAddress: `${uuidv4()}-${new Date().getTime()}`,
+          name,
+          ...omit(eventData, "stakeholders"),
+          slug,
+          App: { connect: { id: appId } }
+        }
+      });
+      eventId = event.id;
+
+      await this.database.eventKey.create({
+        data: {
+          eventId: event.id,
+          key: generateEventKey()
+        }
+      });
+
+      if (createEventDto?.stakeholders && !isEmpty(createEventDto.stakeholders)) {
+        const stakeholders = await this.transformStakeholders(
+          createEventDto.stakeholders,
+          appId
+        );
+
+        await this.database.stakeholder.createMany({
+          data: stakeholders.map(sh => ({
+            walletAddress: sh.wallet,
+            feePercentage: sh.feePercentage,
+            eventId: event.id
+          }))
         });
       }
 
-      return tx.event.findUnique({
-        where: { id: createdEvent.id },
-        include: { EventLocation: true }
+      const { metadataUrl } = await uploadMetadata({
+        name: createEventDto.name,
+        description: "",
+        image: ""
       });
-    });
 
-    const updatedEvent = await this.database.event.update({
-      where: {
-        id: event.id
-      },
-      data: {
-        contractAddress: contract.contractAddr
-      },
-      include: {
-        Stakeholders: {
-          select: {
-            walletAddress: true,
-            feePercentage: true
+      const args = {
+        owner: developerWalletAddress,
+        ownerSmartWallet: developerSmartWalletAddress,
+        name: createEventDto.name,
+        uri: metadataUrl,
+        initialBouncers: createEventDto.bouncers ?? []
+      };
+
+      const contract = await deployContract("event", Object.values(args));
+
+      await this.database.$transaction(async (tx) => {
+        const createdEvent = await tx.event.update({
+          where: { id: event.id },
+          data: {
+            contractAddress: contract.contractAddr
+          },
+          include: {
+            EventLocation: true
+          }
+        });
+
+        if (eventLocation) {
+          await tx.eventLocation.create({
+            data: {
+              ...eventLocation,
+              Event: {
+                connect: { id: createdEvent.id }
+              }
+            }
+          });
+        }
+
+        return tx.event.findUnique({
+          where: { id: createdEvent.id },
+          include: { EventLocation: true }
+        });
+      });
+
+      const updatedEvent = await this.database.event.update({
+        where: {
+          id: event.id
+        },
+        data: {
+          contractAddress: contract.contractAddr,
+        },
+        include: {
+          Stakeholders: {
+            select: {
+              walletAddress: true,
+              feePercentage: true
+            }
           }
         }
-      }
-    });
+      });
 
-    return updatedEvent;
+      return {
+        success: true,
+        event: updatedEvent,
+        contract,
+        explorerUrls: {
+          contract: getExplorerUrl(contract.contractAddr)
+        }
+      }
+    } catch (error) {
+      console.log("🚨 Error on events/create: ", error.message);
+      if (eventId) {
+        await this.database.event.delete({
+          where: {
+            id: eventId
+          }
+        });
+      }
+      if (error.name === "ConflictException") {
+        throw new ConflictException(`Event with this name or slug already exists`);
+      } else {
+        throw new Error(error.message);
+      }
+    }
   }
 
   events(appId: string) {

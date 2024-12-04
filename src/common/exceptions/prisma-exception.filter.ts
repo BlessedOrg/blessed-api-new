@@ -8,6 +8,8 @@ export class PrismaExceptionFilter implements ExceptionFilter {
     const ctx = host.switchToHttp();
     const response = ctx.getResponse<Response>();
 
+    console.log("🚨 PrismaException error:", exception);
+
     switch (exception.code) {
       case "P2002":
         const target = exception.meta?.target as string[];

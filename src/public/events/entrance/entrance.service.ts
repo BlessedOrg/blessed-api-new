@@ -1,4 +1,4 @@
-import { HttpException, Injectable } from "@nestjs/common";
+import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { uploadMetadata } from "@/lib/irys";
 import { getSmartWalletForCapsuleWallet } from "@/lib/capsule";
@@ -56,7 +56,6 @@ export class EntranceService {
       };
 
       const contract = await deployContract(contractName, Object.values(args));
-      console.log("⛓️ Contract Explorer URL: ", getExplorerUrl(contract.contractAddr));
 
       const entrance = await this.database.entrance.create({
         data: {
@@ -84,18 +83,14 @@ export class EntranceService {
     }
   }
 
-  async entry(
-    decodedCodeData: ITicketQrCodePayload
-  ) {
+  async entry(decodedCodeData: ITicketQrCodePayload) {
     try {
       const { eventId, ticketId, tokenId, ticketHolderId } = decodedCodeData;
       const entranceRecord = await this.database.entrance.findUnique({
         where: { eventId, ticketId }
       });
       if (!entranceRecord.address) {
-        throw new Error(
-          `Wrong parameters. Smart contract entrance not found.`
-        );
+        throw new HttpException(`Wrong parameters. Smart contract entrance not found.`, HttpStatus.BAD_REQUEST);
       }
       const ticketHolder = await this.database.user.findUnique({ where: { id: ticketHolderId } });
       const { capsuleTokenVaultKey } = ticketHolder;
@@ -109,29 +104,29 @@ export class EntranceService {
         args: [ownerSmartWallet]
       });
 
-      if (!isAlreadyEntered) {
-        const metaTxResult = await biconomyMetaTx({
-          abi: contractArtifacts["entrance"].abi,
-          address: contractAddress,
-          functionName: "entry",
-          args: [tokenId],
-          capsuleTokenVaultKey
-        });
-
-        return {
-          success: true,
-          explorerUrls: {
-            tx: getExplorerUrl(
-              metaTxResult.data.transactionReceipt.transactionHash
-            )
-          },
-          transactionReceipt: metaTxResult.data.transactionReceipt
-        };
-      } else {
-        throw new Error("Already entered");
+      if (isAlreadyEntered) {
+        throw new HttpException("Already entered", HttpStatus.CONFLICT);
       }
+
+      const metaTxResult = await biconomyMetaTx({
+        abi: contractArtifacts["entrance"].abi,
+        address: contractAddress,
+        functionName: "entry",
+        args: [tokenId],
+        capsuleTokenVaultKey
+      });
+
+      return {
+        success: true,
+        explorerUrls: {
+          tx: getExplorerUrl(
+            metaTxResult.data.transactionReceipt.transactionHash
+          )
+        },
+        transactionReceipt: metaTxResult.data.transactionReceipt
+      };
     } catch (e) {
-      throw new HttpException(e.message, 500);
+      throw new HttpException(e.message, e.status ?? HttpStatus.BAD_REQUEST);
     }
   }
 
