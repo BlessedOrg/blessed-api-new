@@ -107,10 +107,12 @@ model EmailVerificationCode {
 model Event {
   id                 String         @id @default(cuid())
   name               String
-  description        String?
-  contractAddress    String         @unique
-  logoUrl            String?
   slug               String         @unique
+  description        String?
+  address            String         @unique
+  logoUrl            String?
+  metadataUrl        String?
+  metadataPayload    Json
   timezoneIdentifier String?
   startsAt           DateTime?
   endsAt             DateTime?
@@ -118,8 +120,8 @@ model Event {
   appId              String
   EventLocation      EventLocation?
   EventKey           EventKey?
+  Interactions       Interaction[]
   Tickets            Ticket[]
-  Entrances          Entrance[]
   EventBouncers      EventBouncer[]
   Stakeholders       Stakeholder[]
   createdAt          DateTime       @default(now())
@@ -234,21 +236,20 @@ model AudienceUser {
 
 model Ticket {
   id              String        @id @default(cuid())
-  address         String        @unique
   name            String
   slug            String
-  Developer       Developer?    @relation(fields: [developerId], references: [id])
-  developerId     String?
+  address         String        @unique
+  logoUrl         String?
   metadataUrl     String?
   metadataPayload Json
+  Developer       Developer?    @relation(fields: [developerId], references: [id])
+  developerId     String?
   App             App           @relation(fields: [appId], references: [id])
   appId           String
   Event           Event         @relation(fields: [eventId], references: [id])
   eventId         String
   Orders          Order[]
   Interactions    Interaction[]
-  Entrance        Entrance?
-  entranceId      String?       @unique
   Campaigns       Campaign[]
   Stakeholders    Stakeholder[]
   createdAt       DateTime      @default(now())
@@ -257,38 +258,22 @@ model Ticket {
   @@unique([slug, eventId])
 }
 
-model Entrance {
-  id              String        @id @default(cuid())
-  address         String        @unique
-  metadataUrl     String?
-  metadataPayload Json
-  Event           Event         @relation(fields: [eventId], references: [id])
-  eventId         String
-  Ticket          Ticket?       @relation(fields: [ticketId], references: [id])
-  ticketId        String?       @unique
-  Interactions    Interaction[]
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  @@unique([ticketId, eventId])
-}
-
 model Interaction {
-  id         String                       @id @default(cuid())
-  User       User                         @relation(fields: [userId], references: [id])
-  userId     String
-  Ticket     Ticket?                      @relation(fields: [ticketId], references: [id])
-  ticketId   String?
-  Entrance   Entrance?                    @relation(fields: [entranceId], references: [id])
-  entranceId String?
-  method     String
-  txHash     String
-  output     Json?
-  input      Json?
-  fees       String?
-  type       SmartContractInteractionType
-  createdAt  DateTime                     @default(now())
-  updatedAt  DateTime                     @updatedAt
+  id        String                       @id @default(cuid())
+  User      User                         @relation(fields: [userId], references: [id])
+  userId    String
+  Ticket    Ticket?                      @relation(fields: [ticketId], references: [id])
+  ticketId  String?
+  Event     Event?                       @relation(fields: [eventId], references: [id])
+  eventId   String?
+  method    String
+  txHash    String
+  output    Json?
+  input     Json?
+  fees      String?
+  type      SmartContractInteractionType
+  createdAt DateTime                     @default(now())
+  updatedAt DateTime                     @updatedAt
 }
 
 enum SmartContractInteractionType {

@@ -3,7 +3,7 @@ import { AirdropDto, SnapshotDto } from "@/public/events/tickets/dto/create-tick
 import { DatabaseService } from "@/common/services/database/database.service";
 import { contractArtifacts, readContract } from "@/lib/viem";
 import { EntranceService } from "@/public/events/entrance/entrance.service";
-import { Entrance, Ticket } from "@prisma/client";
+import { Ticket } from "@prisma/client";
 import { TicketsService } from "@/public/events/tickets/tickets.service";
 import { PrefixedHexString } from "ethereumjs-util";
 
@@ -19,11 +19,11 @@ export class TicketsSnapshotService {
   async snapshot(snapshotDto: SnapshotDto) {
     try {
       const { snapshot } = snapshotDto;
-      const { tickets, entrances } = await this.getTicketsAndEntrances(snapshot);
+      const { tickets, entranceTickets } = await this.getTicketsAndEntrances(snapshot);
 
       const [eligibleUsersForTicketHold, eligibleUsersForEntrance] = await Promise.all([
         this.getEligibleUsersForTicketHold(tickets),
-        this.getEligibleUsersForEntrances(entrances)
+        this.getEligibleUsersForEntrances(entranceTickets)
       ]);
 
       const eligibleUsersForTicketHoldMap = new Map(
@@ -48,7 +48,7 @@ export class TicketsSnapshotService {
         )
       );
 
-      const isEntranceRequired = !!entrances.length;
+      const isEntranceRequired = !!entranceTickets.length;
       const isOwnerRequired = !!tickets.length;
 
       let eligibleUsers: any[] = [];
@@ -109,16 +109,14 @@ export class TicketsSnapshotService {
       }
     });
 
-    const entrances = await this.database.entrance.findMany({
+    const entranceTickets = await this.database.ticket.findMany({
       where: {
-        Ticket: {
-          id: { in: entranceAirdrop.map((i) => i.ticketId) }
-        },
+        id: { in: entranceAirdrop.map((i) => i.ticketId) },
         Event: { id: { in: entranceAirdrop.map((i) => i.eventId) } }
       }
     });
 
-    return { tickets, entrances };
+    return { tickets, entranceTickets };
   }
   private async getEligibleUsersForTicketHold(tickets: Ticket[]) {
     const usersMap = new Map<string, { user: any; count: number }>();
@@ -168,11 +166,11 @@ export class TicketsSnapshotService {
     };
   }
 
-  private async getEligibleUsersForEntrances(entrances: Entrance[]) {
+  private async getEligibleUsersForEntrances(tickets: Ticket[]) {
     return Promise.all(
-      entrances.map(async (entrance) => {
+      tickets.map(async (ticket) => {
         try {
-          const { entries, externalAddresses } = await this.entranceService.entries(entrance.ticketId);
+          const { entries, externalAddresses } = await this.entranceService.entries(ticket.id);
           return {
             externalAddresses,
             entries

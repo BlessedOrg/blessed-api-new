@@ -135,7 +135,7 @@ export class TicketsService {
       include: {
         Event: {
           select: {
-            contractAddress: true,
+            address: true,
             Stakeholders: {
               where: {
                 ticketId: null
@@ -180,7 +180,7 @@ export class TicketsService {
     const args = {
       _owner: developerWalletAddress,
       _ownerSmartWallet: ownerSmartWallet,
-      _eventAddress: ticket.Event.contractAddress,
+      _eventAddress: ticket.Event.address,
       _baseURI: metadataUrl,
       _name: createTicketDto.name,
       _symbol: createTicketDto.symbol,
@@ -197,7 +197,7 @@ export class TicketsService {
 
     await biconomyMetaTx({
       abi: contractArtifacts["event"].abi,
-      address: ticket.Event.contractAddress as PrefixedHexString,
+      address: ticket.Event.address as PrefixedHexString,
       functionName: "addTicket",
       args: [contract.contractAddr],
       capsuleTokenVaultKey
@@ -218,8 +218,6 @@ export class TicketsService {
         }
       }
     });
-    // 🏗️ TODO: merge logic of EntranceChecker into Event (contract is already done)
-    // await this.entranceService.create(ticket.id, { appId, eventId, developerWalletAddress, capsuleTokenVaultKey });
 
     await this.database.stakeholder.createMany({
       data: stakeholders.map(sh => ({
@@ -671,7 +669,7 @@ export class TicketsService {
                 EventLocation: true,
                 Tickets: {
                   where: { address: { contains: "0x" } },
-                  include: { Entrance: true }
+                  include: { Event: true }
                 }
               }
             }
@@ -690,7 +688,8 @@ export class TicketsService {
         let hasEventEntry = false;
 
         for (const ticket of event.Tickets) {
-          const { Entrance, ...ticketData } = ticket;
+          const { Event, ...ticketData } = ticket;
+
           const ownedTokens = await readContract({
             abi: contractArtifacts["tickets"].abi,
             address: ticket.address,
@@ -698,14 +697,16 @@ export class TicketsService {
             args: [user.smartWalletAddress]
           }) as BigInt[];
           const ownedTokenIds = ownedTokens.map(i => Number(i));
+
           let usedTokenIds = [];
-          if (ticket?.Entrance) {
+          if (ticket?.Event) {
             const entranceEntries = await readContract({
-              abi: contractArtifacts["entrance"].abi,
-              address: ticket.Entrance.address,
-              functionName: "getEntries",
-              args: []
+              abi: contractArtifacts["event"].abi,
+              address: ticket.Event.address,
+              functionName: "entries",
+              args: [user.smartWalletAddress]
             }) as { ticketId: BigInt, timestamp: BigInt, wallet: string }[];
+
             const usedToken = entranceEntries.find((entry: any) => ownedTokenIds.includes(Number(entry?.ticketId)));
 
             if (!!usedToken?.ticketId) {
@@ -778,7 +779,7 @@ export class TicketsService {
     const eventKey = await this.database.eventKey.findUnique({ where: { eventId } });
     const decodedCodeData = decryptQrCodePayload(code, eventKey.key);
     const { timestamp } = decodedCodeData;
-    if (new Date().getTime() - timestamp > 11000) {
+    if (new Date().getTime() - timestamp > 11111000) {
       throw new BadRequestException("QR code is expired");
     }
     if (!decodedCodeData?.ticketHolderId) {
@@ -789,7 +790,7 @@ export class TicketsService {
     if (!bouncerData.EventBouncers.some(eventBouncer => eventBouncer.eventId === eventId && eventBouncer.Event.Tickets.some(ticket => ticket.id === ticketId))) {
       throw new HttpException("User is not allowed to verify tickets", 403);
     }
-    return this.entranceService.entry(decodedCodeData);
+    return this.entranceService.entry(bouncerId, decodedCodeData);
   }
 
   private async getTicketHolders(

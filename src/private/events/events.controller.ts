@@ -41,7 +41,7 @@ export class EventsController {
   @UseAppIdInterceptor()
   @Post(":app/:event/bouncer")
   addEventBouncer(@Req() req: RequestWithDevAccessToken & AppValidate & EventValidate, @Body() emailDto: EmailDto) {
-    return this.eventsService.addEventBouncer(req.appId, req.eventId, emailDto);
+    return this.eventsService.addEventBouncer(req.developerId, req.appId, req.eventId, emailDto);
   }
 
   @UseEventIdInterceptor()
