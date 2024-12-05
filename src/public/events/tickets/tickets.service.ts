@@ -218,8 +218,6 @@ export class TicketsService {
         }
       }
     });
-    // 🏗️ TODO: merge logic of EntranceChecker into Event (contract is already done)
-    // await this.entranceService.create(ticket.id, { appId, eventId, developerWalletAddress, capsuleTokenVaultKey });
 
     await this.database.stakeholder.createMany({
       data: stakeholders.map(sh => ({
