@@ -14,17 +14,18 @@ datasource db {
 }
 
 model Developer {
-  id                   String             @id @default(cuid())
-  email                String             @unique
-  walletAddress        String?            @unique
-  smartWalletAddress   String?            @unique
-  accessTokenVaultKey  String?
-  capsuleTokenVaultKey String?
-  Tickets              Ticket[]
-  Apps                 App[]
-  Sessions             DeveloperSession[]
-  createdAt            DateTime           @default(now())
-  updatedAt            DateTime           @updatedAt
+  id                     String             @id @default(cuid())
+  email                  String?            @unique
+  connectedWalletAddress String?            @unique
+  walletAddress          String?            @unique
+  smartWalletAddress     String?            @unique
+  accessTokenVaultKey    String?
+  capsuleTokenVaultKey   String?
+  Tickets                Ticket[]
+  Apps                   App[]
+  Sessions               DeveloperSession[]
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
 }
 
 model App {

@@ -17,7 +17,17 @@ const getCapsuleInstance = () =>
     }
   });
 
-export const createCapsuleAccount = async (accountId: string, email: string, type: AccountType) => {
+export const createCapsuleAccount = async (accountId: string, identifier: string, type: AccountType) => {
+  let email;
+  const identifierType = identifier.includes("@") ? "email" : "connectedWalletAddress";
+  if (identifierType === "email") {
+    email = identifier;
+  } else {
+    const formattedAddress = `${identifier.toString().substring(0, 4)}.${identifier
+      .toString()
+      .slice(-4)}`;
+    email = `wallet.user.${formattedAddress}@blessed.fan`;
+  }
   const capsule = getCapsuleInstance();
   const formattedEmail = formatEmailToAvoidCapsuleConflict(email, accountId);
   const hasWallet = await capsule.hasPregenWallet(accountId);
