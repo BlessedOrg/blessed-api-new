@@ -12,6 +12,8 @@ import { UsersService } from "@/public/users/users.service";
 import { generateEventKey } from "@/utils/eventKey";
 import { isEmpty, omit } from "lodash";
 import { isAddress } from "viem";
+import { logoBase64 } from "@/utils/logo_base64";
+import { prisma } from "@/prisma/client";
 
 @Injectable()
 export class EventsService {
@@ -74,40 +76,35 @@ export class EventsService {
         throw new ConflictException("Event with this name already exists");
       }
 
-      // metadataPayload: {
-      //   name: createTicketDto.name,
-      //     symbol: createTicketDto.symbol,
-      //     description: createTicketDto.description,
-      // ...(metadataImageUrl && { metadataImageUrl })
-      // }
-
       const { metadataUrl, metadataImageUrl } = await uploadMetadata({
         name: createEventDto.name,
         description: createEventDto.description,
         image: createEventDto?.imageUrl || logoBase64
       });
 
-      const event = await this.database.event.create({
-        data: {
-          address: `${uuidv4()}-${new Date().getTime()}` as string,
-          metadataPayload: {
-            name: createEventDto.name,
-            description: createEventDto.description,
-            image: createEventDto?.imageUrl || logoBase64
-          },
-          name,
-          ...omit(eventData, "stakeholders"),
-          slug,
-          App: { connect: { id: appId } }
-        }
-      });
-      eventId = event.id;
+      const initEvent = await prisma.$transaction(async (tx) => {
+        const event = await this.database.event.create({
+          data: {
+            address: `${uuidv4()}-${new Date().getTime()}` as string,
+            metadataPayload: {
+              name: createEventDto.name,
+              description: createEventDto.description,
+              image: createEventDto?.imageUrl || logoBase64
+            },
+            name,
+            ...omit(eventData, "stakeholders"),
+            slug,
+            App: { connect: { id: appId } }
+          }
+        });
 
-      await this.database.eventKey.create({
-        data: {
-          eventId: event.id,
-          key: generateEventKey()
-        }
+        await this.database.eventKey.create({
+          data: {
+            eventId: event.id,
+            key: generateEventKey()
+          }
+        });
+        return event;
       });
 
       if (createEventDto?.stakeholders && !isEmpty(createEventDto.stakeholders)) {
@@ -120,16 +117,10 @@ export class EventsService {
           data: stakeholders.map(sh => ({
             walletAddress: sh.wallet,
             feePercentage: sh.feePercentage,
-            eventId: event.id
+            eventId: initEvent.id
           }))
         });
       }
-
-      const { metadataUrl } = await uploadMetadata({
-        name: createEventDto.name,
-        description: "",
-        image: ""
-      });
 
       const args = {
         owner: developerWalletAddress,
@@ -141,73 +132,40 @@ export class EventsService {
 
       const contract = await deployContract("event", Object.values(args));
 
-      await this.database.$transaction(async (tx) => {
-        const createdEvent = await tx.event.update({
-          where: { id: event.id },
-          data: {
-            contractAddress: contract.contractAddr
-          },
-          include: {
-            EventLocation: true
-          }
-        });
-
+      return prisma.$transaction(async (tx) => {
         if (eventLocation) {
           await tx.eventLocation.create({
             data: {
               ...eventLocation,
               Event: {
-                connect: { id: createdEvent.id }
+                connect: { id: initEvent.id }
               }
             }
           });
         }
-
-        return tx.event.findUnique({
-          where: { id: createdEvent.id },
-          include: { EventLocation: true }
-        });
-      });
-
-      const updatedEvent = await this.database.event.update({
-        where: {
-          id: event.id
-        },
-        data: {
-          address: contract.contractAddr
-        },
-        include: {
-          EventLocation: true,
-          Stakeholders: {
-            select: {
-              walletAddress: true,
-              feePercentage: true
-            }
-          }
-        }
-      });
-
-      if (eventLocation) {
-        await this.database.eventLocation.create({
+        const updatedEvent = await tx.event.update({
+          where: { id: initEvent.id },
           data: {
-            ...eventLocation,
-            Event: {
-              connect: {
-                id: event.id
-              }
-            }
+            address: contract.contractAddr
+          },
+          include: {
+            EventLocation: true,
+            Stakeholders: true
           }
         });
-      }
 
-      return {
-        success: true,
-        event: updatedEvent,
-        contract,
-        explorerUrls: {
-          contract: getExplorerUrl(contract.contractAddr)
-        }
-      }
+        return {
+          success: true,
+          event: updatedEvent,
+          contract: {
+            ...contract,
+            explorerUrls: {
+              contract: getExplorerUrl(contract.contractAddr)
+            }
+          }
+        };
+      });
+
     } catch (error) {
       console.log("🚨 Error on events/create: ", error.message);
       if (eventId) {
@@ -234,11 +192,7 @@ export class EventsService {
       },
       include: {
         EventLocation: true,
-        Tickets: {
-          include: {
-            Entrance: true
-          }
-        }
+        Tickets: true
       }
     });
   }
@@ -333,7 +287,7 @@ export class EventsService {
         description: true,
         logoUrl: true,
         createdAt: true,
-        contractAddress: true,
+        address: true,
         deletedAt: true,
         updatedAt: true,
         endsAt: true,
@@ -349,14 +303,7 @@ export class EventsService {
             metadataUrl: true,
             metadataPayload: true,
             eventId: true,
-            updatedAt: true,
-            Entrance: {
-              select: {
-                id: true,
-                address: true,
-                createdAt: true
-              }
-            }
+            updatedAt: true
           }
         },
         EventLocation: true

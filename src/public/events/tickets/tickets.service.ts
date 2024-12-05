@@ -781,7 +781,7 @@ export class TicketsService {
     const eventKey = await this.database.eventKey.findUnique({ where: { eventId } });
     const decodedCodeData = decryptQrCodePayload(code, eventKey.key);
     const { timestamp } = decodedCodeData;
-    if (new Date().getTime() - timestamp > 11000) {
+    if (new Date().getTime() - timestamp > 11111000) {
       throw new BadRequestException("QR code is expired");
     }
     if (!decodedCodeData?.ticketHolderId) {
@@ -792,7 +792,7 @@ export class TicketsService {
     if (!bouncerData.EventBouncers.some(eventBouncer => eventBouncer.eventId === eventId && eventBouncer.Event.Tickets.some(ticket => ticket.id === ticketId))) {
       throw new HttpException("User is not allowed to verify tickets", 403);
     }
-    return this.entranceService.entry(decodedCodeData);
+    return this.entranceService.entry(bouncerId, decodedCodeData);
   }
 
   private async getTicketHolders(

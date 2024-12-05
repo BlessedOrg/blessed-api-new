@@ -63,7 +63,7 @@ export class EntranceService {
 
       const contract = await deployContract(contractName, Object.values(args));
 
-      const entrance = {}
+      const entrance = {};
 
       //   await this.database.entrance.create({
       //   data: {
@@ -91,7 +91,7 @@ export class EntranceService {
     }
   }
 
-  async entry(decodedCodeData: ITicketQrCodePayload) {
+  async entry(bouncerId: string, decodedCodeData: ITicketQrCodePayload) {
     try {
       const { eventId, tokenId, ticketHolderId } = decodedCodeData;
       const event = await this.database.event.findUnique({
@@ -100,8 +100,8 @@ export class EntranceService {
       if (!event.address) {
         throw new HttpException(`Wrong parameters. Smart contract entrance not found.`, HttpStatus.BAD_REQUEST);
       }
-      const ticketHolder = await this.database.user.findUnique({ where: { id: ticketHolderId } });
-      const { capsuleTokenVaultKey } = ticketHolder;
+      const ticketBouncer = await this.database.user.findUnique({ where: { id: bouncerId } });
+      const { capsuleTokenVaultKey } = ticketBouncer;
       const contractAddress = event.address as PrefixedHexString;
       const smartWallet = await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
       const ownerSmartWallet = await smartWallet.getAccountAddress();
@@ -134,6 +134,7 @@ export class EntranceService {
         transactionReceipt: metaTxResult.data.transactionReceipt
       };
     } catch (e) {
+      console.log(e);
       throw new HttpException(e.message, e.status ?? HttpStatus.BAD_REQUEST);
     }
   }
