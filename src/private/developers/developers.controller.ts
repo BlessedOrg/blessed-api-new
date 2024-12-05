@@ -14,6 +14,22 @@ export class DevelopersController {
     return this.developersService.getDeveloper(req.developerId);
   }
 
+  @RequireDeveloperAuth()
+  @Get("session")
+  getSiweSession(@Req() req: RequestWithDevAccessToken) {
+    return this.developersService.getSiweSession(req.developerId);
+  }
+
+  @Post("loginWithWallet")
+  loginWithWallet(@Body() body: {
+    message: string;
+    signature: string;
+    address: string;
+    chainId: string;
+  }) {
+    return this.developersService.loginWithWallet(body);
+  }
+
   @Post("login")
   create(@Body() emailDto: EmailDto) {
     return this.developersService.login(emailDto);

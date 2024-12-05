@@ -26,6 +26,7 @@ declare global {
     userId: string;
     capsuleTokenVaultKey: string;
     walletAddress: PrefixedHexString;
+    smartWalletAddress: PrefixedHexString;
     email: string;
   };
   type AppValidate = {
@@ -61,6 +62,7 @@ declare global {
     eventId: string,
     ticketId: string,
     tokenId: number,
-    ticketHolderId: string
+    ticketHolderId: string,
+    timestamp: number,
   }
 }

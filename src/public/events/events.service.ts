@@ -12,7 +12,6 @@ import { UsersService } from "@/public/users/users.service";
 import { generateEventKey } from "@/utils/eventKey";
 import { isEmpty, omit } from "lodash";
 import { isAddress } from "viem";
-import { logoBase64 } from "@/utils/logo_base64";
 
 @Injectable()
 export class EventsService {
@@ -126,6 +125,12 @@ export class EventsService {
         });
       }
 
+      const { metadataUrl } = await uploadMetadata({
+        name: createEventDto.name,
+        description: "",
+        image: ""
+      });
+
       const args = {
         owner: developerWalletAddress,
         ownerSmartWallet: developerSmartWalletAddress,
@@ -135,6 +140,34 @@ export class EventsService {
       };
 
       const contract = await deployContract("event", Object.values(args));
+
+      await this.database.$transaction(async (tx) => {
+        const createdEvent = await tx.event.update({
+          where: { id: event.id },
+          data: {
+            contractAddress: contract.contractAddr
+          },
+          include: {
+            EventLocation: true
+          }
+        });
+
+        if (eventLocation) {
+          await tx.eventLocation.create({
+            data: {
+              ...eventLocation,
+              Event: {
+                connect: { id: createdEvent.id }
+              }
+            }
+          });
+        }
+
+        return tx.event.findUnique({
+          where: { id: createdEvent.id },
+          include: { EventLocation: true }
+        });
+      });
 
       const updatedEvent = await this.database.event.update({
         where: {
@@ -200,9 +233,10 @@ export class EventsService {
         }
       },
       include: {
+        EventLocation: true,
         Tickets: {
           include: {
-            Event: true
+            Entrance: true
           }
         }
       }
@@ -298,6 +332,13 @@ export class EventsService {
         slug: true,
         description: true,
         logoUrl: true,
+        createdAt: true,
+        contractAddress: true,
+        deletedAt: true,
+        updatedAt: true,
+        endsAt: true,
+        startsAt: true,
+        timezoneIdentifier: true,
         Tickets: {
           select: {
             id: true,
@@ -305,7 +346,11 @@ export class EventsService {
             slug: true,
             address: true,
             createdAt: true,
-            Event: {
+            metadataUrl: true,
+            metadataPayload: true,
+            eventId: true,
+            updatedAt: true,
+            Entrance: {
               select: {
                 id: true,
                 address: true,
@@ -313,7 +358,8 @@ export class EventsService {
               }
             }
           }
-        }
+        },
+        EventLocation: true
       }
     });
   }

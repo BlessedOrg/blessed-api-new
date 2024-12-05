@@ -3,7 +3,7 @@ import { AirdropDto, SnapshotDto } from "@/public/events/tickets/dto/create-tick
 import { DatabaseService } from "@/common/services/database/database.service";
 import { contractArtifacts, readContract } from "@/lib/viem";
 import { EntranceService } from "@/public/events/entrance/entrance.service";
-import { Ticket } from "@prisma/client";
+import { Entrance, Ticket } from "@prisma/client";
 import { TicketsService } from "@/public/events/tickets/tickets.service";
 import { PrefixedHexString } from "ethereumjs-util";
 
@@ -19,11 +19,11 @@ export class TicketsSnapshotService {
   async snapshot(snapshotDto: SnapshotDto) {
     try {
       const { snapshot } = snapshotDto;
-      const { tickets, events } = await this.getTicketsAndEntrances(snapshot);
+      const { tickets, entrances } = await this.getTicketsAndEntrances(snapshot);
 
       const [eligibleUsersForTicketHold, eligibleUsersForEntrance] = await Promise.all([
         this.getEligibleUsersForTicketHold(tickets),
-        this.getEligibleUsersForEntrances(events as any)
+        this.getEligibleUsersForEntrances(entrances)
       ]);
 
       const eligibleUsersForTicketHoldMap = new Map(
@@ -33,7 +33,7 @@ export class TicketsSnapshotService {
         ])
       );
       const eligibleUsersForEntranceMap = new Map(
-        (eligibleUsersForEntrance as any).flatMap((result) =>
+        eligibleUsersForEntrance.flatMap((result) =>
           result.entries.map((user) => [user.smartWalletAddress, user])
         )
       );
@@ -43,12 +43,12 @@ export class TicketsSnapshotService {
         )
       );
       const eligibleExternalAddressesForEntrance = new Set(
-        (eligibleUsersForEntrance as any).flatMap((result) =>
+        eligibleUsersForEntrance.flatMap((result) =>
           result.externalAddresses.map((address) => address.toLowerCase())
         )
       );
 
-      const isEntranceRequired = !!events.length;
+      const isEntranceRequired = !!entrances.length;
       const isOwnerRequired = !!tickets.length;
 
       let eligibleUsers: any[] = [];
@@ -73,7 +73,7 @@ export class TicketsSnapshotService {
         }
 
         case "true_false": {
-          eligibleUsers = (eligibleUsersForEntrance as any).flatMap((result) => result.entries);
+          eligibleUsers = eligibleUsersForEntrance.flatMap((result) => result.entries);
           eligibleExternalAddresses = Array.from(
             eligibleExternalAddressesForEntrance
           ).map((i) => ({ walletAddress: i, external: true }));
@@ -104,18 +104,21 @@ export class TicketsSnapshotService {
 
     const tickets = await this.database.ticket.findMany({
       where: {
-        slug: { in: ticketsAirdrop.map((i) => i.ticketSlug) },
-        Event: { slug: { in: ticketsAirdrop.map((i) => i.eventSlug) } }
+        id: { in: ticketsAirdrop.map((i) => i.ticketId) },
+        Event: { id: { in: ticketsAirdrop.map((i) => i.eventId) } }
       }
     });
 
-    const events = await this.database.event.findMany({
+    const entrances = await this.database.entrance.findMany({
       where: {
-        slug: { in: ticketsAirdrop.map((i) => i.eventSlug) }
+        Ticket: {
+          id: { in: entranceAirdrop.map((i) => i.ticketId) }
+        },
+        Event: { id: { in: entranceAirdrop.map((i) => i.eventId) } }
       }
     });
 
-    return { tickets, events };
+    return { tickets, entrances };
   }
   private async getEligibleUsersForTicketHold(tickets: Ticket[]) {
     const usersMap = new Map<string, { user: any; count: number }>();
@@ -165,14 +168,20 @@ export class TicketsSnapshotService {
     };
   }
 
-  private async getEligibleUsersForEntrances(event: Event) {
-    // 🏗️ TODO: fix this
-    const { entries, externalAddresses } = await this.entranceService.entries((event as any)?.ticketId);
-    return {
-      externalAddresses,
-      entries,
-      event
-    };
+  private async getEligibleUsersForEntrances(entrances: Entrance[]) {
+    return Promise.all(
+      entrances.map(async (entrance) => {
+        try {
+          const { entries, externalAddresses } = await this.entranceService.entries(entrance.ticketId);
+          return {
+            externalAddresses,
+            entries
+          };
+        } catch (e) {
+          this.handleError(e);
+        }
+      })
+    );
   }
 
   private async getTotalSupply(address: PrefixedHexString): Promise<number> {

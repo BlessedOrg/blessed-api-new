@@ -43,27 +43,29 @@ export class SessionService {
     return true;
   }
   createOrUpdateSession(
-    email: string,
+    identifier: string,
     accountType: AccountType,
     appId?: string
   ): Promise<SessionResult> {
     try {
       if (accountType === "developer") {
-        return this.updateDeveloperSession(email);
+        return this.updateDeveloperSession(identifier);
       } else {
-        return this.updateUserSession(email, appId);
+        return this.updateUserSession(identifier, appId);
       }
     } catch (e) {
       throw new HttpException(e.message, 500);
     }
   }
 
-  private updateDeveloperSession = async (email: string) => {
+  private updateDeveloperSession = async (identifier: string) => {
+    const identifierType = identifier.includes("@") ? "email" : "connectedWalletAddress";
+    const filters = { [identifierType]: identifier } as any;
     const developer = await this.database.developer.findUnique({
-      where: { email }
+      where: filters
     });
     if (!developer) {
-      throw new Error(`Developer with email ${email} not found`);
+      throw new Error(`Developer with ${identifierType}: ${identifier} not found`);
     }
 
     const existingSession = await this.database.developerSession.findFirst({
@@ -162,10 +164,12 @@ export class SessionService {
       }
     }
   };
-  private updateUserSession = async (email: string, appId: string) => {
-    const user = await this.database.user.findUnique({ where: { email } });
+  private updateUserSession = async (identifier: string, appId: string) => {
+    const identifierType = identifier.includes("@") ? "email" : "connectedWalletAddress";
+    const filters = { [identifierType]: identifier } as any;
+    const user = await this.database.user.findUnique({ where: filters });
     if (!user) {
-      throw new Error(`User with email ${email} not found`);
+      throw new Error(`User with ${identifierType}: ${identifier} not found`);
     }
 
     const existingSession = await this.database.userSession.findFirst({
