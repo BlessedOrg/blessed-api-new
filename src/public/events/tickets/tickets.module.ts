@@ -9,9 +9,10 @@ import { TicketsSnapshotService } from "@/public/events/tickets/services/tickets
 import { TicketsDistributeService } from "@/public/events/tickets/services/tickets-distribute.service";
 import { TicketsDistributeCampaignService } from "@/public/events/tickets/services/tickets-distribute-campaign.service";
 import { EventsService } from "@/public/events/events.service";
+import { SessionModule } from "@/common/services/session/session.module";
 
 @Module({
-  imports: [UsersModule, EmailModule],
+  imports: [UsersModule, EmailModule, SessionModule],
   controllers: [TicketsController],
   providers: [
     TicketsService,

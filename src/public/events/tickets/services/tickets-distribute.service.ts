@@ -8,10 +8,16 @@ import { DatabaseService } from "@/common/services/database/database.service";
 import { UsersService } from "@/public/users/users.service";
 import { EmailService } from "@/common/services/email/email.service";
 import { envVariables } from "@/common/env-variables";
+import { SessionService } from "@/common/services/session/session.service";
 
 @Injectable()
 export class TicketsDistributeService {
-  constructor(private database: DatabaseService, private usersService: UsersService, private emailService: EmailService) {}
+  constructor(
+    private database: DatabaseService,
+    private usersService: UsersService,
+    private emailService: EmailService,
+    private sessionService: SessionService
+  ) {}
   async distribute(
     distributeDto: DistributeDto,
     params: {
@@ -25,7 +31,6 @@ export class TicketsDistributeService {
   ) {
     try {
       const { capsuleTokenVaultKey, developerWalletAddress, ticketContractAddress, ticketId, appId, eventId } = params;
-      const app = await this.database.app.findUnique({ where: { id: appId } });
       const { users } = await this.usersService.createMany(
         { users: distributeDto.distributions },
         appId
@@ -47,13 +52,23 @@ export class TicketsDistributeService {
 
       const emailsToSend = await Promise.all(
         distribution.map(async (dist) => {
+          let accessToken;
+          const isSessionValid = await this.sessionService.checkIsSessionValid(dist.userId, "user");
+
+          if (isSessionValid) {
+            const session = await this.database.userSession.findFirst({ where: { User: { email: dist.email } }, orderBy: { createdAt: "desc" } });
+            accessToken = session?.accessToken;
+          } else {
+            accessToken = (await this.sessionService.createOrUpdateSession(dist.email, "user", appId)).accessToken;
+          }
+
           return {
             recipientEmail: dist.email,
             subject: `Your ticket${dist.tokenIds.length > 0 ? "s" : ""} to ${eventData.name}!`,
             template: "./ticketReceive",
             context: {
               eventName: eventData.name,
-              ticketsUrl: envVariables.ticketerAppUrl,
+              ticketsUrl: `${envVariables.ticketerAppUrl}&session=${accessToken}`,
               imageUrl: ticketData.metadataPayload?.metadataImageUrl ?? null,
               tokenIds: dist.tokenIds
             }
