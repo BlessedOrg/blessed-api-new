@@ -1,9 +1,9 @@
-import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, HttpException, Injectable, NotFoundException } from "@nestjs/common";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { CreateEventDto } from "@/public/events/dto/create-event.dto";
 import slugify from "slugify";
 import { UpdateEventDto } from "@/public/events/dto/update-event.dto";
-import { deployContract, getExplorerUrl } from "@/lib/viem";
+import { contractArtifacts, deployContract, getExplorerUrl } from "@/lib/viem";
 import { PrefixedHexString } from "ethereumjs-util";
 import { uploadMetadata } from "@/lib/irys";
 import { v4 as uuidv4 } from "uuid";
@@ -14,6 +14,7 @@ import { isEmpty, omit } from "lodash";
 import { isAddress } from "viem";
 import { logoBase64 } from "@/utils/logo_base64";
 import { prisma } from "@/prisma/client";
+import { biconomyMetaTx } from "@/lib/biconomy";
 
 @Injectable()
 export class EventsService {
@@ -334,18 +335,32 @@ export class EventsService {
     });
   }
 
-  async addEventBouncer(appId: string, eventId: string, emailDto: EmailDto) {
-    let userAccount = await this.database.user.findUnique({ where: { email: emailDto.email } }) as any;
-    if (!userAccount) {
-      const createdUsers = await this.usersService.createMany({ users: [emailDto] }, appId);
-      userAccount = createdUsers.users[0];
-    }
-    return this.database.eventBouncer.create({
-      data: {
-        Event: { connect: { id: eventId } },
-        User: { connect: { id: userAccount.id } }
+  async addEventBouncer(developerId: string, appId: string, eventId: string, emailDto: EmailDto) {
+    try {
+      let userAccount = await this.database.user.findUnique({ where: { email: emailDto.email } }) as any;
+      if (!userAccount) {
+        const createdUsers = await this.usersService.createMany({ users: [emailDto] }, appId);
+        userAccount = createdUsers.users[0];
       }
-    });
+      const developer = await this.database.developer.findUnique({ where: { id: developerId } });
+      const event = await this.database.event.findUnique({ where: { id: eventId } });
+      await biconomyMetaTx({
+        abi: contractArtifacts["event"].abi,
+        address: event.address,
+        functionName: "addBouncer",
+        args: [userAccount.smartWalletAddress],
+        capsuleTokenVaultKey: developer.capsuleTokenVaultKey
+      });
+
+      return this.database.eventBouncer.create({
+        data: {
+          Event: { connect: { id: eventId } },
+          User: { connect: { id: userAccount.id } }
+        }
+      });
+    } catch (e) {
+      throw new HttpException(e.message, e.status || 500);
+    }
   }
 
   async removeEventBouncer(appId: string, eventId: string, emailDto: EmailDto) {

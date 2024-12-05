@@ -93,23 +93,23 @@ export class EntranceService {
 
   async entry(bouncerId: string, decodedCodeData: ITicketQrCodePayload) {
     try {
-      const { eventId, tokenId, ticketHolderId } = decodedCodeData;
+      const { eventId, tokenId, ticketHolderId, ticketId } = decodedCodeData;
       const event = await this.database.event.findUnique({
         where: { id: eventId }
       });
       if (!event.address) {
         throw new HttpException(`Wrong parameters. Smart contract entrance not found.`, HttpStatus.BAD_REQUEST);
       }
+      const attendee = await this.database.user.findUnique({ where: { id: ticketHolderId } });
+      const ticket = await this.database.ticket.findUnique({ where: { id: ticketId } });
       const ticketBouncer = await this.database.user.findUnique({ where: { id: bouncerId } });
       const { capsuleTokenVaultKey } = ticketBouncer;
-      const contractAddress = event.address as PrefixedHexString;
-      const smartWallet = await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
-      const ownerSmartWallet = await smartWallet.getAccountAddress();
+      const eventContractAddress = event.address as PrefixedHexString;
       const isAlreadyEntered = await readContract({
-        abi: contractArtifacts["entrance"].abi,
-        address: contractAddress,
+        abi: contractArtifacts["event"].abi,
+        address: eventContractAddress,
         functionName: "hasEntry",
-        args: [ownerSmartWallet]
+        args: [attendee.smartWalletAddress]
       });
 
       if (isAlreadyEntered) {
@@ -117,10 +117,10 @@ export class EntranceService {
       }
 
       const metaTxResult = await biconomyMetaTx({
-        abi: contractArtifacts["entrance"].abi,
-        address: contractAddress,
+        abi: contractArtifacts["event"].abi,
+        address: eventContractAddress,
         functionName: "entry",
-        args: [tokenId],
+        args: [tokenId, ticket.address, attendee.smartWalletAddress],
         capsuleTokenVaultKey
       });
 

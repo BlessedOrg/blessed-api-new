@@ -703,10 +703,10 @@ export class TicketsService {
           let usedTokenIds = [];
           if (ticket?.Event) {
             const entranceEntries = await readContract({
-              abi: contractArtifacts["entrance"].abi,
+              abi: contractArtifacts["event"].abi,
               address: ticket.Event.address,
-              functionName: "getEntries",
-              args: []
+              functionName: "entries",
+              args: [user.smartWalletAddress]
             }) as { ticketId: BigInt, timestamp: BigInt, wallet: string }[];
 
             const usedToken = entranceEntries.find((entry: any) => ownedTokenIds.includes(Number(entry?.ticketId)));
