@@ -39,7 +39,7 @@ export class EmailService {
     try {
       const otpCode = await this.generateOTP(to);
       const result = await this.mailerService.sendMail({
-        from: envVariables.mail.email || "test@blessed.fan",
+        from: envVariables.mail.email || "helper@blessed.fan",
         to,
         subject: "Your One-Time Password for Blessed.fan",
         template: "./verificationCode",
