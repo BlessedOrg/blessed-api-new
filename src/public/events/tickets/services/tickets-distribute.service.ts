@@ -53,7 +53,7 @@ export class TicketsDistributeService {
       const emailsToSend = await Promise.all(
         distribution.map(async (dist) => {
           let accessToken;
-          const isSessionValid = await this.sessionService.checkIsSessionValid(dist.userId, "user");
+          const isSessionValid = await this.sessionService.checkIsSessionValid(dist.userId, "user", false);
 
           if (isSessionValid) {
             const session = await this.database.userSession.findFirst({ where: { User: { email: dist.email } }, orderBy: { createdAt: "desc" } });

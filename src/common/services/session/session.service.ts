@@ -19,7 +19,7 @@ export class SessionService {
     private jwtService: JwtService
   ) {}
 
-  async checkIsSessionValid(id: string, type: AccountType) {
+  async checkIsSessionValid(id: string, type: AccountType, throwException = true) {
     if (!id) {
       throw new UnauthorizedException("Invalid session token");
     }
@@ -37,7 +37,10 @@ export class SessionService {
     }
     const sessionExpired = !session?.expiresAt || new Date(session?.expiresAt).getTime() < new Date().getTime();
     if (sessionExpired) {
-      throw new UnauthorizedException("Session expired");
+      if (throwException) {
+        throw new UnauthorizedException("Session expired");
+      }
+      return false;
     }
 
     return true;
