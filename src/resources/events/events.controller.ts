@@ -1,11 +1,11 @@
-import { Body, Controller, Delete, Get, Patch, Post, Req } from "@nestjs/common";
-import { EventsService } from "./events.service";
 import { PublicRequest, RequireApiKey, RequireDeveloperAuth } from "@/common/decorators/auth.decorator";
-import { CreateEventDto } from "@/resources/events/dto/create-event.dto";
 import { UseEventIdInterceptor } from "@/common/decorators/event-id-decorator";
 import { UseAppIdInterceptor } from "@/common/decorators/use-app-id.decorator";
-import { UpdateEventDto } from "@/resources/events/dto/update-event.dto";
 import { EmailDto } from "@/common/dto/email.dto";
+import { CreateEventDto } from "@/resources/events/dto/create-event.dto";
+import { UpdateEventDto } from "@/resources/events/dto/update-event.dto";
+import { Body, Controller, Delete, Get, Patch, Post, Req } from "@nestjs/common";
+import { EventsService } from "./events.service";
 
 @RequireApiKey()
 @Controller("events")
@@ -26,19 +26,19 @@ export class EventsController {
   }
 
   @Get()
-  events(@Req() req: RequestWithApiKey) {
-    return this.eventsService.events(req.appId);
+  getAllEventsByAppId(@Req() req: RequestWithApiKey) {
+    return this.eventsService.getAllEventsByAppId(req.appId);
   }
 
   @PublicRequest()
   @Get("public")
-  publicEvents() {
-    return this.eventsService.publicEvents();
+  getEventsWithPublicData() {
+    return this.eventsService.getEventsWithPublicData();
   }
   @UseEventIdInterceptor()
   @Get(":event")
-  details(@Req() req: RequestWithApiKey & EventValidate) {
-    return this.eventsService.details(req.appId, req.eventId);
+  getEventDetails(@Req() req: RequestWithApiKey & EventValidate) {
+    return this.eventsService.getEventDetails(req.appId, req.eventId);
   }
 }
 
@@ -49,20 +49,20 @@ export class EventsPrivateController {
 
   @Get()
   getAllEvents(@Req() req: RequestWithDevAccessToken) {
-    return this.eventsService.getAllEvents(req.developerId);
+    return this.eventsService.getAllEventsByDevId(req.developerId);
   }
 
   @UseAppIdInterceptor()
   @Get(":app")
-  getAppEvents(@Req() req: RequestWithDevAccessToken & AppValidate) {
-    return this.eventsService.events(req.appId);
+  getAllEventsByAppId(@Req() req: RequestWithDevAccessToken & AppValidate) {
+    return this.eventsService.getAllEventsByAppId(req.appId);
   }
 
   @UseEventIdInterceptor()
   @UseAppIdInterceptor()
   @Get(":app/:event")
-  getAppEvent(@Req() req: RequestWithDevAccessToken & AppValidate & EventValidate) {
-    return this.eventsService.details(req.appId, req.eventId);
+  getEventDetails(@Req() req: RequestWithDevAccessToken & AppValidate & EventValidate) {
+    return this.eventsService.getEventDetails(req.appId, req.eventId);
   }
 
   @UseEventIdInterceptor()

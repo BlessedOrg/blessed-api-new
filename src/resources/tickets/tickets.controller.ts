@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Param, Post, Query, Req, UseInterceptors, ValidationPipe } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Req, UseInterceptors, ValidationPipe } from "@nestjs/common";
 import { TicketsService } from "./tickets.service";
-import { PublicRequest, RequireApiKey, RequireDeveloperAuth, RequireUserAuth } from "@/common/decorators/auth.decorator";
+import { RequireApiKey, RequireDeveloperAuth, RequireUserAuth } from "@/common/decorators/auth.decorator";
 import { CreateTicketDto, SnapshotDto } from "@/resources/tickets/dto/create-ticket.dto";
 import { SupplyDto } from "@/resources/tickets/dto/supply.dto";
 import { WhitelistDto } from "@/resources/tickets/dto/whitelist.dto";
@@ -31,29 +31,29 @@ export class TicketsController {
 
   @UseTicketIdInterceptor()
   @Post(":ticketId/supply")
-  supply(
+  changeSupply(
     @Body() supplyDto: SupplyDto,
     @Req() req: RequestWithApiKey & TicketValidate
   ) {
-    return this.ticketsService.supply(supplyDto, req);
+    return this.ticketsService.changeSupply(supplyDto, req);
   }
 
   @UseTicketIdInterceptor()
   @Post(":ticketId/whitelist")
-  whitelist(
+  changeTicketWhitelist(
     @Body() whitelistDto: WhitelistDto,
     @Req() req: RequestWithApiKey & TicketValidate
   ) {
-    return this.ticketsService.whitelist(whitelistDto, req);
+    return this.ticketsService.changeTicketWhitelist(whitelistDto, req);
   }
 
   @UseTicketIdInterceptor()
   @Post(":ticketId/distribute")
-  distribute(
+  distributeTickets(
     @Body() distributeDto: DistributeDto,
     @Req() req: RequestWithApiKey & TicketValidate & EventValidate
   ) {
-    return this.ticketsService.distribute(distributeDto, req);
+    return this.ticketsService.distributeTickets(distributeDto, req);
   }
 
   @UseTicketIdInterceptor()
@@ -75,21 +75,10 @@ export class TicketsController {
     );
   }
 
-  @PublicRequest()
-  @UseTicketIdInterceptor()
-  @Get(":ticketId/show-ticket/:tokenId")
-  showTicket(
-    @Req() req: RequestWithApiKey & TicketValidate & EventValidate,
-    @Param("tokenId") tokenId: string,
-    @Query("userId") userId?: string
-  ) {
-    return this.ticketsService.showTicket(req, tokenId, userId);
-  }
-
   @UseTicketIdInterceptor()
   @Get(":ticketId/owners")
-  owners(@Req() req: RequestWithApiKey & TicketValidate) {
-    return this.ticketsService.owners(req.ticketContractAddress);
+  getTicketOwners(@Req() req: RequestWithApiKey & TicketValidate) {
+    return this.ticketsService.getTicketOwners(req.ticketContractAddress);
   }
 
   @UseInterceptors(SnapshotInterceptor)
@@ -100,11 +89,11 @@ export class TicketsController {
 
   @UseTicketIdInterceptor()
   @Get(":ticketId/:email")
-  ownerByEmail(
+  getTicketOwnersByEmail(
     @Req() req: RequestWithApiKey & TicketValidate,
     @Param(new ValidationPipe({ transform: true })) params: EmailDto
   ) {
-    return this.ticketsService.ownerByEmail(params.email, req);
+    return this.ticketsService.getTicketOwnersByEmail(params.email, req);
   }
 
   @Get()
@@ -145,11 +134,11 @@ export class TicketsPrivateController {
   @UseEventIdInterceptor()
   @UseTicketIdInterceptor()
   @Post(":app/:event/:ticketId/distribute")
-  distribute(
+  distributeTickets(
     @Body() distributeDto: DistributeDto,
     @Req() req: RequestWithDevAccessToken & TicketValidate & EventValidate & AppValidate
   ) {
-    return this.ticketsService.distribute(distributeDto, {
+    return this.ticketsService.distributeTickets(distributeDto, {
       ...req,
       developerWalletAddress: req.walletAddress
     });
@@ -186,8 +175,8 @@ export class TicketsPrivateController {
   @UseAppIdInterceptor()
   @UseEventIdInterceptor()
   @Get(":app/:event")
-  getEventTickets(@Req() req: RequestWithDevAccessToken & AppValidate & EventValidate) {
-    return this.ticketsService.getEventTickets(req.appId, req.eventId);
+  getAllEventTicketsWithOnchainData(@Req() req: RequestWithDevAccessToken & AppValidate & EventValidate) {
+    return this.ticketsService.getAllEventTicketsWithOnchainData(req.appId, req.eventId);
   }
 
   @RequireUserAuth()
@@ -219,7 +208,7 @@ export class TicketsPrivateController {
   @RequireApiKey()
   @UseTicketIdInterceptor()
   @Get(":ticketId/entries")
-  eventTicketEntries(@Req() req: RequestWithApiKey & EventValidate & TicketValidate) {
-    return this.ticketsService.eventTicketEntries(req.ticketId);
+  getTicketEntries(@Req() req: RequestWithApiKey & EventValidate & TicketValidate) {
+    return this.ticketsService.getTicketEntries(req.ticketId);
   }
 }

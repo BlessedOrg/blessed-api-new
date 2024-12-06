@@ -10,8 +10,8 @@ export class AudiencesController {
   constructor(private readonly audiencesService: AudiencesService) {}
 
   @Get()
-  all(@Req() req: RequestWithApiKey) {
-    return this.audiencesService.all(req.appId);
+  getAllAudiences(@Req() req: RequestWithApiKey) {
+    return this.audiencesService.getAllAudiences(req.appId);
   }
   @Post()
   create(
@@ -29,8 +29,8 @@ export class AudiencesPrivateController {
   constructor(private audienceService: AudiencesService) {}
 
   @Get()
-  allAudiences(@Req() req: RequestWithDevAccessToken & AppValidate) {
-    return this.audienceService.all(req.appId);
+  getAllAudiences(@Req() req: RequestWithDevAccessToken & AppValidate) {
+    return this.audienceService.getAllAudiences(req.appId);
   }
 
   @Post()

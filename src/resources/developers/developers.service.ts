@@ -16,13 +16,13 @@ export class DevelopersService {
     private database: DatabaseService
   ) {}
 
-  getDeveloper(developerId: string) {
+  getMyData(developerId: string) {
     return this.database.developer.findUnique({ where: { id: developerId } });
   }
 
-  async getSiweSession(developerId: string) {
-    const dev = await this.database.developer.findUnique({ where: { id: developerId } });
-    return { address: dev.connectedWalletAddress };
+  login(emailDto: EmailDto) {
+    const { email } = emailDto;
+    return this.emailService.sendVerificationCodeEmail(email);
   }
 
   async loginWithWallet(data: {
@@ -58,10 +58,25 @@ export class DevelopersService {
     }
   }
 
-  login(emailDto: EmailDto) {
-    const { email } = emailDto;
-    return this.emailService.sendVerificationCodeEmail(email);
+  async verify(codeDto: CodeDto) {
+    try {
+      const { code } = codeDto;
+      const { email } = await this.emailService.verifyEmailVerificationCode(code);
+      const developerExists = await this.database.developer.findUnique({ where: { email } });
+      if (!developerExists) {
+        return this.createDeveloperAccount(email);
+      }
+      return this.sessionService.createOrUpdateSession(email, "developer");
+    } catch (e) {
+      throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
+    }
   }
+
+  async getSiweSession(developerId: string) {
+    const dev = await this.database.developer.findUnique({ where: { id: developerId } });
+    return { address: dev.connectedWalletAddress };
+  }
+
   async logout(developerId: string, accessTokenVaultKey: string) {
     try {
       await this.database.developerSession.updateMany({
@@ -93,20 +108,6 @@ export class DevelopersService {
       }
     } catch (e) {
       throw new HttpException(e.message, 500);
-    }
-  }
-
-  async verify(codeDto: CodeDto) {
-    try {
-      const { code } = codeDto;
-      const { email } = await this.emailService.verifyEmailVerificationCode(code);
-      const developerExists = await this.database.developer.findUnique({ where: { email } });
-      if (!developerExists) {
-        return this.createDeveloperAccount(email);
-      }
-      return this.sessionService.createOrUpdateSession(email, "developer");
-    } catch (e) {
-      throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
     }
   }
 

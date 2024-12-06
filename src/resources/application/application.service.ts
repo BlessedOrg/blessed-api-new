@@ -7,7 +7,7 @@ import slugify from "slugify";
 export class ApplicationService {
   constructor(private database: DatabaseService) {}
 
-  getOwner(developerId: string) {
+  getAppOwnerData(developerId: string) {
     return this.database.developer.findUnique({
       where: { id: developerId },
       include: {
@@ -23,7 +23,8 @@ export class ApplicationService {
       }
     });
   }
-  getDetails(appId: string) {
+
+  getAppDetails(appId: string) {
     return this.database.app.findUnique({
       where: {
         id: appId
@@ -39,7 +40,7 @@ export class ApplicationService {
     });
   }
 
-  users(appId: string) {
+  getAppUsers(appId: string) {
     return this.database.user.findMany({
       where: {
         Apps: {
@@ -53,7 +54,7 @@ export class ApplicationService {
 @Injectable()
 export class ApplicationPrivateService {
   constructor(private database: DatabaseService) {}
-  async create(
+  async createApplication(
     createApplicationDto: CreateApplicationDto,
     developerId: string
   ) {
@@ -86,7 +87,8 @@ export class ApplicationPrivateService {
       throw new HttpException(e.message, 400);
     }
   }
-  getAll(developerId: string) {
+
+  getAllDeveloperApps(developerId: string) {
     return this.database.app.findMany({
       where: {
         developerId
@@ -101,12 +103,14 @@ export class ApplicationPrivateService {
       }
     });
   }
-  allUsers(appId: string) {
+
+  getAppUsers(appId: string) {
     return this.database.user.findMany({
       where: { Apps: { some: { id: appId } } }
     });
   }
-  details(appId: string) {
+
+  getAppDetails(appId: string) {
     return this.database.app.findUnique({
       where: {
         id: appId

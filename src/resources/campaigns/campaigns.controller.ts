@@ -10,8 +10,8 @@ export class CampaignsController {
   constructor(private readonly campaignsService: CampaignsService) {}
 
   @Get()
-  all(@Req() req: RequestWithApiKey) {
-    return this.campaignsService.all(req.appId);
+  getAllCampaigns(@Req() req: RequestWithApiKey) {
+    return this.campaignsService.getAllCampaigns(req.appId);
   }
 
   @Post()
@@ -23,12 +23,12 @@ export class CampaignsController {
   }
 
   @Get(":campaign")
-  getCampaign(@Req() req: RequestWithApiKey, @Param("campaign") id: string) {
-    return this.campaignsService.getCampaign(req.appId, id);
+  getCampaignById(@Req() req: RequestWithApiKey, @Param("campaign") id: string) {
+    return this.campaignsService.getCampaignById(req.appId, id);
   }
 
   @Patch(":campaign/audiences")
-  updateAudiences(
+  updateCampaignAudiences(
     @Req() req: RequestWithApiKey,
     @Param("campaign") id: string,
     @Body()
@@ -37,7 +37,7 @@ export class CampaignsController {
       audiencesToRemove?: string[];
     }
   ) {
-    return this.campaignsService.updateAudiences(
+    return this.campaignsService.updateCampaignAudiences(
       req.appId,
       id,
       updateCampaignAudienceDto
@@ -45,13 +45,13 @@ export class CampaignsController {
   }
 
   @Patch(":campaign/tickets")
-  updateTickets(
+  updateCampaignTickets(
     @Req() req: RequestWithApiKey,
     @Param("campaign") id: string,
     @Body()
     updateCampaignTicketsDto: { tickets: string[]; ticketsToRemove?: string[] }
   ) {
-    return this.campaignsService.updateTickets(
+    return this.campaignsService.updateCampaignTickets(
       req.appId,
       id,
       updateCampaignTicketsDto
@@ -59,8 +59,8 @@ export class CampaignsController {
   }
 
   @Post(":campaign/distribute")
-  distribute(@Req() req: RequestWithApiKey, @Param("campaign") id: string) {
-    return this.campaignsService.distribute(req.appId, id, req);
+  distributeCampaign(@Req() req: RequestWithApiKey, @Param("campaign") id: string) {
+    return this.campaignsService.distributeCampaign(req.appId, id, req);
   }
 }
 
@@ -71,12 +71,12 @@ export class CampaignsPrivateController {
   constructor(private campaignService: CampaignsService) {}
 
   @Get()
-  allCampaigns(@Req() req: RequestWithDevAccessToken & AppValidate) {
-    return this.campaignService.all(req.appId);
+  getAllCampaigns(@Req() req: RequestWithDevAccessToken & AppValidate) {
+    return this.campaignService.getAllCampaigns(req.appId);
   }
 
   @Post()
-  createCampaign(
+  create(
     @Req() req: RequestWithDevAccessToken & AppValidate,
     @Body() createCampaignDto: CreateCampaignDto
   ) {
@@ -84,19 +84,19 @@ export class CampaignsPrivateController {
   }
 
   @Patch(":campaign/name")
-  updateName(
+  updateCampaignName(
     @Req() req: RequestWithDevAccessToken & AppValidate,
     @Param("campaign") id: string,
     @Body() updateCampaignNameDto: { name: string }
   ) {
-    return this.campaignService.updateName(
+    return this.campaignService.updateCampaignName(
       req.appId,
       id,
       updateCampaignNameDto.name
     );
   }
   @Patch(":campaign/audiences")
-  updateAudiences(
+  updateCampaignAudiences(
     @Req() req: RequestWithDevAccessToken & AppValidate,
     @Param("campaign") id: string,
     @Body()
@@ -105,7 +105,7 @@ export class CampaignsPrivateController {
       audiencesToRemove?: string[];
     }
   ) {
-    return this.campaignService.updateAudiences(
+    return this.campaignService.updateCampaignAudiences(
       req.appId,
       id,
       updateCampaignAudienceDto
@@ -113,24 +113,24 @@ export class CampaignsPrivateController {
   }
 
   @Patch(":campaign/tickets")
-  updateTickets(
+  updateCampaignTickets(
     @Req() req: RequestWithDevAccessToken & AppValidate,
     @Param("campaign") id: string,
     @Body()
     updateCampaignTicketsDto: { tickets: string[]; ticketsToRemove?: string[] }
   ) {
-    return this.campaignService.updateTickets(
+    return this.campaignService.updateCampaignTickets(
       req.appId,
       id,
       updateCampaignTicketsDto
     );
   }
   @Post(":campaign/distribute")
-  distribute(
+  distributeCampaign(
     @Req() req: RequestWithDevAccessToken & AppValidate,
     @Param("campaign") id: string
   ) {
-    return this.campaignService.distribute(req.appId, id, req);
+    return this.campaignService.distributeCampaign(req.appId, id, req);
   }
   @Delete(":campaignId")
   deleteCampaign(

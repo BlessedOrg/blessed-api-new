@@ -1,20 +1,20 @@
-import { ConflictException, HttpException, HttpStatus, Injectable, NotFoundException } from "@nestjs/common";
-import { DatabaseService } from "@/common/services/database/database.service";
-import { CreateEventDto } from "@/resources/events/dto/create-event.dto";
-import slugify from "slugify";
-import { UpdateEventDto } from "@/resources/events/dto/update-event.dto";
-import { contractArtifacts, deployContract, getExplorerUrl, readContract } from "@/lib/viem";
-import { PrefixedHexString } from "ethereumjs-util";
-import { uploadMetadata } from "@/lib/irys";
-import { v4 as uuidv4 } from "uuid";
 import { EmailDto } from "@/common/dto/email.dto";
+import { DatabaseService } from "@/common/services/database/database.service";
+import { biconomyMetaTx } from "@/lib/biconomy";
+import { uploadMetadata } from "@/lib/irys";
+import { contractArtifacts, deployContract, getExplorerUrl, readContract } from "@/lib/viem";
+import { prisma } from "@/prisma/client";
+import { CreateEventDto } from "@/resources/events/dto/create-event.dto";
+import { UpdateEventDto } from "@/resources/events/dto/update-event.dto";
 import { UsersService } from "@/resources/users/users.service";
 import { generateEventKey } from "@/utils/eventKey";
-import { isEmpty, omit } from "lodash";
-import { isAddress } from "viem";
 import { logoBase64 } from "@/utils/logo_base64";
-import { prisma } from "@/prisma/client";
-import { biconomyMetaTx } from "@/lib/biconomy";
+import { ConflictException, HttpException, HttpStatus, Injectable, NotFoundException } from "@nestjs/common";
+import { PrefixedHexString } from "ethereumjs-util";
+import { isEmpty, omit } from "lodash";
+import slugify from "slugify";
+import { v4 as uuidv4 } from "uuid";
+import { isAddress } from "viem";
 
 @Injectable()
 export class EventsService {
@@ -22,33 +22,6 @@ export class EventsService {
     private database: DatabaseService,
     private usersService: UsersService
   ) {}
-
-  async transformStakeholders(
-    stakeholders: [string, number][],
-    appId: string
-  ): Promise<{ wallet: PrefixedHexString; feePercentage: number }[]> {
-    const stakeholderPromises = stakeholders.map(
-      async ([identifier, amount]) => {
-        let walletAddress: PrefixedHexString;
-        if (isAddress(identifier)) {
-          walletAddress = identifier;
-        } else {
-          const { users } = await this.usersService.createMany(
-            { users: [{ email: identifier }] },
-            appId
-          );
-          walletAddress = users[0].smartWalletAddress;
-        }
-
-        return {
-          wallet: walletAddress,
-          feePercentage: amount
-        };
-      }
-    );
-
-    return Promise.all(stakeholderPromises);
-  }
 
   async create(
     createEventDto: CreateEventDto,
@@ -184,7 +157,34 @@ export class EventsService {
     }
   }
 
-  getAllEvents(developerId: string) {
+  async transformStakeholders(
+    stakeholders: [string, number][],
+    appId: string
+  ): Promise<{ wallet: PrefixedHexString; feePercentage: number }[]> {
+    const stakeholderPromises = stakeholders.map(
+      async ([identifier, amount]) => {
+        let walletAddress: PrefixedHexString;
+        if (isAddress(identifier)) {
+          walletAddress = identifier;
+        } else {
+          const { users } = await this.usersService.createManyUserAccounts(
+            { users: [{ email: identifier }] },
+            appId
+          );
+          walletAddress = users[0].smartWalletAddress;
+        }
+
+        return {
+          wallet: walletAddress,
+          feePercentage: amount
+        };
+      }
+    );
+
+    return Promise.all(stakeholderPromises);
+  }
+
+  getAllEventsByDevId(developerId: string) {
     return this.database.event.findMany({
       where: {
         App: {
@@ -194,6 +194,18 @@ export class EventsService {
       include: {
         EventLocation: true,
         Tickets: true
+      }
+    });
+  }
+
+  getAllEventsByAppId(appId: string) {
+    return this.database.event.findMany({
+      where: {
+        appId
+      },
+      include: {
+        Tickets: true,
+        EventLocation: true
       }
     });
   }
@@ -267,19 +279,7 @@ export class EventsService {
     });
   }
 
-  events(appId: string) {
-    return this.database.event.findMany({
-      where: {
-        appId
-      },
-      include: {
-        Tickets: true,
-        EventLocation: true
-      }
-    });
-  }
-
-  publicEvents() {
+  getEventsWithPublicData() {
     return this.database.event.findMany({
       select: {
         id: true,
@@ -312,7 +312,7 @@ export class EventsService {
     });
   }
 
-  details(appId: string, eventId: string) {
+  getEventDetails(appId: string, eventId: string) {
     return this.database.event.findUnique({
       where: {
         id: eventId,
@@ -446,7 +446,7 @@ export class EventsService {
     try {
       let userAccount = await this.database.user.findUnique({ where: { email: emailDto.email } }) as any;
       if (!userAccount) {
-        const createdUsers = await this.usersService.createMany({ users: [emailDto] }, appId);
+        const createdUsers = await this.usersService.createManyUserAccounts({ users: [emailDto] }, appId);
         userAccount = createdUsers.users[0];
       }
       const developer = await this.database.developer.findUnique({ where: { id: developerId } });

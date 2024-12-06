@@ -28,13 +28,16 @@ export class UsersService {
       message: "Successfully logged out"
     };
   }
-  createMany(users: CreateManyUsersDto, appId: string) {
+
+  createManyUserAccounts(users: CreateManyUsersDto, appId: string) {
     return this.createMissingAccounts(users.users.map(user => user.email), appId);
   }
-  allUsers(appId: string) {
+
+  getAllUsersByAppId(appId: string) {
     return this.database.user.findMany({ where: { Apps: { some: { id: appId } } } });
   }
-  async getUserData(appId: string, userId: string) {
+
+  async getUserDataByAppId(appId: string, userId: string) {
     const user = await this.database.user.findUnique({ where: { id: userId, Apps: { some: { id: appId } } } });
     if (!user) {
       throw new HttpException("User does not exist", 404);

@@ -11,7 +11,7 @@ export class AudiencesService {
     private usersService: UsersService
   ) {}
 
-  all(appId: string) {
+  getAllAudiences(appId: string) {
     return this.database.audience.findMany({
       where: {
         appId,
@@ -39,19 +39,52 @@ export class AudiencesService {
       data: { appId, name: createAudienceDto.name, slug }
     });
 
-    await this.createOrAssignUsers(appId, createdAudience.id, createAudienceDto);
+    await this.createOrAssignUsersToAudience(appId, createdAudience.id, createAudienceDto);
 
     return createdAudience;
   }
 
-  private createOrAssignUsers(
+  update(
+    appId: string,
+    audienceId: string,
+    updateAudienceDto: { name?: string }
+  ) {
+    try {
+      if (updateAudienceDto?.name) {
+        const slug = slugify(updateAudienceDto.name, {
+          lower: true,
+          strict: true,
+          trim: true
+        });
+        return this.database.audience.update({
+          where: { id: audienceId, appId },
+          data: { name: updateAudienceDto.name, slug }
+        });
+      } else {
+        throw new HttpException("No changes to update!", 400);
+      }
+    } catch (e) {
+      throw new HttpException(e.message, 400);
+    }
+  }
+
+  deleteAudience(appId: string, audienceId: string) {
+    return this.database.audience.update({
+      where: { id: audienceId, appId },
+      data: {
+        deletedAt: new Date()
+      }
+    });
+  }
+
+  private createOrAssignUsersToAudience(
     appId: string,
     audienceId: string,
     usersToAssign: CreateAudiencesDto
   ) {
     console.log(usersToAssign);
     return this.database.$transaction(async (prisma) => {
-      const { users } = await this.usersService.createMany(
+      const { users } = await this.usersService.createManyUserAccounts(
         { users: usersToAssign?.emails || [] },
         appId
       );
@@ -121,39 +154,6 @@ export class AudiencesService {
         externalAudienceUsers,
         assignedExistingUsersAudience
       };
-    });
-  }
-
-  update(
-    appId: string,
-    audienceId: string,
-    updateAudienceDto: { name?: string }
-  ) {
-    try {
-      if (updateAudienceDto?.name) {
-        const slug = slugify(updateAudienceDto.name, {
-          lower: true,
-          strict: true,
-          trim: true
-        });
-        return this.database.audience.update({
-          where: { id: audienceId, appId },
-          data: { name: updateAudienceDto.name, slug }
-        });
-      } else {
-        throw new HttpException("No changes to update!", 400);
-      }
-    } catch (e) {
-      throw new HttpException(e.message, 400);
-    }
-  }
-
-  deleteAudience(appId: string, audienceId: string) {
-    return this.database.audience.update({
-      where: { id: audienceId, appId },
-      data: {
-        deletedAt: new Date()
-      }
     });
   }
 }

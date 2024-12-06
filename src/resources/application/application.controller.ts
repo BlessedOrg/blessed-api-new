@@ -10,17 +10,17 @@ export class ApplicationController {
   constructor(private readonly applicationService: ApplicationService) {}
 
   @Get("owner")
-  getOwner(@Req() req: RequestWithApiKey) {
-    return this.applicationService.getOwner(req.developerId);
+  getAppOwnerData(@Req() req: RequestWithApiKey) {
+    return this.applicationService.getAppOwnerData(req.developerId);
   }
   @Get()
-  getDetails(@Req() req: RequestWithApiKey) {
-    return this.applicationService.getDetails(req.appId);
+  getAppDetails(@Req() req: RequestWithApiKey) {
+    return this.applicationService.getAppDetails(req.appId);
   }
 
   @Get("users")
-  users(@Req() req: RequestWithApiKey) {
-    return this.applicationService.users(req.appId);
+  getAppUsers(@Req() req: RequestWithApiKey) {
+    return this.applicationService.getAppUsers(req.appId);
   }
 }
 
@@ -30,29 +30,29 @@ export class ApplicationPrivateController {
   constructor(private readonly applicationsService: ApplicationPrivateService) {}
 
   @Post()
-  create(
+  createApplication(
     @Body() createApplicationDto: CreateApplicationDto,
     @Req() req: RequestWithDevAccessToken
   ) {
     const developerId = req.developerId;
-    return this.applicationsService.create(createApplicationDto, developerId);
+    return this.applicationsService.createApplication(createApplicationDto, developerId);
   }
 
   @UseAppIdInterceptor()
   @Get(":app/users")
-  allUsers(@Req() req: RequestWithDevAccessToken & AppValidate) {
-    return this.applicationsService.allUsers(req.appId);
+  getAppUsers(@Req() req: RequestWithDevAccessToken & AppValidate) {
+    return this.applicationsService.getAppUsers(req.appId);
   }
 
   @UseAppIdInterceptor()
   @Get(":app")
-  details(@Req() req: RequestWithDevAccessToken & AppValidate) {
-    return this.applicationsService.details(req.appId);
+  getAppDetails(@Req() req: RequestWithDevAccessToken & AppValidate) {
+    return this.applicationsService.getAppDetails(req.appId);
   }
 
   @Get()
-  all(@Req() req: RequestWithDevAccessToken) {
+  getAllDeveloperApps(@Req() req: RequestWithDevAccessToken) {
     const developerId = req.developerId;
-    return this.applicationsService.getAll(developerId);
+    return this.applicationsService.getAllDeveloperApps(developerId);
   }
 }

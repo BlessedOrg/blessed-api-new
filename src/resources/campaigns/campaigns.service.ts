@@ -10,8 +10,22 @@ export class CampaignsService {
     private database: DatabaseService,
     private ticketsService: TicketsService
   ) {}
+  create(appId: string, createCampaignDto: CreateCampaignDto) {
+    const slug = slugify(createCampaignDto.name, {
+      lower: true,
+      strict: true,
+      trim: true
+    });
+    return this.database.campaign.create({
+      data: {
+        name: createCampaignDto.name,
+        slug,
+        appId
+      }
+    });
+  }
 
-  all(appId: string) {
+  getAllCampaigns(appId: string) {
     return this.database.campaign.findMany({
       where: {
         appId,
@@ -42,18 +56,8 @@ export class CampaignsService {
       }
     });
   }
-  delete(campaignId: string, appId: string) {
-    return this.database.campaign.update({
-      where: {
-        id: campaignId,
-        appId
-      },
-      data: {
-        deletedAt: new Date()
-      }
-    });
-  }
-  getCampaign(appId: string, id: string) {
+
+  getCampaignById(appId: string, id: string) {
     return this.database.campaign.findUnique({
       where: {
         id,
@@ -66,21 +70,8 @@ export class CampaignsService {
       }
     });
   }
-  create(appId: string, createCampaignDto: CreateCampaignDto) {
-    const slug = slugify(createCampaignDto.name, {
-      lower: true,
-      strict: true,
-      trim: true
-    });
-    return this.database.campaign.create({
-      data: {
-        name: createCampaignDto.name,
-        slug,
-        appId
-      }
-    });
-  }
-  async updateName(appId: string, campaignId: string, name: string) {
+
+  async updateCampaignName(appId: string, campaignId: string, name: string) {
     try {
       const slug = slugify(name, {
         lower: true,
@@ -102,7 +93,8 @@ export class CampaignsService {
       throw new HttpException(e.message, 400);
     }
   }
-  async updateAudiences(
+
+  async updateCampaignAudiences(
     appId: string,
     campaignId: string,
     updateCampaignAudienceDto: {
@@ -143,7 +135,7 @@ export class CampaignsService {
     });
   }
 
-  async updateTickets(
+  async updateCampaignTickets(
     appId: string,
     campaignId: string,
     updateCampaignTicketsDto: { tickets: string[]; ticketsToRemove?: string[] }
@@ -181,7 +173,19 @@ export class CampaignsService {
     });
   }
 
-  distribute(appId: string, campaignId: string, req: any) {
+  delete(campaignId: string, appId: string) {
+    return this.database.campaign.update({
+      where: {
+        id: campaignId,
+        appId
+      },
+      data: {
+        deletedAt: new Date()
+      }
+    });
+  }
+
+  distributeCampaign(appId: string, campaignId: string, req: any) {
     return this.ticketsService.distributeCampaignTickets(campaignId, appId, {
       developerWalletAddress: req?.developerWalletAddress || req?.walletAddress,
       capsuleTokenVaultKey: req.capsuleTokenVaultKey

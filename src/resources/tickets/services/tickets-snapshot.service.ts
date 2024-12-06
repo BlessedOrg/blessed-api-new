@@ -126,7 +126,7 @@ export class TicketsSnapshotService {
         try {
           const totalSupply = await this.getTotalSupply(ticket.address as PrefixedHexString);
           const { owners, externalAddresses } =
-            await this.ticketsService.owners(ticket.address, {
+            await this.ticketsService.getTicketOwners(ticket.address, {
               start: 0,
               pageSize: totalSupply
             });

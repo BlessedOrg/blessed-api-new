@@ -31,7 +31,7 @@ export class TicketsDistributeService {
   ) {
     try {
       const { capsuleTokenVaultKey, developerWalletAddress, ticketContractAddress, ticketId, appId, eventId } = params;
-      const { users } = await this.usersService.createMany(
+      const { users } = await this.usersService.createManyUserAccounts(
         { users: distributeDto.distributions },
         appId
       );

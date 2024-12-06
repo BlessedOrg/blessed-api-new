@@ -11,8 +11,8 @@ export class UsersController {
 
   @RequireApiKey()
   @Post()
-  createMany(@Body() users: CreateManyUsersDto, @Req() req: RequestWithApiKey) {
-    return this.usersService.createMany(users, req.appId);
+  createManyUserAccounts(@Body() users: CreateManyUsersDto, @Req() req: RequestWithApiKey) {
+    return this.usersService.createManyUserAccounts(users, req.appId);
   }
 
   @RequireUserAndApiKey()
@@ -36,16 +36,16 @@ export class UsersController {
 
   @RequireApiKey()
   @Get(":userId")
-  getUserData(@Req() req: RequestWithApiKey, @Param("userId") userId: string) {
+  getUserDataByAppId(@Req() req: RequestWithApiKey, @Param("userId") userId: string) {
     const { appId } = req;
-    return this.usersService.getUserData(appId, userId);
+    return this.usersService.getUserDataByAppId(appId, userId);
   }
 
   @RequireApiKey()
   @Get()
-  allUsers(@Req() req: RequestWithApiKey) {
+  getAllUsersByAppId(@Req() req: RequestWithApiKey) {
     const { appId } = req;
-    return this.usersService.allUsers(appId);
+    return this.usersService.getAllUsersByAppId(appId);
   }
 }
 

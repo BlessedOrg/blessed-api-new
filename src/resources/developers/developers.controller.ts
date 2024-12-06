@@ -10,8 +10,8 @@ export class DevelopersPrivateController {
 
   @RequireDeveloperAuth()
   @Get("me")
-  me(@Req() req: RequestWithDevAccessToken) {
-    return this.developersService.getDeveloper(req.developerId);
+  getMyData(@Req() req: RequestWithDevAccessToken) {
+    return this.developersService.getMyData(req.developerId);
   }
 
   @RequireDeveloperAuth()

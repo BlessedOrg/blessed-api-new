@@ -104,7 +104,7 @@ export class TicketsDistributeCampaignService {
             throw new Error("Not enough supply");
           }
           if (Number(currentSupply) < allUsersCount) {
-            await this.ticketsService.supply({ additionalSupply }, {
+            await this.ticketsService.changeSupply({ additionalSupply }, {
               developerWalletAddress,
               ticketContractAddress: ticket.address,
               capsuleTokenVaultKey
