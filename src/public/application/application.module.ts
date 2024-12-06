@@ -1,9 +1,11 @@
-import { Module } from '@nestjs/common';
-import { ApplicationService } from './application.service';
-import { ApplicationController } from './application.controller';
+import { Module } from "@nestjs/common";
+import { ApplicationPrivateService, ApplicationService } from "./application.service";
+import { ApplicationController, ApplicationPrivateController } from "./application.controller";
+import { ApiKeyModule } from "@/public/application/api-key/api-key.module";
 
 @Module({
-  controllers: [ApplicationController],
-  providers: [ApplicationService],
+  controllers: [ApplicationController, ApplicationPrivateController],
+  providers: [ApplicationService, ApplicationPrivateService],
+  imports: [ApiKeyModule]
 })
 export class ApplicationModule {}

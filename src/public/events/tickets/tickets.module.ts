@@ -1,6 +1,6 @@
 import { Module } from "@nestjs/common";
 import { TicketsService } from "./tickets.service";
-import { TicketsController } from "./tickets.controller";
+import { TicketsController, TicketsPrivateController } from "./tickets.controller";
 import { UsersModule } from "@/public/users/users.module";
 import { EmailModule } from "@/common/services/email/email.module";
 import { TicketIdInterceptor } from "@/common/interceptors/param-protect/ticket-id-interceptor";
@@ -13,7 +13,7 @@ import { SessionModule } from "@/common/services/session/session.module";
 
 @Module({
   imports: [UsersModule, EmailModule, SessionModule],
-  controllers: [TicketsController],
+  controllers: [TicketsController, TicketsPrivateController],
   providers: [
     TicketsService,
     TicketsSnapshotService,

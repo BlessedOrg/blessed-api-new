@@ -5,7 +5,7 @@ import { CodeDto } from "@/common/dto/code.dto";
 import { RequireDeveloperAuth } from "@/common/decorators/auth.decorator";
 
 @Controller("private/developers")
-export class DevelopersController {
+export class DevelopersPrivateController {
   constructor(private readonly developersService: DevelopersService) {}
 
   @RequireDeveloperAuth()

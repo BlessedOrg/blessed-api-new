@@ -6,7 +6,7 @@ import { createVaultApiKeyItem, getVaultItem } from "@/lib/1pwd-vault";
 import { isEqual } from "lodash";
 
 @Injectable()
-export class ApiKeyService {
+export class ApiKeyPrivateService {
   constructor(private database: DatabaseService, private jwtService: JwtService) {}
   async getApiKey(appId: string, developerId: string) {
     const app = await this.database.app.findUnique({ where: { id: appId } });

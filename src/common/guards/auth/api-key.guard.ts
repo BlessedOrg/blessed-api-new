@@ -1,11 +1,11 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { envVariables } from "@/common/env-variables";
-import { ApiKeyService } from "@/private/applications/api-key/api-key.service";
+import { ApiKeyPrivateService } from "@/public/application/api-key/api-key.service";
 
 @Injectable()
 export class ApiKeyGuard implements IAuthGuard {
-  constructor(private jwtService: JwtService, private apiKeyService: ApiKeyService) {}
+  constructor(private jwtService: JwtService, private apiKeyService: ApiKeyPrivateService) {}
 
   async canActivate(context: any): Promise<boolean> {
     const request = context.switchToHttp().getRequest();

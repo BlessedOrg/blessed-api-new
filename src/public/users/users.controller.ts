@@ -2,7 +2,7 @@ import { Body, Controller, Get, Param, Post, Req } from "@nestjs/common";
 import { UsersService } from "./users.service";
 import { EmailDto } from "@/common/dto/email.dto";
 import { CodeDto } from "@/common/dto/code.dto";
-import { RequireApiKey, RequireUserAndApiKey } from "@/common/decorators/auth.decorator";
+import { RequireApiKey, RequireUserAndApiKey, RequireUserAuth } from "@/common/decorators/auth.decorator";
 import { CreateManyUsersDto } from "@/public/users/dto/many-users-create.dto";
 
 @Controller("users")
@@ -48,3 +48,37 @@ export class UsersController {
     return this.usersService.allUsers(appId);
   }
 }
+
+@Controller("private/users")
+export class UsersPrivateController {
+  constructor(private usersService: UsersService) {}
+
+  @RequireUserAuth()
+  @Get("me")
+  async getMe(@Req() req: RequestWithUserAccessToken) {
+    return await this.usersService.getUserById(req.userId);
+  }
+
+  @RequireUserAuth()
+  @Get("events-bouncer")
+  async getUserEventsBouncer(@Req() req: RequestWithUserAccessToken) {
+    return await this.usersService.getUserEventsBouncer(req.userId);
+  }
+
+  @Post("login")
+  async login(@Body() emailDto: EmailDto) {
+    return await this.usersService.login(emailDto);
+  }
+
+  @RequireUserAuth()
+  @Post("logout")
+  async logout(@Req() req: UserAccessTokenJWT) {
+    return await this.usersService.logout(req.userId);
+  }
+
+  @Post("verify")
+  async verify(@Body() codeDto: CodeDto) {
+    return await this.usersService.verify(codeDto, "global");
+  }
+}
+
