@@ -1,9 +1,9 @@
-import { ConflictException, HttpException, Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, HttpException, HttpStatus, Injectable, NotFoundException } from "@nestjs/common";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { CreateEventDto } from "@/resources/events/dto/create-event.dto";
 import slugify from "slugify";
 import { UpdateEventDto } from "@/resources/events/dto/update-event.dto";
-import { contractArtifacts, deployContract, getExplorerUrl } from "@/lib/viem";
+import { contractArtifacts, deployContract, getExplorerUrl, readContract } from "@/lib/viem";
 import { PrefixedHexString } from "ethereumjs-util";
 import { uploadMetadata } from "@/lib/irys";
 import { v4 as uuidv4 } from "uuid";
@@ -333,6 +333,113 @@ export class EventsService {
         }
       }
     });
+  }
+
+  async letUserIntoEvent(bouncerId: string, decodedCodeData: ITicketQrCodePayload) {
+    try {
+      const { eventId, tokenId, ticketHolderId, ticketId } = decodedCodeData;
+      const event = await this.database.event.findUnique({
+        where: { id: eventId }
+      });
+      if (!event.address) {
+        throw new HttpException(`Wrong parameters. Smart contract entrance not found.`, HttpStatus.BAD_REQUEST);
+      }
+      const attendee = await this.database.user.findUnique({ where: { id: ticketHolderId } });
+      const ticket = await this.database.ticket.findUnique({ where: { id: ticketId } });
+      const ticketBouncer = await this.database.user.findUnique({ where: { id: bouncerId } });
+      const { capsuleTokenVaultKey } = ticketBouncer;
+      const eventContractAddress = event.address as PrefixedHexString;
+      const isAlreadyEntered = await readContract({
+        abi: contractArtifacts["event"].abi,
+        address: eventContractAddress,
+        functionName: "hasEntry",
+        args: [attendee.smartWalletAddress]
+      });
+
+      if (isAlreadyEntered) {
+        throw new HttpException("Already entered", HttpStatus.CONFLICT);
+      }
+
+      const metaTxResult = await biconomyMetaTx({
+        abi: contractArtifacts["event"].abi,
+        address: eventContractAddress,
+        functionName: "entry",
+        args: [tokenId, ticket.address, attendee.smartWalletAddress],
+        capsuleTokenVaultKey
+      });
+
+      return {
+        success: true,
+        explorerUrls: {
+          tx: getExplorerUrl(
+            metaTxResult.data.transactionReceipt.transactionHash
+          )
+        },
+        transactionReceipt: metaTxResult.data.transactionReceipt
+      };
+    } catch (e) {
+      console.log(e);
+      throw new HttpException(e.message, e.status ?? HttpStatus.BAD_REQUEST);
+    }
+  }
+
+  async getEventEntriesPerTicketId(ticketId: string) {
+    try {
+      const ticketEntranceRecord = await this.database.ticket.findUnique({
+        where: {
+          id: ticketId
+        },
+        include: {
+          Event: true
+        }
+      });
+      const entries = await readContract({
+        abi: contractArtifacts["event"].abi,
+        address: ticketEntranceRecord.Event.address,
+        functionName: "getEntries"
+      });
+      const formattedEntries = [];
+      const notFoundAddresses = [];
+
+      for (const entry of entries as any) {
+        const user = await this.database.user.findUnique({
+          where: {
+            smartWalletAddress: entry.wallet?.toLowerCase()
+          },
+          select: {
+            email: true,
+            walletAddress: true,
+            id: true
+          }
+        });
+
+        if (user) {
+          formattedEntries.push({
+            email: user.email,
+            smartWalletAddress: entry.wallet.toLowerCase(),
+            walletAddress: user.walletAddress,
+            entryTimestamp: Number(entry.timestamp),
+            ticketId: Number(entry.ticketId),
+            id: user.id
+          });
+        } else {
+          notFoundAddresses.push(entry.wallet.toLowerCase());
+          formattedEntries.push({
+            external: true,
+            walletAddress: entry.wallet.toLowerCase(),
+            entryTimestamp: Number(entry.timestamp),
+            ticketId: Number(entry.ticketId)
+          });
+        }
+      }
+
+      return {
+        entries: formattedEntries,
+        externalAddresses: notFoundAddresses
+      };
+    } catch (e) {
+      throw new HttpException(e.message, 500);
+    }
   }
 
   async addEventBouncer(developerId: string, appId: string, eventId: string, emailDto: EmailDto) {

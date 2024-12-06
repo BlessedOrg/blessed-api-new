@@ -1,10 +1,10 @@
 import { Body, Controller, Get, Param, Post, Query, Req, UseInterceptors, ValidationPipe } from "@nestjs/common";
 import { TicketsService } from "./tickets.service";
 import { PublicRequest, RequireApiKey, RequireDeveloperAuth, RequireUserAuth } from "@/common/decorators/auth.decorator";
-import { CreateTicketDto, SnapshotDto } from "@/resources/events/tickets/dto/create-ticket.dto";
-import { SupplyDto } from "@/resources/events/tickets/dto/supply.dto";
-import { WhitelistDto } from "@/resources/events/tickets/dto/whitelist.dto";
-import { DistributeDto } from "@/resources/events/tickets/dto/distribute.dto";
+import { CreateTicketDto, SnapshotDto } from "@/resources/tickets/dto/create-ticket.dto";
+import { SupplyDto } from "@/resources/tickets/dto/supply.dto";
+import { WhitelistDto } from "@/resources/tickets/dto/whitelist.dto";
+import { DistributeDto } from "@/resources/tickets/dto/distribute.dto";
 import { EmailDto } from "@/common/dto/email.dto";
 import { UseEventIdInterceptor } from "@/common/decorators/event-id-decorator";
 import { UseTicketIdInterceptor } from "@/common/decorators/use-ticket-id.decorator";
@@ -198,8 +198,8 @@ export class TicketsPrivateController {
 
   @RequireUserAuth()
   @Post("verify")
-  async verifyUserTicket(@Body() body: { code: string, eventId: string, ticketId: string }, @Req() req: RequestWithUserAccessToken) {
-    return await this.ticketsService.verifyUserTicket(body, req.userId);
+  async verifyUserTicketAndMakeEventEntry(@Body() body: { code: string, eventId: string, ticketId: string }, @Req() req: RequestWithUserAccessToken) {
+    return await this.ticketsService.verifyUserTicketAndMakeEventEntry(body, req.userId);
   }
 
   @RequireUserAuth()
@@ -223,4 +223,3 @@ export class TicketsPrivateController {
     return this.ticketsService.eventTicketEntries(req.ticketId);
   }
 }
-

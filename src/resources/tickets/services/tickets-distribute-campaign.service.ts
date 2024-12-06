@@ -1,8 +1,8 @@
 import { forwardRef, HttpException, Inject, Injectable } from "@nestjs/common";
 import { DatabaseService } from "@/common/services/database/database.service";
-import { TicketsDistributeService } from "@/resources/events/tickets/services/tickets-distribute.service";
+import { TicketsDistributeService } from "@/resources/tickets/services/tickets-distribute.service";
 import { EmailService } from "@/common/services/email/email.service";
-import { TicketsService } from "@/resources/events/tickets/tickets.service";
+import { TicketsService } from "@/resources/tickets/tickets.service";
 import { envVariables } from "@/common/env-variables";
 import { contractArtifacts, readContract } from "@/lib/viem";
 

@@ -2,7 +2,7 @@ import { HttpException, Injectable } from "@nestjs/common";
 import { DatabaseService } from "@/common/services/database/database.service";
 import slugify from "slugify";
 import { CreateCampaignDto } from "@/resources/campaigns/dto/create-campaign.dto";
-import { TicketsService } from "@/resources/events/tickets/tickets.service";
+import { TicketsService } from "@/resources/tickets/tickets.service";
 
 @Injectable()
 export class CampaignsService {

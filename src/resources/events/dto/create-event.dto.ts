@@ -1,6 +1,6 @@
 import { IsArray, IsISO8601, IsNotEmpty, IsOptional, IsString, IsUrl, ValidateNested } from "class-validator";
 import { Type } from "class-transformer";
-import { isEmailOrEthAddress } from "@/resources/events/tickets/dto/create-ticket.dto";
+import { isEmailOrEthAddress } from "@/resources/tickets/dto/create-ticket.dto";
 
 export class EventLocationDto {
   @IsString()

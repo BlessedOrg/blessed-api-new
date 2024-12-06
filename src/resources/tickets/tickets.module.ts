@@ -4,10 +4,9 @@ import { TicketsController, TicketsPrivateController } from "./tickets.controlle
 import { UsersModule } from "@/resources/users/users.module";
 import { EmailModule } from "@/common/services/email/email.module";
 import { TicketIdInterceptor } from "@/common/interceptors/param-protect/ticket-id-interceptor";
-import { EntranceService } from "@/resources/events/entrance/entrance.service";
-import { TicketsSnapshotService } from "@/resources/events/tickets/services/tickets-snapshot.service";
-import { TicketsDistributeService } from "@/resources/events/tickets/services/tickets-distribute.service";
-import { TicketsDistributeCampaignService } from "@/resources/events/tickets/services/tickets-distribute-campaign.service";
+import { TicketsSnapshotService } from "@/resources/tickets/services/tickets-snapshot.service";
+import { TicketsDistributeService } from "@/resources/tickets/services/tickets-distribute.service";
+import { TicketsDistributeCampaignService } from "@/resources/tickets/services/tickets-distribute-campaign.service";
 import { EventsService } from "@/resources/events/events.service";
 import { SessionModule } from "@/common/services/session/session.module";
 
@@ -21,7 +20,7 @@ import { SessionModule } from "@/common/services/session/session.module";
     EventsService,
     TicketsDistributeCampaignService,
     TicketIdInterceptor,
-    EntranceService
+    EventsService
   ],
   exports: [TicketsService]
 })

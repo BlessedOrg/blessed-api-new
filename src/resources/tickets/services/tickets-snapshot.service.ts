@@ -1,17 +1,17 @@
 import { forwardRef, HttpException, Inject, Injectable } from "@nestjs/common";
-import { AirdropDto, SnapshotDto } from "@/resources/events/tickets/dto/create-ticket.dto";
+import { AirdropDto, SnapshotDto } from "@/resources/tickets/dto/create-ticket.dto";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { contractArtifacts, readContract } from "@/lib/viem";
-import { EntranceService } from "@/resources/events/entrance/entrance.service";
 import { Ticket } from "@prisma/client";
-import { TicketsService } from "@/resources/events/tickets/tickets.service";
+import { TicketsService } from "@/resources/tickets/tickets.service";
 import { PrefixedHexString } from "ethereumjs-util";
+import { EventsService } from "@/resources/events/events.service";
 
 @Injectable()
 export class TicketsSnapshotService {
   constructor(
     private database: DatabaseService,
-    private entranceService: EntranceService,
+    private eventsService: EventsService,
     @Inject(forwardRef(() => TicketsService))
     private ticketsService: TicketsService
   ) {}
@@ -170,7 +170,7 @@ export class TicketsSnapshotService {
     return Promise.all(
       tickets.map(async (ticket) => {
         try {
-          const { entries, externalAddresses } = await this.entranceService.entries(ticket.id);
+          const { entries, externalAddresses } = await this.eventsService.getEventEntriesPerTicketId(ticket.id);
           return {
             externalAddresses,
             entries

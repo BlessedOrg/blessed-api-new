@@ -3,7 +3,7 @@ import { contractArtifacts, getExplorerUrl } from "@/lib/viem";
 import { biconomyMetaTx } from "@/lib/biconomy";
 import { PrefixedHexString } from "ethereumjs-util";
 import { parseEventLogs } from "viem";
-import { DistributeDto } from "@/resources/events/tickets/dto/distribute.dto";
+import { DistributeDto } from "@/resources/tickets/dto/distribute.dto";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { UsersService } from "@/resources/users/users.service";
 import { EmailService } from "@/common/services/email/email.service";

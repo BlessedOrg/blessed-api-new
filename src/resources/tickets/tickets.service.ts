@@ -1,21 +1,21 @@
 import { BadRequestException, HttpException, HttpStatus, Injectable } from "@nestjs/common";
-import { CreateTicketDto, SnapshotDto } from "@/resources/events/tickets/dto/create-ticket.dto";
+import { CreateTicketDto, SnapshotDto } from "@/resources/tickets/dto/create-ticket.dto";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { uploadMetadata } from "@/lib/irys";
 import { contractArtifacts, deployContract, getExplorerUrl, readContract } from "@/lib/viem";
-import { SupplyDto } from "@/resources/events/tickets/dto/supply.dto";
+import { SupplyDto } from "@/resources/tickets/dto/supply.dto";
 import { biconomyMetaTx } from "@/lib/biconomy";
 import { PrefixedHexString } from "ethereumjs-util";
-import { WhitelistDto } from "@/resources/events/tickets/dto/whitelist.dto";
+import { WhitelistDto } from "@/resources/tickets/dto/whitelist.dto";
 import { UsersService } from "@/resources/users/users.service";
 import { isEmpty } from "lodash";
 import { EmailDto } from "@/common/dto/email.dto";
-import { DistributeDto } from "@/resources/events/tickets/dto/distribute.dto";
+import { DistributeDto } from "@/resources/tickets/dto/distribute.dto";
 import { getSmartWalletForCapsuleWallet } from "@/lib/capsule";
 import slugify from "slugify";
-import { TicketsSnapshotService } from "@/resources/events/tickets/services/tickets-snapshot.service";
-import { TicketsDistributeService } from "@/resources/events/tickets/services/tickets-distribute.service";
-import { TicketsDistributeCampaignService } from "@/resources/events/tickets/services/tickets-distribute-campaign.service";
+import { TicketsSnapshotService } from "@/resources/tickets/services/tickets-snapshot.service";
+import { TicketsDistributeService } from "@/resources/tickets/services/tickets-distribute.service";
+import { TicketsDistributeCampaignService } from "@/resources/tickets/services/tickets-distribute-campaign.service";
 import { WebhooksDto } from "@/webhooks/webhooks.dto";
 import { envVariables } from "@/common/env-variables";
 import Stripe from "stripe";
@@ -23,7 +23,6 @@ import { v4 as uuidv4 } from "uuid";
 import { stripe } from "@/lib/stripe";
 import { EventsService } from "@/resources/events/events.service";
 import { logoBase64 } from "@/utils/logo_base64";
-import { EntranceService } from "@/resources/events/entrance/entrance.service";
 import { decryptQrCodePayload, encryptQrCodePayload } from "@/utils/eventKey";
 
 @Injectable()
@@ -34,7 +33,6 @@ export class TicketsService {
     private database: DatabaseService,
     private usersService: UsersService,
     private eventsService: EventsService,
-    private entranceService: EntranceService,
     private ticketSnapshotService: TicketsSnapshotService,
     private ticketDistributeService: TicketsDistributeService,
     private ticketDistributeCampaignService: TicketsDistributeCampaignService
@@ -771,10 +769,10 @@ export class TicketsService {
   }
 
   eventTicketEntries(ticketId: string) {
-    return this.entranceService.entries(ticketId);
+    return this.eventsService.getEventEntriesPerTicketId(ticketId);
   }
 
-  async verifyUserTicket(body: { code: string, eventId: string, ticketId: string }, bouncerId: string) {
+  async verifyUserTicketAndMakeEventEntry(body: { code: string, eventId: string, ticketId: string }, bouncerId: string) {
     const { code, eventId, ticketId } = body;
     const eventKey = await this.database.eventKey.findUnique({ where: { eventId } });
     const decodedCodeData = decryptQrCodePayload(code, eventKey.key);
@@ -790,7 +788,7 @@ export class TicketsService {
     if (!bouncerData.EventBouncers.some(eventBouncer => eventBouncer.eventId === eventId && eventBouncer.Event.Tickets.some(ticket => ticket.id === ticketId))) {
       throw new HttpException("User is not allowed to verify tickets", 403);
     }
-    return this.entranceService.entry(bouncerId, decodedCodeData);
+    return this.eventsService.letUserIntoEvent(bouncerId, decodedCodeData);
   }
 
   private async getTicketHolders(
