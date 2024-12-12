@@ -18,7 +18,7 @@ const uploadImage = async (base64String) => {
     console.log(`Price for uploading image in ETH: ${irys.utils.fromAtomic(price)}`);
     console.log(`Size of image in MB: ${size / 1024 / 1024}`);
   }
-  // await irys.fund(price); // use it when balance will be very low cause it takes ~20s
+  irys.fund(price);
   try {
     const receipt = await irys.upload(
       Buffer.from(base64String, "base64"),
