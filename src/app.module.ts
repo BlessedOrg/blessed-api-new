@@ -15,16 +15,16 @@ import { WebhooksModule } from "./webhooks/webhooks.module";
 
 @Module({
   imports: [
-    DatabaseModule,
-    EmailModule,
-    AuthGuardsModule,
-    SessionModule,
-    WebhooksModule,
+    ResourcesModule,
     JwtModule.register({
       global: true,
       secret: envVariables.jwtSecret
     }),
-    ResourcesModule
+    DatabaseModule,
+    EmailModule,
+    AuthGuardsModule,
+    SessionModule,
+    WebhooksModule
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: AuthGuard }, {

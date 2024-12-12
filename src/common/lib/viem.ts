@@ -97,7 +97,7 @@ export const deployContract = async (contractName, args) => {
   let contractAddr;
 
   const receipt = await publicClient.waitForTransactionReceipt({
-    confirmations: 5,
+    confirmations: 1,
     hash
   });
 
@@ -155,7 +155,7 @@ export const readContract = async ({ abi, address, functionName, args = null }: 
     abi,
     address: address as `0x${string}`,
     functionName,
-    args,
+    args
   });
 };
 
@@ -167,7 +167,7 @@ export const writeContract = async ({ abi, address, functionName, args }: readWr
     args,
     abi,
     account,
-    nonce,
+    nonce
   } as any);
   console.log(`📟 ${functionName}TxHash: ${getExplorerUrl(hash)} 📟 Nonce: ${nonce}`);
   return waitForTransactionReceipt(hash);

@@ -50,7 +50,7 @@ export class EventsService {
         throw new ConflictException("Event with this name already exists");
       }
 
-      const { metadataUrl, metadataImageUrl } = await uploadMetadata({
+      const { metadataUrl } = await uploadMetadata({
         name: createEventDto.name,
         description: createEventDto.description,
         image: createEventDto?.imageUrl || logoBase64

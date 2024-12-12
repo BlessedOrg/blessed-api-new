@@ -131,7 +131,7 @@ export class TicketsService {
 
     const contract = await deployContract(contractName, [args]);
 
-    await biconomyMetaTx({
+    biconomyMetaTx({
       abi: contractArtifacts["event"].abi,
       address: ticket.Event.address as PrefixedHexString,
       functionName: "addTicket",

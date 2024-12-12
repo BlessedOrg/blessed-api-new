@@ -12,14 +12,13 @@ export const getIrysUploader = async () =>
 const uploadImage = async (base64String) => {
   const irys = await getIrysUploader();
   const size = calculateBase64FileSize(base64String);
+
   const price = await irys.getPrice(size);
   if (envVariables.isDevelopment) {
     console.log(`Price for uploading image in ETH: ${irys.utils.fromAtomic(price)}`);
-    console.log(`Size of image in bytes: ${size}`);
-    console.log(`Size of image in KB: ${size / 1024}`);
     console.log(`Size of image in MB: ${size / 1024 / 1024}`);
   }
-  await irys.fund(price);
+  irys.fund(price);
   try {
     const receipt = await irys.upload(
       Buffer.from(base64String, "base64"),
@@ -29,7 +28,6 @@ const uploadImage = async (base64String) => {
         ]
       }
     );
-
     return `https://gateway.irys.xyz/${receipt.id}`;
   } catch (error) {
     console.log("Whole error", error);
