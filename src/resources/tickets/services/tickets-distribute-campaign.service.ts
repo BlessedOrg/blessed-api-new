@@ -89,22 +89,28 @@ export class TicketsDistributeCampaignService {
             where: { id: ticket.eventId }
           });
           const allUsersCount = formattedUsers.length + externalUsers.length;
+          const initialSupply = await readContract({
+            abi: contractArtifacts["tickets"].abi,
+            address: ticket.address,
+            functionName: "initialSupply"
+          });
           const currentSupply = await readContract({
             abi: contractArtifacts["tickets"].abi,
             address: ticket.address,
             functionName: "currentSupply"
           });
-          const additionalSupply = allUsersCount - Number(currentSupply);
+          const availableTickets = Number(initialSupply) - Number(currentSupply);
+          const missingTickets = allUsersCount - availableTickets;
           const maxSupply = await readContract({
             abi: contractArtifacts["tickets"].abi,
             address: ticket.address,
             functionName: "maxSupply"
           });
-          if (Number(maxSupply) < additionalSupply + Number(currentSupply)) {
+          if (missingTickets > Number(maxSupply)) {
             throw new Error("Not enough supply");
           }
-          if (Number(currentSupply) < allUsersCount) {
-            await this.ticketsService.changeSupply({ additionalSupply }, {
+          if (!!missingTickets) {
+            await this.ticketsService.changeSupply({ additionalSupply: missingTickets }, {
               developerWalletAddress,
               ticketContractAddress: ticket.address,
               capsuleTokenVaultKey
