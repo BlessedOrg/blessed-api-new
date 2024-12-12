@@ -10,9 +10,8 @@ import { AuthGuardsModule } from "@/common/guards/auth/auth-guards.module";
 import { EmailModule } from "@/common/services/email/email.module";
 import { SessionModule } from "@/common/services/session/session.module";
 import { PrismaExceptionFilter } from "@/common/exceptions/prisma-exception.filter";
-import { PublicModule } from "@/public/public.module";
-import { PrivateModule } from "@/private/private.module";
-import { WebhooksModule } from './webhooks/webhooks.module';
+import { ResourcesModule } from "@/resources/resources.module";
+import { WebhooksModule } from "./webhooks/webhooks.module";
 
 @Module({
   imports: [
@@ -25,8 +24,7 @@ import { WebhooksModule } from './webhooks/webhooks.module';
       global: true,
       secret: envVariables.jwtSecret
     }),
-    PrivateModule,
-    PublicModule
+    ResourcesModule
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: AuthGuard }, {
