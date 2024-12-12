@@ -50,7 +50,7 @@ export class EventsService {
         throw new ConflictException("Event with this name already exists");
       }
 
-      const { metadataUrl } = await uploadMetadata({
+      const { metadataUrl, metadataImageUrl } = await uploadMetadata({
         name: createEventDto.name,
         description: createEventDto.description,
         image: createEventDto?.imageUrl || logoBase64
@@ -63,7 +63,7 @@ export class EventsService {
             metadataPayload: {
               name: createEventDto.name,
               description: createEventDto.description,
-              image: createEventDto?.imageUrl || logoBase64
+              image: metadataImageUrl
             },
             name,
             ...omit(eventData, "stakeholders"),
