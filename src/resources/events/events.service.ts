@@ -60,6 +60,7 @@ export class EventsService {
         const event = await this.database.event.create({
           data: {
             address: `${uuidv4()}-${new Date().getTime()}` as string,
+            metadataUrl,
             metadataPayload: {
               name: createEventDto.name,
               description: createEventDto.description,
