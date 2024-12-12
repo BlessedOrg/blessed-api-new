@@ -50,18 +50,15 @@ export const biconomyMetaTx = async ({ abi, address, functionName, args, capsule
 
   console.log("➡️ Function: ", functionName);
   console.log("🫡 userOp Hash: ", userOpResponse.userOpHash);
-  const { transactionHash } = await userOpResponse.waitForTxHash();
-
-  console.log("💨 transactionHash", getExplorerUrl(transactionHash));
 
   let userOpReceipt;
   try {
-    userOpReceipt = await userOpResponse.wait();
+    userOpReceipt = await userOpResponse.wait(1);
   } catch (error) {
     console.log("🚨error while waiting for userOpResponse", error.message);
     const bundlerResponse = await bundler.getUserOpByHash(userOpResponse.userOpHash);
     if (!!bundlerResponse) {
-      userOpReceipt = await userOpResponse.wait();
+      userOpReceipt = await userOpResponse.wait(1);
     }
   }
 
@@ -70,6 +67,8 @@ export const biconomyMetaTx = async ({ abi, address, functionName, args, capsule
     console.log("🧾 getUserOpReceipt 2: ", getUserOpReceipt);
   }
   if (userOpReceipt && userOpReceipt?.success == "true") {
+    const transactionHash = userOpReceipt.receipt.transactionHash;
+    console.log("💨 transactionHash", getExplorerUrl(transactionHash));
     return {
       data: {
         type: "paymaster-tx",
