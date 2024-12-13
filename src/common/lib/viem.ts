@@ -6,6 +6,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { envVariables } from "@/common/env-variables";
 import { base } from "viem/chains";
 import { PrefixedHexString } from "ethereumjs-util";
+import { calculateClientTransactionFeeInWei } from "@/utils/transactions";
 
 export const rpcUrl = envVariables.rpcUrl || "define RPC URL env ";
 export const chainId = Number(envVariables.chainId) || 84532;
@@ -99,14 +100,14 @@ export const deployContract = async (contractName, args) => {
   const receipt = await publicClient.waitForTransactionReceipt({
     confirmations: 1,
     hash
-  });
+  }) as any;
 
   if (receipt?.contractAddress) {
     contractAddr = getAddress(receipt.contractAddress);
   }
 
   console.log("⛓️ Contract Explorer URL: ", getExplorerUrl(contractAddr));
-  return { hash, contractAddr };
+  return { hash, contractAddr, gasWeiPrice: `${calculateClientTransactionFeeInWei(receipt)}` };
 };
 
 export const waitForTransactionReceipt = async (hash, confirmations = 1) => {
@@ -114,33 +115,6 @@ export const waitForTransactionReceipt = async (hash, confirmations = 1) => {
     hash,
     confirmations
   });
-};
-
-export const writeContractWithNonceGuard = async (contractAddr, functionName, args, abi, sellerId) => {
-  await initializeNonce();
-  try {
-    const hash = await client.writeContract({
-      address: contractAddr,
-      functionName: functionName,
-      args,
-      abi,
-      account,
-      nonce
-    } as any);
-    console.log(`📟 ${functionName}TxHash: ${getExplorerUrl(hash)} 📟 Nonce: ${nonce}`);
-    return waitForTransactionReceipt(hash);
-  } catch (error) {
-    const errorMessage = `Details: ${(error as any).message.split("Details:")[1]}`;
-    console.log(`🚨 Error while calling ${functionName}: `, errorMessage);
-    if (errorMessage.includes("nonce too low")) {
-      console.log(`🆘 incrementing nonce (currently ${nonce})!`);
-      nonce++;
-      return await writeContractWithNonceGuard(contractAddr, functionName, args, abi, sellerId);
-    } else {
-      console.log("🔮 error: ", error);
-      // await createErrorLog(sellerId, (error as any).message);
-    }
-  }
 };
 
 interface readWriteContractParams {
@@ -170,7 +144,12 @@ export const writeContract = async ({ abi, address, functionName, args }: readWr
     nonce
   } as any);
   console.log(`📟 ${functionName}TxHash: ${getExplorerUrl(hash)} 📟 Nonce: ${nonce}`);
-  return waitForTransactionReceipt(hash);
+  const receipt = await waitForTransactionReceipt(hash);
+  const gasWeiPrice = calculateClientTransactionFeeInWei(receipt);
+  return {
+    ...receipt,
+    gasWeiPrice
+  };
 };
 
 export const contractArtifacts = importAllJsonContractsArtifacts();

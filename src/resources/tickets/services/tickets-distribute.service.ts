@@ -102,6 +102,8 @@ export class TicketsDistributeService {
     capsuleTokenVaultKey: string
   ) {
     try {
+      const developer = await this.database.developer.findUnique({ where: { walletAddress: developerWalletAddress }, select: { id: true } });
+      const ticket = await this.database.ticket.findUnique({ where: { address: ticketContractAddress }, select: { id: true, Event: { select: { id: true } } } });
       const emailToWalletMap = new Map(
         users.map((account) => [
           account.email,
@@ -130,12 +132,24 @@ export class TicketsDistributeService {
         .filter((item) => item !== null);
 
       const metaTxResult = await biconomyMetaTx({
-        abi: contractArtifacts["tickets"].abi,
+        contractName: "tickets",
         address: ticketContractAddress as PrefixedHexString,
         functionName: "distribute",
         args: [distribution.map((dist) => [dist.smartWalletAddress, dist.amount])],
         capsuleTokenVaultKey,
         userWalletAddress: developerWalletAddress
+      });
+
+      await this.database.interaction.create({
+        data: {
+          method: `distribute-tickets`,
+          gasWeiPrice: metaTxResult.data.actualGasCost,
+          txHash: metaTxResult.data.transactionReceipt.transactionHash,
+          operatorType: "biconomy",
+          developerId: developer.id,
+          ticketId: ticket.id,
+          eventId: ticket.Event.id
+        }
       });
 
       const logs = parseEventLogs({

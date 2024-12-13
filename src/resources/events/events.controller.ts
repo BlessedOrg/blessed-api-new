@@ -21,7 +21,8 @@ export class EventsController {
       createEventDto,
       req.appId,
       req.developerWalletAddress,
-      req.developerSmartWalletAddress
+      req.developerSmartWalletAddress,
+      req.developerId
     );
   }
 
@@ -96,7 +97,8 @@ export class EventsPrivateController {
       createEventDto,
       req.appId,
       req.walletAddress,
-      req.smartWalletAddress
+      req.smartWalletAddress,
+      req.developerId
     );
   }
 }

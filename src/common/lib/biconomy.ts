@@ -1,18 +1,19 @@
-import { Abi, encodeFunctionData } from "viem";
-import { Bundler, createSmartAccountClient, LightSigner, PaymasterMode } from "@biconomy/account";
+import { encodeFunctionData } from "viem";
+import { Bundler, createSmartAccountClient, LightSigner, PaymasterMode, UserOpReceipt } from "@biconomy/account";
 import { getVaultItem } from "@/lib/1pwd-vault";
-import { getExplorerUrl, provider } from "@/lib/viem";
+import { contractArtifacts, getExplorerUrl, provider } from "@/lib/viem";
 import { Capsule } from "@usecapsule/server-sdk";
 import { CapsuleEthersV5Signer } from "@usecapsule/ethers-v5-integration";
 import { envVariables } from "@/common/env-variables";
 
 interface MetaTxParams {
-  abi: Abi;
+  contractName: "tickets" | "event";
   address: string;
   functionName: string;
   args: any[];
   capsuleTokenVaultKey: string;
   userWalletAddress?: string;
+  interaction?: () => Promise<void>;
 }
 
 export const createSmartWallet = async (signer: LightSigner) =>
@@ -23,7 +24,8 @@ export const createSmartWallet = async (signer: LightSigner) =>
     rpcUrl: envVariables.rpcUrl // <-- read about this at https://docs.biconomy.io/account/methods#createsmartaccountclient
   });
 
-export const biconomyMetaTx = async ({ abi, address, functionName, args, capsuleTokenVaultKey }: MetaTxParams) => {
+export const biconomyMetaTx = async ({ contractName, address, functionName, args, capsuleTokenVaultKey }: MetaTxParams) => {
+  const abi = contractArtifacts[contractName].abi;
   const capsuleEnv = envVariables.capsuleEnv as any;
   const capsule = new Capsule(capsuleEnv, envVariables.capsuleApiKey);
   const vaultItem = await getVaultItem(capsuleTokenVaultKey, "capsuleKey");
@@ -35,7 +37,7 @@ export const biconomyMetaTx = async ({ abi, address, functionName, args, capsule
   const tx = {
     to: address,
     data: encodeFunctionData({
-      abi: abi,
+      abi,
       functionName: functionName,
       args: args
     })
@@ -51,7 +53,7 @@ export const biconomyMetaTx = async ({ abi, address, functionName, args, capsule
   console.log("➡️ Function: ", functionName);
   console.log("🫡 userOp Hash: ", userOpResponse.userOpHash);
 
-  let userOpReceipt;
+  let userOpReceipt: UserOpReceipt;
   try {
     userOpReceipt = await userOpResponse.wait(1);
   } catch (error) {
@@ -68,11 +70,14 @@ export const biconomyMetaTx = async ({ abi, address, functionName, args, capsule
   }
   if (userOpReceipt && userOpReceipt?.success == "true") {
     const transactionHash = userOpReceipt.receipt.transactionHash;
+    const { actualGasCost } = userOpReceipt;
+
     console.log("💨 transactionHash", getExplorerUrl(transactionHash));
     return {
       data: {
         type: "paymaster-tx",
-        transactionReceipt: userOpReceipt.receipt
+        transactionReceipt: userOpReceipt.receipt,
+        actualGasCost: `${actualGasCost}`
       }
     };
   } else {

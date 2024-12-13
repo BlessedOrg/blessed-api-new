@@ -24,6 +24,7 @@ model Developer {
   Tickets                Ticket[]
   Apps                   App[]
   Sessions               DeveloperSession[]
+  Interactions           Interaction[]
   createdAt              DateTime           @default(now())
   updatedAt              DateTime           @updatedAt
 }
@@ -259,27 +260,28 @@ model Ticket {
 }
 
 model Interaction {
-  id        String                       @id @default(cuid())
-  User      User                         @relation(fields: [userId], references: [id])
-  userId    String
-  Ticket    Ticket?                      @relation(fields: [ticketId], references: [id])
-  ticketId  String?
-  Event     Event?                       @relation(fields: [eventId], references: [id])
-  eventId   String?
-  method    String
-  txHash    String
-  output    Json?
-  input     Json?
-  fees      String?
-  type      SmartContractInteractionType
-  createdAt DateTime                     @default(now())
-  updatedAt DateTime                     @updatedAt
+  id           String                    @id @default(cuid())
+  Developer    Developer?                @relation(fields: [developerId], references: [id])
+  developerId  String?
+  User         User?                     @relation(fields: [userId], references: [id])
+  userId       String?
+  Ticket       Ticket?                   @relation(fields: [ticketId], references: [id])
+  ticketId     String?
+  Event        Event?                    @relation(fields: [eventId], references: [id])
+  eventId      String?
+  method       String
+  txHash       String
+  output       Json?
+  input        Json?
+  gasWeiPrice  String
+  operatorType SmartContractOperatorType
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
 }
 
-enum SmartContractInteractionType {
-  gasless
+enum SmartContractOperatorType {
+  biconomy
   operator
-  wallet
 }
 
 model Order {

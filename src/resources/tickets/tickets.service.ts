@@ -19,6 +19,7 @@ import { decryptQrCodePayload, encryptQrCodePayload } from "@/utils/eventKey";
 import { logoBase64 } from "@/utils/logo_base64";
 import { WebhooksDto } from "@/webhooks/webhooks.dto";
 import { BadRequestException, HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { PrefixedHexString } from "ethereumjs-util";
 import { isEmpty } from "lodash";
 import slugify from "slugify";
@@ -31,6 +32,7 @@ export class TicketsService {
 
   constructor(
     private database: DatabaseService,
+    private eventEmitter: EventEmitter2,
     private usersService: UsersService,
     private eventsService: EventsService,
     private ticketSnapshotService: TicketsSnapshotService,
@@ -131,12 +133,17 @@ export class TicketsService {
 
     const contract = await deployContract(contractName, [args]);
 
-    biconomyMetaTx({
-      abi: contractArtifacts["event"].abi,
-      address: ticket.Event.address as PrefixedHexString,
-      functionName: "addTicket",
-      args: [contract.contractAddr],
-      capsuleTokenVaultKey
+    this.eventEmitter.emit("event.created", { eventAddress: ticket.Event.address, ticketAddress: contract.contractAddr, capsuleTokenVaultKey, developerId, eventId });
+
+    await this.database.interaction.create({
+      data: {
+        method: "deployTicketContract",
+        gasWeiPrice: contract.gasWeiPrice,
+        developerId,
+        eventId,
+        txHash: contract.hash,
+        operatorType: "operator"
+      }
     });
 
     const updatedTicket = await this.database.ticket.update({
@@ -172,6 +179,7 @@ export class TicketsService {
         contract: getExplorerUrl(contract.contractAddr)
       }
     };
+
   }
 
   async getTicketDetails(req: RequestWithApiKey & TicketValidate) {
@@ -303,16 +311,29 @@ export class TicketsService {
     ticketContractAddress: string;
     capsuleTokenVaultKey: string;
     developerWalletAddress: string;
+    developerId: string;
+    ticketId: string
   }) {
-    const { ticketContractAddress, capsuleTokenVaultKey, developerWalletAddress } = params;
+    const { ticketContractAddress, capsuleTokenVaultKey, developerWalletAddress, developerId, ticketId } = params;
     try {
       const metaTxResult = await biconomyMetaTx({
-        abi: contractArtifacts["tickets"].abi,
+        contractName: "tickets",
         address: ticketContractAddress as PrefixedHexString,
         functionName: "updateSupply",
         args: [supplyDto.additionalSupply],
         capsuleTokenVaultKey: capsuleTokenVaultKey,
         userWalletAddress: developerWalletAddress
+      });
+
+      await this.database.interaction.create({
+        data: {
+          method: `updateSupply-tickets`,
+          gasWeiPrice: metaTxResult.data.actualGasCost,
+          txHash: metaTxResult.data.transactionReceipt.transactionHash,
+          operatorType: "biconomy",
+          ticketId,
+          developerId
+        }
       });
 
       return {
@@ -334,7 +355,7 @@ export class TicketsService {
     req: RequestWithApiKey & TicketValidate
   ) {
     try {
-      const { capsuleTokenVaultKey, ticketContractAddress, developerWalletAddress, appId } = req;
+      const { capsuleTokenVaultKey, ticketContractAddress, developerWalletAddress, appId, ticketId, developerId } = req;
 
       const allEmails = [
         ...whitelistDto.addEmails,
@@ -359,13 +380,25 @@ export class TicketsService {
       ].filter((item): item is [string, boolean] => item !== null);
 
       const metaTxResult = await biconomyMetaTx({
-        abi: contractArtifacts["tickets"].abi,
+        contractName: "tickets",
         address: ticketContractAddress as PrefixedHexString,
         functionName: "updateWhitelist",
         args: [whitelistUpdates],
         capsuleTokenVaultKey,
         userWalletAddress: developerWalletAddress
       });
+
+      await this.database.interaction.create({
+        data: {
+          method: `updateWhitelist-tickets`,
+          gasWeiPrice: metaTxResult.data.actualGasCost,
+          txHash: metaTxResult.data.transactionReceipt.transactionHash,
+          operatorType: "biconomy",
+          ticketId,
+          developerId
+        }
+      });
+
       const updatedUsersWhitelist = users.filter((user) => ({
         email: user.email,
         walletAddress: user.smartWalletAddress
@@ -512,13 +545,27 @@ export class TicketsService {
     capsuleTokenVaultKey: string
   ) {
     try {
+      const developer = await this.database.developer.findUnique({ where: { walletAddress: developerWalletAddress }, select: { id: true } });
+      const ticket = await this.database.ticket.findUnique({ where: { address: ticketContractAddress }, select: { id: true, Event: { select: { id: true } } } });
       const metaTxResult = await biconomyMetaTx({
-        abi: contractArtifacts["tickets"].abi,
+        contractName: "tickets",
         address: ticketContractAddress as PrefixedHexString,
         functionName: "distribute",
         args: [users.map((dist) => [dist.wallet, dist.amount])],
         capsuleTokenVaultKey,
         userWalletAddress: developerWalletAddress
+      });
+
+      await this.database.interaction.create({
+        data: {
+          method: `distribute-tickets`,
+          gasWeiPrice: metaTxResult.data.actualGasCost,
+          txHash: metaTxResult.data.transactionReceipt.transactionHash,
+          operatorType: "biconomy",
+          ticketId: ticket.id,
+          developerId: developer.id,
+          eventId: ticket.Event.id
+        }
       });
 
       return {

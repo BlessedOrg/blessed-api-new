@@ -85,7 +85,8 @@ export class WebhooksService {
           },
           App: {
             select: {
-              slug: true
+              slug: true,
+              developerId: true
             }
           }
         }
@@ -134,11 +135,23 @@ export class WebhooksService {
         throw new BadRequestException("Proof is not verified");
       }
 
-      const verifyProofAndMintResult= await writeContract({
+      const verifyProofAndMintResult = await writeContract({
         abi: contractArtifacts["tickets"].abi,
         address: ticketAddress as PrefixedHexString,
         functionName: "verifyProofAndMint",
-        args: [transformForOnchain(proof)],
+        args: [transformForOnchain(proof)]
+      });
+
+      await this.database.interaction.create({
+        data: {
+          method: `verifyProofAndMint-tickets`,
+          gasWeiPrice: verifyProofAndMintResult.gasWeiPrice,
+          txHash: verifyProofAndMintResult.transactionHash,
+          operatorType: "operator",
+          developerId: ticket.App.developerId,
+          ticketId: ticket.id,
+          eventId: ticket.Event.id
+        }
       });
 
       const logs = parseEventLogs({

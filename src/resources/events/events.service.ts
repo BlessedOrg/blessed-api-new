@@ -27,7 +27,8 @@ export class EventsService {
     createEventDto: CreateEventDto,
     appId: string,
     developerWalletAddress: PrefixedHexString,
-    developerSmartWalletAddress: PrefixedHexString
+    developerSmartWalletAddress: PrefixedHexString,
+    developerId: string
   ) {
     let eventId: string;
     try {
@@ -106,6 +107,17 @@ export class EventsService {
       };
 
       const contract = await deployContract("event", Object.values(args));
+
+      await this.database.interaction.create({
+        data: {
+          method: "deployEventContract",
+          gasWeiPrice: contract.gasWeiPrice,
+          developerId,
+          eventId: initEvent.id,
+          txHash: contract.hash,
+          operatorType: "operator"
+        }
+      });
 
       return prisma.$transaction(async (tx) => {
         if (eventLocation) {
@@ -362,11 +374,23 @@ export class EventsService {
       }
 
       const metaTxResult = await biconomyMetaTx({
-        abi: contractArtifacts["event"].abi,
+        contractName: "event",
         address: eventContractAddress,
         functionName: "entry",
         args: [tokenId, ticket.address, attendee.smartWalletAddress],
         capsuleTokenVaultKey
+      });
+
+      await this.database.interaction.create({
+        data: {
+          method: `entry-event`,
+          gasWeiPrice: metaTxResult.data.actualGasCost,
+          txHash: metaTxResult.data.transactionReceipt.transactionHash,
+          operatorType: "biconomy",
+          ticketId,
+          userId: ticketHolderId,
+          eventId
+        }
       });
 
       return {
@@ -452,12 +476,23 @@ export class EventsService {
       }
       const developer = await this.database.developer.findUnique({ where: { id: developerId } });
       const event = await this.database.event.findUnique({ where: { id: eventId } });
-      await biconomyMetaTx({
-        abi: contractArtifacts["event"].abi,
+      const txRes = await biconomyMetaTx({
+        contractName: "event",
         address: event.address,
         functionName: "addBouncer",
         args: [userAccount.smartWalletAddress],
         capsuleTokenVaultKey: developer.capsuleTokenVaultKey
+      });
+
+      await this.database.interaction.create({
+        data: {
+          method: `addBouncer-event`,
+          gasWeiPrice: txRes.data.actualGasCost,
+          txHash: txRes.data.transactionReceipt.transactionHash,
+          operatorType: "biconomy",
+          developerId,
+          eventId
+        }
       });
 
       return this.database.eventBouncer.create({
