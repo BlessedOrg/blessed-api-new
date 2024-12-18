@@ -15,10 +15,12 @@ import { isEmpty, omit } from "lodash";
 import slugify from "slugify";
 import { v4 as uuidv4 } from "uuid";
 import { isAddress } from "viem";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 
 @Injectable()
 export class EventsService {
   constructor(
+    private eventEmitter: EventEmitter2,
     private database: DatabaseService,
     private usersService: UsersService
   ) {}
@@ -27,7 +29,8 @@ export class EventsService {
     createEventDto: CreateEventDto,
     appId: string,
     developerWalletAddress: PrefixedHexString,
-    developerSmartWalletAddress: PrefixedHexString
+    developerSmartWalletAddress: PrefixedHexString,
+    developerId: string
   ) {
     let eventId: string;
     try {
@@ -50,7 +53,7 @@ export class EventsService {
         throw new ConflictException("Event with this name already exists");
       }
 
-      const { metadataUrl, metadataImageUrl } = await uploadMetadata({
+      const { metadataUrl, metadataImageUrl, totalWeiPrice } = await uploadMetadata({
         name: createEventDto.name,
         description: createEventDto.description,
         image: createEventDto?.imageUrl || logoBase64
@@ -82,6 +85,15 @@ export class EventsService {
         return event;
       });
 
+      this.eventEmitter.emit("interaction.create", {
+        method: "uploadMetadata-event",
+        gasWeiPrice: totalWeiPrice,
+        developerId,
+        txHash: "none",
+        operatorType: "irys",
+        eventId: initEvent.id
+      });
+
       if (createEventDto?.stakeholders && !isEmpty(createEventDto.stakeholders)) {
         const stakeholders = await this.transformStakeholders(
           createEventDto.stakeholders,
@@ -106,6 +118,15 @@ export class EventsService {
       };
 
       const contract = await deployContract("event", Object.values(args));
+
+      this.eventEmitter.emit("interaction.create", {
+        method: "deployEventContract",
+        gasWeiPrice: contract.gasWeiPrice,
+        developerId,
+        eventId: initEvent.id,
+        txHash: contract.hash,
+        operatorType: "operator"
+      });
 
       return prisma.$transaction(async (tx) => {
         if (eventLocation) {
@@ -340,7 +361,14 @@ export class EventsService {
     try {
       const { eventId, tokenId, ticketHolderId, ticketId } = decodedCodeData;
       const event = await this.database.event.findUnique({
-        where: { id: eventId }
+        where: { id: eventId },
+        include: {
+          App: {
+            select: {
+              developerId: true
+            }
+          }
+        }
       });
       if (!event.address) {
         throw new HttpException(`Wrong parameters. Smart contract entrance not found.`, HttpStatus.BAD_REQUEST);
@@ -362,11 +390,22 @@ export class EventsService {
       }
 
       const metaTxResult = await biconomyMetaTx({
-        abi: contractArtifacts["event"].abi,
+        contractName: "event",
         address: eventContractAddress,
         functionName: "entry",
         args: [tokenId, ticket.address, attendee.smartWalletAddress],
         capsuleTokenVaultKey
+      });
+
+      this.eventEmitter.emit("interaction.create", {
+        method: `entry-event`,
+        gasWeiPrice: metaTxResult.data.actualGasCost,
+        txHash: metaTxResult.data.transactionReceipt.transactionHash,
+        operatorType: "biconomy",
+        ticketId,
+        userId: ticketHolderId,
+        eventId,
+        developerId: event.App.developerId
       });
 
       return {
@@ -452,12 +491,21 @@ export class EventsService {
       }
       const developer = await this.database.developer.findUnique({ where: { id: developerId } });
       const event = await this.database.event.findUnique({ where: { id: eventId } });
-      await biconomyMetaTx({
-        abi: contractArtifacts["event"].abi,
+      const txRes = await biconomyMetaTx({
+        contractName: "event",
         address: event.address,
         functionName: "addBouncer",
         args: [userAccount.smartWalletAddress],
         capsuleTokenVaultKey: developer.capsuleTokenVaultKey
+      });
+
+      this.eventEmitter.emit("interaction.create", {
+        method: `addBouncer-event`,
+        gasWeiPrice: txRes.data.actualGasCost,
+        txHash: txRes.data.transactionReceipt.transactionHash,
+        operatorType: "biconomy",
+        developerId,
+        eventId
       });
 
       return this.database.eventBouncer.create({

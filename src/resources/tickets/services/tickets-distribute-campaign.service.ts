@@ -25,6 +25,7 @@ export class TicketsDistributeCampaignService {
     }
   ) {
     try {
+      const developer = await this.database.developer.findUnique({ where: { walletAddress: req.developerWalletAddress }, select: { id: true } });
       const campaign = await this.database.campaign.findUnique({
         where: {
           id: campaignId,
@@ -113,7 +114,9 @@ export class TicketsDistributeCampaignService {
             await this.ticketsService.changeSupply({ additionalSupply: missingTickets }, {
               developerWalletAddress,
               ticketContractAddress: ticket.address,
-              capsuleTokenVaultKey
+              capsuleTokenVaultKey,
+              ticketId: ticket.id,
+              developerId: developer.id
             });
           }
           const { distribution } = await this.ticketDistributeService.distributeTickets(

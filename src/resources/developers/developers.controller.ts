@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Req } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Post, Req } from "@nestjs/common";
 import { DevelopersService } from "./developers.service";
 import { EmailDto } from "@/common/dto/email.dto";
 import { CodeDto } from "@/common/dto/code.dto";
@@ -15,6 +15,12 @@ export class DevelopersPrivateController {
   }
 
   @RequireDeveloperAuth()
+  @Post("avatar")
+  updateAvatarUrl(@Req() req: RequestWithDevAccessToken, @Body() body: { avatarUrl: string }) {
+    return this.developersService.updateAvatarUrl(req.developerId, body.avatarUrl);
+  }
+
+  @RequireDeveloperAuth()
   @Get("session")
   getSiweSession(@Req() req: RequestWithDevAccessToken) {
     return this.developersService.getSiweSession(req.developerId);
@@ -28,6 +34,18 @@ export class DevelopersPrivateController {
     chainId: string;
   }) {
     return this.developersService.loginWithWallet(body);
+  }
+
+  @RequireDeveloperAuth()
+  @Post("add-email")
+  addEmail(@Req() req: RequestWithDevAccessToken, @Body() emailDto: EmailDto) {
+    return this.developersService.login(emailDto);
+  }
+
+  @RequireDeveloperAuth()
+  @Post("verify-email")
+  verifyEmail(@Req() req: RequestWithDevAccessToken, @Body() codeDto: CodeDto) {
+    return this.developersService.verifyEmail(req.developerId, codeDto);
   }
 
   @Post("login")
@@ -47,5 +65,11 @@ export class DevelopersPrivateController {
   @Post("verify")
   verify(@Body() codeDto: CodeDto) {
     return this.developersService.verify(codeDto);
+  }
+
+  @RequireDeveloperAuth()
+  @Delete("account")
+  deleteDeveloperAccount(@Req() req: RequestWithDevAccessToken) {
+    return this.developersService.deleteAccount(req.developerId);
   }
 }

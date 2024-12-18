@@ -29,7 +29,8 @@ const envVariables = {
   erc20Address: process.env.ERC20_CONTRACT_ADDRESS,
   ticketerAppUrl: process.env.TICKETER_APP_URL,
   reclaimAppSecret: process.env.RECLAIM_APP_SECRET,
-  reclaimAppId: process.env.RECLAIM_APP_ID
+  reclaimAppId: process.env.RECLAIM_APP_ID,
+  alchemyApiKey: process.env.ALCHEMY_API_KEY
 };
 
 export { envVariables };

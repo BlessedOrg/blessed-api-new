@@ -2,6 +2,7 @@ import { HttpException, Injectable } from "@nestjs/common";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { CreateApplicationDto } from "@/resources/application/dto/create-application.dto";
 import slugify from "slugify";
+import { generateRandomLightColor } from "@/utils/colors";
 
 @Injectable()
 export class ApplicationService {
@@ -54,6 +55,7 @@ export class ApplicationService {
 @Injectable()
 export class ApplicationPrivateService {
   constructor(private database: DatabaseService) {}
+
   async createApplication(
     createApplicationDto: CreateApplicationDto,
     developerId: string
@@ -65,6 +67,10 @@ export class ApplicationPrivateService {
         strict: true,
         trim: true
       });
+      const colors = {
+        color1: generateRandomLightColor(),
+        color2: generateRandomLightColor()
+      };
       const existingAppWithName = await this.database.app.findFirst({
         where: {
           developerId,
@@ -79,6 +85,7 @@ export class ApplicationPrivateService {
           name,
           slug,
           developerId,
+          colors,
           ...(description && { description }),
           ...(imageUrl && { imageUrl })
         }

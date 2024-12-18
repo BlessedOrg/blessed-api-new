@@ -11,12 +11,14 @@ import { OrderStatus } from "@prisma/client";
 import { stripe } from "@/lib/stripe";
 import { ReclaimClient } from "@reclaimprotocol/zk-fetch";
 import { transformForOnchain, verifyProof } from "@reclaimprotocol/js-sdk";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 
 @Injectable()
 export class WebhooksService {
   private readonly stripe: Stripe;
 
   constructor(
+    private eventEmitter: EventEmitter2,
     private database: DatabaseService,
     private emailService: EmailService
   ) {
@@ -85,7 +87,8 @@ export class WebhooksService {
           },
           App: {
             select: {
-              slug: true
+              slug: true,
+              developerId: true
             }
           }
         }
@@ -134,11 +137,21 @@ export class WebhooksService {
         throw new BadRequestException("Proof is not verified");
       }
 
-      const verifyProofAndMintResult= await writeContract({
+      const verifyProofAndMintResult = await writeContract({
         abi: contractArtifacts["tickets"].abi,
         address: ticketAddress as PrefixedHexString,
         functionName: "verifyProofAndMint",
-        args: [transformForOnchain(proof)],
+        args: [transformForOnchain(proof)]
+      });
+
+      this.eventEmitter.emit("interaction.create", {
+        method: `verifyProofAndMint-ticket`,
+        gasWeiPrice: verifyProofAndMintResult.gasWeiPrice,
+        txHash: verifyProofAndMintResult.transactionHash,
+        operatorType: "operator",
+        developerId: ticket.App.developerId,
+        ticketId: ticket.id,
+        eventId: ticket.Event.id
       });
 
       const logs = parseEventLogs({

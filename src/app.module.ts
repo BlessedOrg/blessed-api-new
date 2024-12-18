@@ -12,9 +12,12 @@ import { SessionModule } from "@/common/services/session/session.module";
 import { PrismaExceptionFilter } from "@/common/exceptions/prisma-exception.filter";
 import { ResourcesModule } from "@/resources/resources.module";
 import { WebhooksModule } from "./webhooks/webhooks.module";
+import { EventsModule } from "@/common/events/events.module";
+import { EventEmitterModule } from "@nestjs/event-emitter";
 
 @Module({
   imports: [
+    EventEmitterModule.forRoot(),
     ResourcesModule,
     JwtModule.register({
       global: true,
@@ -24,7 +27,8 @@ import { WebhooksModule } from "./webhooks/webhooks.module";
     EmailModule,
     AuthGuardsModule,
     SessionModule,
-    WebhooksModule
+    WebhooksModule,
+    EventsModule
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: AuthGuard }, {
