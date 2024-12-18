@@ -9,10 +9,12 @@ import { UsersService } from "@/resources/users/users.service";
 import { EmailService } from "@/common/services/email/email.service";
 import { envVariables } from "@/common/env-variables";
 import { SessionService } from "@/common/services/session/session.service";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 
 @Injectable()
 export class TicketsDistributeService {
   constructor(
+    private eventEmitter: EventEmitter2,
     private database: DatabaseService,
     private usersService: UsersService,
     private emailService: EmailService,
@@ -140,16 +142,14 @@ export class TicketsDistributeService {
         userWalletAddress: developerWalletAddress
       });
 
-      await this.database.interaction.create({
-        data: {
-          method: `distribute-tickets`,
-          gasWeiPrice: metaTxResult.data.actualGasCost,
-          txHash: metaTxResult.data.transactionReceipt.transactionHash,
-          operatorType: "biconomy",
-          developerId: developer.id,
-          ticketId: ticket.id,
-          eventId: ticket.Event.id
-        }
+      this.eventEmitter.emit("interaction.create", {
+        method: `distribute-ticket`,
+        gasWeiPrice: metaTxResult.data.actualGasCost,
+        txHash: metaTxResult.data.transactionReceipt.transactionHash,
+        operatorType: "biconomy",
+        developerId: developer.id,
+        ticketId: ticket.id,
+        eventId: ticket.Event.id
       });
 
       const logs = parseEventLogs({

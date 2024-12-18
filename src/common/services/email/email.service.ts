@@ -48,7 +48,7 @@ export class EmailService {
         }
       });
       this.logEmailinDevelopment(result);
-      return { message: "Verification code sent successfully" };
+      return { success: true, message: "Verification code sent successfully" };
     } catch (error) {
       throw new Error(error);
     }

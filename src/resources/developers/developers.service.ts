@@ -20,9 +20,57 @@ export class DevelopersService {
     return this.database.developer.findUnique({ where: { id: developerId } });
   }
 
+  updateAvatarUrl(developerId: string, url: string) {
+    return this.database.developer.update({
+      where: { id: developerId },
+      data: {
+        avatarUrl: url
+      }
+    });
+  }
+
   login(emailDto: EmailDto) {
     const { email } = emailDto;
     return this.emailService.sendVerificationCodeEmail(email);
+  }
+
+  async deleteAccount(devId: string) {
+    const developer = await this.database.developer.findUnique({
+      where: { id: devId },
+      include: {
+        Apps: true,
+        Tickets: true,
+        Sessions: true
+      }
+    });
+
+    const devAppsData = await this.database.app.findMany({
+      where: {
+        id: {
+          in: developer.Apps.map(i => i.id)
+        }
+      },
+      include: {
+        ApiTokens: true,
+        Tickets: true,
+        Events: {
+          include: {
+            EventKey: true,
+            EventLocation: true,
+            EventBouncers: true,
+            Stakeholders: true,
+            Interactions: true
+          }
+        },
+        Audiences: {
+          include: {
+            AudienceUsers: true
+          }
+        },
+        Campaigns: true
+      }
+    });
+
   }
 
   async loginWithWallet(data: {
@@ -55,6 +103,27 @@ export class DevelopersService {
       }
     } else {
       throw new UnauthorizedException("Invalid payload");
+    }
+  }
+
+  async verifyEmail(devId: string, codeDto: CodeDto) {
+    try {
+      const { code } = codeDto;
+      const { email } = await this.emailService.verifyEmailVerificationCode(code);
+      const developerExists = await this.database.developer.findUnique({ where: { email } });
+      if (developerExists) {
+        throw new Error("Email already in use");
+      }
+      return this.database.developer.update({
+        where: {
+          id: devId
+        },
+        data: {
+          email
+        }
+      });
+    } catch (e) {
+      throw new HttpException(e?.message || "Something went wrong", e?.code || 500);
     }
   }
 

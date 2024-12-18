@@ -3,7 +3,7 @@ import { BaseEth } from "@irys/upload-ethereum";
 import { calculateBase64FileSize } from "@/utils/calculateBase64FileSize";
 import { envVariables } from "@/common/env-variables";
 
-export const getIrysUploader = async () =>
+const getIrysUploader = async () =>
   Uploader(BaseEth)
     .withWallet(process.env.ONCHAIN_STORAGE_OPERATOR_PRIVATE_KEY)
     .withRpc("https://sepolia.base.org")
@@ -28,7 +28,10 @@ const uploadImage = async (base64String) => {
         ]
       }
     );
-    return `https://gateway.irys.xyz/${receipt.id}`;
+    return {
+      metadataImageUrl: `https://gateway.irys.xyz/${receipt.id}`,
+      priceWei: price.toString()
+    };
   } catch (error) {
     console.log("Whole error", error);
     console.log(`🚨 Error while uploading image via Irys: ${error.messsage}`);
@@ -36,8 +39,17 @@ const uploadImage = async (base64String) => {
   }
 };
 
-export const uploadFile = async ({ name, description, symbol, image }: Metadata) => {
+const uploadFile = async ({ name, description, symbol, image }: Metadata) => {
   const irys = await getIrysUploader();
+  const stringToBase64 = Buffer.from(JSON.stringify({
+    name,
+    description,
+    symbol,
+    image
+  })).toString("base64");
+  const size = calculateBase64FileSize(stringToBase64);
+  const price = await irys.getPrice(size);
+
   try {
     const receipt = await irys.upload(
       JSON.stringify({
@@ -52,7 +64,10 @@ export const uploadFile = async ({ name, description, symbol, image }: Metadata)
         ]
       }
     );
-    return `https://gateway.irys.xyz/${receipt.id}`;
+    return {
+      metadataUrl: `https://gateway.irys.xyz/${receipt.id}`,
+      priceWei: price.toString()
+    };
   } catch (error) {
     console.log(`🚨 Error while uploading JSON via Irys: ${error.messsage}`);
     throw new Error(`🚨 Error while uploading JSON via Irys: ${error.messsage}`);
@@ -67,10 +82,14 @@ interface Metadata {
 }
 
 export const uploadMetadata = async ({ name, symbol, description, image }: Metadata) => {
-  const metadataImageUrl = await uploadImage(image);
-  const metadataUrl = await uploadFile({ name, symbol, description, image: metadataImageUrl });
+  const { metadataImageUrl, priceWei } = await uploadImage(image);
+  const { metadataUrl, priceWei: priceWei2 } = await uploadFile({ name, symbol, description, image: metadataImageUrl });
+
+  const totalWeiPrice = BigInt(Number(priceWei) + Number(priceWei2)).toString();
+
   return {
     metadataImageUrl,
-    metadataUrl
+    metadataUrl,
+    totalWeiPrice
   };
 };

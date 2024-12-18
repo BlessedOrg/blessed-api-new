@@ -84,11 +84,20 @@ export class TicketsService {
       }
     });
 
-    const { metadataUrl, metadataImageUrl } = await uploadMetadata({
+    const { metadataUrl, metadataImageUrl, totalWeiPrice } = await uploadMetadata({
       name: createTicketDto.name,
       symbol: createTicketDto.symbol,
       description: createTicketDto.description,
       image: createTicketDto?.imageUrl || logoBase64
+    });
+
+    this.eventEmitter.emit("interaction.create", {
+      method: "uploadMetadata-ticket",
+      gasWeiPrice: totalWeiPrice,
+      developerId,
+      eventId,
+      txHash: "none",
+      operatorType: "irys"
     });
 
     const smartWallet = await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
@@ -133,17 +142,15 @@ export class TicketsService {
 
     const contract = await deployContract(contractName, [args]);
 
-    this.eventEmitter.emit("event.created", { eventAddress: ticket.Event.address, ticketAddress: contract.contractAddr, capsuleTokenVaultKey, developerId, eventId });
+    this.eventEmitter.emit("ticket.created", { eventAddress: ticket.Event.address, ticketAddress: contract.contractAddr, capsuleTokenVaultKey, developerId, eventId });
 
-    await this.database.interaction.create({
-      data: {
-        method: "deployTicketContract",
-        gasWeiPrice: contract.gasWeiPrice,
-        developerId,
-        eventId,
-        txHash: contract.hash,
-        operatorType: "operator"
-      }
+    this.eventEmitter.emit("interaction.create", {
+      method: "deployTicketContract",
+      gasWeiPrice: contract.gasWeiPrice,
+      developerId,
+      eventId,
+      txHash: contract.hash,
+      operatorType: "operator"
     });
 
     const updatedTicket = await this.database.ticket.update({
@@ -325,15 +332,13 @@ export class TicketsService {
         userWalletAddress: developerWalletAddress
       });
 
-      await this.database.interaction.create({
-        data: {
-          method: `updateSupply-tickets`,
-          gasWeiPrice: metaTxResult.data.actualGasCost,
-          txHash: metaTxResult.data.transactionReceipt.transactionHash,
-          operatorType: "biconomy",
-          ticketId,
-          developerId
-        }
+      this.eventEmitter.emit("interaction.create", {
+        method: `updateSupply-ticket`,
+        gasWeiPrice: metaTxResult.data.actualGasCost,
+        txHash: metaTxResult.data.transactionReceipt.transactionHash,
+        operatorType: "biconomy",
+        ticketId,
+        developerId
       });
 
       return {
@@ -388,15 +393,13 @@ export class TicketsService {
         userWalletAddress: developerWalletAddress
       });
 
-      await this.database.interaction.create({
-        data: {
-          method: `updateWhitelist-tickets`,
-          gasWeiPrice: metaTxResult.data.actualGasCost,
-          txHash: metaTxResult.data.transactionReceipt.transactionHash,
-          operatorType: "biconomy",
-          ticketId,
-          developerId
-        }
+      this.eventEmitter.emit("interaction.create", {
+        method: `updateWhitelist-ticket`,
+        gasWeiPrice: metaTxResult.data.actualGasCost,
+        txHash: metaTxResult.data.transactionReceipt.transactionHash,
+        operatorType: "biconomy",
+        ticketId,
+        developerId
       });
 
       const updatedUsersWhitelist = users.filter((user) => ({
@@ -556,16 +559,14 @@ export class TicketsService {
         userWalletAddress: developerWalletAddress
       });
 
-      await this.database.interaction.create({
-        data: {
-          method: `distribute-tickets`,
-          gasWeiPrice: metaTxResult.data.actualGasCost,
-          txHash: metaTxResult.data.transactionReceipt.transactionHash,
-          operatorType: "biconomy",
-          ticketId: ticket.id,
-          developerId: developer.id,
-          eventId: ticket.Event.id
-        }
+      this.eventEmitter.emit("interaction.create", {
+        method: `distribute-ticket`,
+        gasWeiPrice: metaTxResult.data.actualGasCost,
+        txHash: metaTxResult.data.transactionReceipt.transactionHash,
+        operatorType: "biconomy",
+        ticketId: ticket.id,
+        developerId: developer.id,
+        eventId: ticket.Event.id
       });
 
       return {
@@ -780,15 +781,17 @@ export class TicketsService {
     const eventKey = await this.database.eventKey.findUnique({ where: { eventId } });
     const decodedCodeData = decryptQrCodePayload(code, eventKey.key);
     const { timestamp } = decodedCodeData;
-    if (new Date().getTime() - timestamp > 11111000) {
+    if (new Date().getTime() - timestamp > 11500) {
       throw new BadRequestException("QR code is expired");
     }
     if (!decodedCodeData?.ticketHolderId) {
       throw new BadRequestException("Invalid QR code");
     }
     const bouncerData = await this.database.user.findUnique({ where: { id: bouncerId }, include: { EventBouncers: { include: { Event: { include: { Tickets: true } } } } } });
+    const bouncerEvents = bouncerData.EventBouncers.flatMap(i => i.Event);
+    const bouncerEventTickets = bouncerEvents.flatMap(i => i.Tickets);
 
-    if (!bouncerData.EventBouncers.some(eventBouncer => eventBouncer.eventId === eventId && eventBouncer.Event.Tickets.some(ticket => ticket.id === ticketId))) {
+    if (!(bouncerEvents.some(i => i.id === eventId) && bouncerEventTickets.some(i => i.id === ticketId))) {
       throw new HttpException("User is not allowed to verify tickets", 403);
     }
     return this.eventsService.letUserIntoEvent(bouncerId, decodedCodeData);
