@@ -18,13 +18,14 @@ import { UsersService } from "@/resources/users/users.service";
 import { decryptQrCodePayload, encryptQrCodePayload } from "@/utils/eventKey";
 import { logoBase64 } from "@/utils/logo_base64";
 import { WebhooksDto } from "@/webhooks/webhooks.dto";
-import { BadRequestException, HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { BadRequestException, HttpException, Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { PrefixedHexString } from "ethereumjs-util";
 import { isEmpty } from "lodash";
 import slugify from "slugify";
 import Stripe from "stripe";
 import { v4 as uuidv4 } from "uuid";
+import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
 
 @Injectable()
 export class TicketsService {
@@ -189,6 +190,18 @@ export class TicketsService {
 
   }
 
+  getTicketDetailsForPurchase(eventId: string, ticketId: string) {
+    return this.database.ticket.findUnique({
+      where: {
+        id: ticketId,
+        eventId
+      },
+      include: {
+        Event: true
+      }
+    });
+  }
+
   async getTicketDetails(req: RequestWithApiKey & TicketValidate) {
     const { ticketContractAddress, appId, ticketId } = req;
 
@@ -351,7 +364,7 @@ export class TicketsService {
         transactionReceipt: metaTxResult.data.transactionReceipt
       };
     } catch (e) {
-      throw new HttpException(e?.message, 500);
+      throw new CustomHttpException(e);
     }
   }
 
@@ -430,7 +443,7 @@ export class TicketsService {
         }
       };
     } catch (e) {
-      throw new HttpException(e.message, 500);
+      throw new CustomHttpException(e);
     }
   }
 
@@ -484,7 +497,7 @@ export class TicketsService {
         externalAddresses
       };
     } catch (e) {
-      throw new HttpException(e.message, 500);
+      throw new CustomHttpException(e);
     }
   }
 
@@ -529,7 +542,7 @@ export class TicketsService {
         }
       };
     } catch (e) {
-      throw new HttpException(e.message, 500);
+      throw new CustomHttpException(e);
     }
   }
 
@@ -577,7 +590,7 @@ export class TicketsService {
         }
       };
     } catch (e) {
-      throw new HttpException(e["reason"], 500);
+      throw new CustomHttpException(e);
     }
   }
 
@@ -620,6 +633,9 @@ export class TicketsService {
       });
 
       const denominatedPrice = Number(price) / 10 ** Number(erc20Decimals);
+      console.log(price);
+      console.log(denominatedPrice);
+      console.log(erc20Decimals);
 
       const session = await this.stripe.checkout.sessions.create({
         payment_method_types: ["card"],
@@ -631,13 +647,13 @@ export class TicketsService {
                 name: `${ticket.Event.name} ticket (${ticket.name})`,
                 images: ["https://avatars.githubusercontent.com/u/164048341"]
               },
-              unit_amount: denominatedPrice
+              unit_amount: 100
             },
             quantity: 1
           }
         ],
         mode: "payment",
-        success_url: webhooksDto.successUrl ?? `${envVariables.landingPageUrl}/ticket-purchase-success?email=${encodeURIComponent(user.email)}`,
+        success_url: webhooksDto.successUrl ?? `${envVariables.ticketerAppUrl}/?ticketId=${ticket.id}`,
         // cancel_url: webhooksDto.cancelUrl ?? req.get("host"),
         payment_intent_data: {
           metadata: {
@@ -654,7 +670,7 @@ export class TicketsService {
       return session;
     } catch (e: any) {
       console.log("🚨 error on /checkout-session", e.message);
-      throw new HttpException(e.message, e.status ?? HttpStatus.BAD_REQUEST);
+      throw new CustomHttpException(e);
     }
   }
 
@@ -683,6 +699,7 @@ export class TicketsService {
       throw new HttpException("User does not exist", 404);
     }
     let ownedTickets = [];
+
     try {
       for (const event of user.Apps.flatMap(app => app.Events)) {
         const { Tickets, ...eventData } = event;
@@ -734,7 +751,7 @@ export class TicketsService {
       }
     } catch (e) {
       console.log(e);
-      throw new HttpException(e.message, 500);
+      throw new CustomHttpException(e);
     }
     return ownedTickets;
   }

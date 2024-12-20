@@ -3,6 +3,7 @@ import { DatabaseService } from "@/common/services/database/database.service";
 import slugify from "slugify";
 import { UsersService } from "@/resources/users/users.service";
 import { CreateAudiencesDto } from "@/resources/audiences/dto/create-audience.dto";
+import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
 
 @Injectable()
 export class AudiencesService {
@@ -64,7 +65,7 @@ export class AudiencesService {
         throw new HttpException("No changes to update!", 400);
       }
     } catch (e) {
-      throw new HttpException(e.message, 400);
+      throw new CustomHttpException(e);
     }
   }
 

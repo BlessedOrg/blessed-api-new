@@ -1,4 +1,4 @@
-import { BadRequestException, HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { BadRequestException, HttpStatus, Injectable } from "@nestjs/common";
 import Stripe from "stripe";
 import { envVariables } from "@/common/env-variables";
 import { PrefixedHexString } from "ethereumjs-util";
@@ -12,6 +12,7 @@ import { stripe } from "@/lib/stripe";
 import { ReclaimClient } from "@reclaimprotocol/zk-fetch";
 import { transformForOnchain, verifyProof } from "@reclaimprotocol/js-sdk";
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
 
 @Injectable()
 export class WebhooksService {
@@ -185,7 +186,7 @@ export class WebhooksService {
           }
         });
       }
-      throw new HttpException(e.message, e.status ?? HttpStatus.BAD_REQUEST);
+      throw new CustomHttpException(e);
     }
   }
 }

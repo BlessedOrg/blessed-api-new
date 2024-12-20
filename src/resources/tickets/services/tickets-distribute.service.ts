@@ -1,4 +1,4 @@
-import { HttpException, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { contractArtifacts, getExplorerUrl } from "@/lib/viem";
 import { biconomyMetaTx } from "@/lib/biconomy";
 import { PrefixedHexString } from "ethereumjs-util";
@@ -10,6 +10,7 @@ import { EmailService } from "@/common/services/email/email.service";
 import { envVariables } from "@/common/env-variables";
 import { SessionService } from "@/common/services/session/session.service";
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
 
 @Injectable()
 export class TicketsDistributeService {
@@ -88,7 +89,7 @@ export class TicketsDistributeService {
         explorerUrls
       };
     } catch (e) {
-      throw new HttpException(e.message, 500);
+      throw new CustomHttpException(e);
     }
   }
   async distributeTickets(
@@ -180,7 +181,7 @@ export class TicketsDistributeService {
         }
       };
     } catch (e) {
-      throw new HttpException(e.message, 500);
+      throw new CustomHttpException(e);
     }
   }
 }

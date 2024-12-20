@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { HttpException, Injectable } from "@nestjs/common";
 import { EmailService } from "@/common/services/email/email.service";
 import { SessionService } from "@/common/services/session/session.service";
 import { DatabaseService } from "@/common/services/database/database.service";
@@ -6,6 +6,7 @@ import { EmailDto } from "@/common/dto/email.dto";
 import { CodeDto } from "@/common/dto/code.dto";
 import { createCapsuleAccount } from "@/lib/capsule";
 import { CreateManyUsersDto } from "@/resources/users/dto/many-users-create.dto";
+import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
 
 @Injectable()
 export class UsersService {
@@ -76,7 +77,7 @@ export class UsersService {
       }
       return this.sessionService.createOrUpdateSession(email, "user", appId);
     } catch (e) {
-      throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
+      throw new CustomHttpException(e);
     }
   }
 
@@ -116,7 +117,7 @@ export class UsersService {
         message: "User created successfully"
       };
     } catch (e) {
-      throw new HttpException(e.message, 500);
+      throw new CustomHttpException(e);
     }
   };
 

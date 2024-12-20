@@ -4,6 +4,7 @@ import { JwtService } from "@nestjs/jwt";
 import { envVariables } from "@/common/env-variables";
 import { createVaultApiKeyItem, getVaultItem } from "@/lib/1pwd-vault";
 import { isEqual } from "lodash";
+import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
 
 @Injectable()
 export class ApiKeyPrivateService {
@@ -47,7 +48,7 @@ export class ApiKeyPrivateService {
         id: apiTokenRecord?.id
       };
     } catch (e) {
-      throw new HttpException(e.message, 500);
+      throw new CustomHttpException(e);
     }
   }
 

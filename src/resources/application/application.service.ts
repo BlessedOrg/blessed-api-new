@@ -1,8 +1,9 @@
-import { HttpException, Injectable } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { CreateApplicationDto } from "@/resources/application/dto/create-application.dto";
 import slugify from "slugify";
 import { generateRandomLightColor } from "@/utils/colors";
+import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
 
 @Injectable()
 export class ApplicationService {
@@ -91,7 +92,7 @@ export class ApplicationPrivateService {
         }
       });
     } catch (e) {
-      throw new HttpException(e.message, 400);
+      throw new CustomHttpException(e);
     }
   }
 

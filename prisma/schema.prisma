@@ -23,8 +23,8 @@ model Developer {
   capsuleTokenVaultKey   String?
   avatarUrl              String?
   role                   Role               @default(USER)
-  Tickets                Ticket[]
   Apps                   App[]
+  Tickets                Ticket[]
   Sessions               DeveloperSession[]
   Interactions           Interaction[]
   createdAt              DateTime           @default(now())
@@ -45,7 +45,7 @@ model App {
   domainUrl   String?
   colors      Json?
   Tickets     Ticket[]
-  Developer   Developer  @relation(fields: [developerId], references: [id])
+  Developer   Developer  @relation(fields: [developerId], references: [id], onDelete: Cascade)
   developerId String
   Users       User[]
   ApiTokens   ApiToken[]
@@ -54,6 +54,7 @@ model App {
   Audiences   Audience[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
+  deletedAt   DateTime?
 }
 
 model User {
@@ -98,7 +99,7 @@ model UserSession {
 
 model DeveloperSession {
   id          String     @id @default(cuid())
-  Developer   Developer? @relation(fields: [developerId], references: [id])
+  Developer   Developer? @relation(fields: [developerId], references: [id], onDelete: Cascade)
   developerId String?
   expiresAt   DateTime
   createdAt   DateTime   @default(now())
@@ -142,7 +143,7 @@ model Event {
 model EventKey {
   id        String   @id @default(cuid())
   key       String
-  Event     Event    @relation(fields: [eventId], references: [id])
+  Event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   eventId   String   @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -152,7 +153,7 @@ model EventBouncer {
   id        String    @id @default(cuid())
   User      User      @relation(fields: [userId], references: [id])
   userId    String
-  Event     Event     @relation(fields: [eventId], references: [id])
+  Event     Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
   eventId   String
   isActive  Boolean   @default(true)
   deletedAt DateTime?
@@ -162,7 +163,7 @@ model EventBouncer {
 
 model EventLocation {
   id               String   @id @default(cuid())
-  Event            Event    @relation(fields: [eventId], references: [id])
+  Event            Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   eventId          String   @unique
   street1stLine    String?
   street2ndLine    String?
@@ -186,9 +187,9 @@ model Stakeholder {
   id            String    @id @default(cuid())
   walletAddress String
   feePercentage Int
-  Event         Event     @relation(fields: [eventId], references: [id])
+  Event         Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
   eventId       String
-  Ticket        Ticket?   @relation(fields: [ticketId], references: [id])
+  Ticket        Ticket?   @relation(fields: [ticketId], references: [id], onDelete: NoAction)
   ticketId      String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -202,7 +203,7 @@ model Campaign {
   Audiences            Audience[]
   CampaignDistribution CampaignDistribution?
   Tickets              Ticket[]
-  App                  App                   @relation(fields: [appId], references: [id])
+  App                  App                   @relation(fields: [appId], references: [id], onDelete: Cascade)
   appId                String
   createdAt            DateTime              @default(now())
   updatedAt            DateTime?             @updatedAt
@@ -211,11 +212,12 @@ model Campaign {
 
 model CampaignDistribution {
   id            String         @id @default(cuid())
-  Campaign      Campaign       @relation(fields: [campaignId], references: [id])
+  Campaign      Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   campaignId    String         @unique
   AudienceUsers AudienceUser[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+  deletedAt     DateTime?
 }
 
 model Audience {
@@ -224,7 +226,7 @@ model Audience {
   slug          String
   Campaigns     Campaign[]
   AudienceUsers AudienceUser[]
-  App           App            @relation(fields: [appId], references: [id])
+  App           App            @relation(fields: [appId], references: [id], onDelete: Cascade)
   appId         String
   public        Boolean        @default(false)
   createdAt     DateTime       @default(now())
@@ -236,7 +238,7 @@ model AudienceUser {
   id                    String                 @id @default(cuid())
   Audiences             Audience[]
   CampaignDistributions CampaignDistribution[]
-  User                  User?                  @relation(fields: [userId], references: [id])
+  User                  User?                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   userId                String?                @unique
   externalWalletAddress String?                @unique
   createdAt             DateTime               @default(now())
@@ -252,11 +254,11 @@ model Ticket {
   logoUrl         String?
   metadataUrl     String?
   metadataPayload Json
-  Developer       Developer?    @relation(fields: [developerId], references: [id])
+  Developer       Developer?    @relation(fields: [developerId], references: [id], onDelete: Cascade)
   developerId     String?
-  App             App           @relation(fields: [appId], references: [id])
+  App             App           @relation(fields: [appId], references: [id], onDelete: Cascade)
   appId           String
-  Event           Event         @relation(fields: [eventId], references: [id])
+  Event           Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
   eventId         String
   Orders          Order[]
   Interactions    Interaction[]
@@ -264,19 +266,20 @@ model Ticket {
   Stakeholders    Stakeholder[]
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  deletedAt       DateTime?
 
   @@unique([slug, eventId])
 }
 
 model Interaction {
   id           String                    @id @default(cuid())
-  Developer    Developer                 @relation(fields: [developerId], references: [id])
-  developerId  String
-  User         User?                     @relation(fields: [userId], references: [id])
+  Developer    Developer?                @relation(fields: [developerId], references: [id], onDelete: SetNull)
+  developerId  String?
+  User         User?                     @relation(fields: [userId], references: [id], onDelete: SetNull)
   userId       String?
-  Ticket       Ticket?                   @relation(fields: [ticketId], references: [id])
+  Ticket       Ticket?                   @relation(fields: [ticketId], references: [id], onDelete: SetNull)
   ticketId     String?
-  Event        Event?                    @relation(fields: [eventId], references: [id])
+  Event        Event?                    @relation(fields: [eventId], references: [id], onDelete: SetNull)
   eventId      String?
   method       String
   txHash       String
@@ -287,6 +290,7 @@ model Interaction {
   operatorType SmartContractOperatorType
   createdAt    DateTime                  @default(now())
   updatedAt    DateTime                  @updatedAt
+  deletedAt    DateTime?
 }
 
 enum SmartContractOperatorType {
@@ -298,9 +302,9 @@ enum SmartContractOperatorType {
 model Order {
   id         String      @id @default(cuid())
   providerId String
-  User       User        @relation(fields: [userId], references: [id])
+  User       User        @relation(fields: [userId], references: [id], onDelete: NoAction)
   userId     String
-  Ticket     Ticket      @relation(fields: [ticketId], references: [id])
+  Ticket     Ticket      @relation(fields: [ticketId], references: [id], onDelete: NoAction)
   ticketId   String
   quantity   Float
   priceCents Int

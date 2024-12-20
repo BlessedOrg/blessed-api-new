@@ -1,4 +1,4 @@
-import { HttpException, HttpStatus, Injectable, UnauthorizedException } from "@nestjs/common";
+import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { EmailDto } from "@/common/dto/email.dto";
 import { EmailService } from "@/common/services/email/email.service";
 import { CodeDto } from "@/common/dto/code.dto";
@@ -7,6 +7,7 @@ import { DatabaseService } from "@/common/services/database/database.service";
 import { createCapsuleAccount } from "@/lib/capsule";
 import { updateVaultItem } from "@/lib/1pwd-vault";
 import { ethers } from "ethers";
+import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
 
 @Injectable()
 export class DevelopersService {
@@ -51,6 +52,11 @@ export class DevelopersService {
         }
       },
       include: {
+        Developer: {
+          include: {
+            Interactions: true
+          }
+        },
         ApiTokens: true,
         Tickets: true,
         Events: {
@@ -58,8 +64,7 @@ export class DevelopersService {
             EventKey: true,
             EventLocation: true,
             EventBouncers: true,
-            Stakeholders: true,
-            Interactions: true
+            Stakeholders: true
           }
         },
         Audiences: {
@@ -70,6 +75,50 @@ export class DevelopersService {
         Campaigns: true
       }
     });
+
+    try {
+      const res = await this.database.$transaction(async (tx) => {
+        await tx.interaction.updateMany({
+          where: {
+            developerId: {
+              in: devAppsData.map(i => i.developerId)
+            }
+          },
+          data: {
+            deletedAt: new Date()
+          }
+        });
+
+        await tx.ticket.deleteMany({
+          where: {
+            id: {
+              in: devAppsData.flatMap(i => i.Tickets).map(i => i.id)
+            }
+          }
+        });
+
+        await tx.event.deleteMany({
+          where: {
+            id: {
+              in: devAppsData.flatMap(i => i.Events).map(i => i.id)
+            }
+          }
+        });
+
+        await tx.developerSession.deleteMany({
+          where: {
+            developerId: developer.id
+          }
+        });
+
+        await tx.developer.delete({ where: { id: devId } });
+
+        return { deleted: true };
+      });
+      return res;
+    } catch (e) {
+      throw new CustomHttpException(e);
+    }
 
   }
 
@@ -123,7 +172,7 @@ export class DevelopersService {
         }
       });
     } catch (e) {
-      throw new HttpException(e?.message || "Something went wrong", e?.code || 500);
+      throw new CustomHttpException(e);
     }
   }
 
@@ -137,7 +186,7 @@ export class DevelopersService {
       }
       return this.sessionService.createOrUpdateSession(email, "developer");
     } catch (e) {
-      throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
+      throw new CustomHttpException(e);
     }
   }
 
@@ -176,7 +225,7 @@ export class DevelopersService {
         throw new Error("Something went wrong");
       }
     } catch (e) {
-      throw new HttpException(e.message, 500);
+      throw new CustomHttpException(e);
     }
   }
 
@@ -216,7 +265,7 @@ export class DevelopersService {
       await this.database.developer.delete({
         where: { id: createdDeveloperAccount.id }
       });
-      throw new HttpException(e.message, HttpStatus.INTERNAL_SERVER_ERROR);
+      throw new CustomHttpException(e);
     }
   };
 }
