@@ -61,3 +61,4 @@ bun.lockb
 
 # prisma
 /prisma/seed.ts
+seed-data.json

@@ -100,17 +100,18 @@ export class TicketsController {
   getAllEventTickets(@Req() req: RequestWithApiKey & EventValidate) {
     return this.ticketsService.getAllEventTickets(req.eventId);
   }
-
-  @UseTicketIdInterceptor()
-  @Post(":ticketId/checkout-session")
-  checkoutSession(@Body() webhooksDto: WebhooksDto) {
-    return this.ticketsService.getCheckoutSession(webhooksDto);
-  }
 }
 
 @Controller("private/tickets")
 export class TicketsPrivateController {
   constructor(private ticketsService: TicketsService) {}
+
+  @RequireUserAuth()
+  @UseTicketIdInterceptor()
+  @Post("checkout-session/:ticketId")
+  checkoutSession(@Body() webhooksDto: WebhooksDto) {
+    return this.ticketsService.getCheckoutSession(webhooksDto);
+  }
 
   @RequireDeveloperAuth()
   @UseAppIdInterceptor()
@@ -210,5 +211,13 @@ export class TicketsPrivateController {
   @Get(":ticketId/entries")
   getTicketEntries(@Req() req: RequestWithApiKey & EventValidate & TicketValidate) {
     return this.ticketsService.getTicketEntries(req.ticketId);
+  }
+
+  @RequireUserAuth()
+  @UseEventIdInterceptor()
+  @UseTicketIdInterceptor()
+  @Get(":event/:ticketId/purchase-details")
+  getTicketDetailsForPurchase(@Req() req: RequestWithDevAccessToken & TicketValidate & EventValidate) {
+    return this.ticketsService.getTicketDetailsForPurchase(req.eventId, req.ticketId);
   }
 }

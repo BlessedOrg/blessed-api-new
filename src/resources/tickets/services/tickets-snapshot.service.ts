@@ -1,4 +1,4 @@
-import { forwardRef, HttpException, Inject, Injectable } from "@nestjs/common";
+import { forwardRef, Inject, Injectable } from "@nestjs/common";
 import { AirdropDto, SnapshotDto } from "@/resources/tickets/dto/create-ticket.dto";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { contractArtifacts, readContract } from "@/lib/viem";
@@ -6,6 +6,7 @@ import { Ticket } from "@prisma/client";
 import { TicketsService } from "@/resources/tickets/tickets.service";
 import { PrefixedHexString } from "ethereumjs-util";
 import { EventsService } from "@/resources/events/events.service";
+import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
 
 @Injectable()
 export class TicketsSnapshotService {
@@ -94,7 +95,7 @@ export class TicketsSnapshotService {
         all: [...eligibleUsers, ...eligibleExternalAddresses]
       };
     } catch (e) {
-      throw new HttpException(e.message, 500);
+      throw new CustomHttpException(e);
     }
   }
 
@@ -147,7 +148,7 @@ export class TicketsSnapshotService {
             usersMap.get(key).count += 1;
           });
         } catch (e) {
-          this.handleError(e);
+          throw new CustomHttpException(e);
         }
       })
     );
@@ -176,7 +177,7 @@ export class TicketsSnapshotService {
             entries
           };
         } catch (e) {
-          this.handleError(e);
+          throw new CustomHttpException(e);
         }
       })
     );
@@ -191,7 +192,4 @@ export class TicketsSnapshotService {
     return Number(result);
   }
 
-  private handleError(e: any): never {
-    throw new HttpException(e.message, 500);
-  }
 }

@@ -7,7 +7,8 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "prisma generate && prisma migrate deploy && node node_modules/@reclaimprotocol/zk-symmetric-crypto/lib/scripts/download-files && nest build",
-    "seed": "ts-node prisma/seed.ts",
+    "create-seed": "ts-node prisma/scripts/create-seed.ts",
+    "seed": "ts-node prisma/scripts/seed.ts",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
     "dev": "nest start --watch",
@@ -56,7 +57,7 @@
     "reflect-metadata": "^0.2.0",
     "rxjs": "^7.8.1",
     "slugify": "^1.6.6",
-    "stripe": "^17.4.0",
+    "stripe": "17.5.0",
     "uuidv4": "^6.2.13",
     "viem": "^2.21.33"
   },

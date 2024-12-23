@@ -51,10 +51,7 @@ export class AnalyticsService {
     const { getBy, appId, eventId, developerId } = params || {};
 
     const devAccount = await this.database.developer.findUnique({
-      where: { id: callerDevId },
-      include: {
-        Apps: true
-      }
+      where: { id: callerDevId }
     });
 
     const isAdmin = devAccount.role === "ADMIN";
@@ -113,12 +110,18 @@ export class AnalyticsService {
       return Number(a) + Number(b.gasWeiPrice);
     }, [0]);
 
+    const usersTransactions = allOnChainInteractions.filter(i => !!i?.userId);
+    const usersTransactionsWeiCost = usersTransactions.reduce((a: any, b) => {
+      return Number(a) + Number(b.gasWeiPrice);
+    }, [0]);
+
     return {
       eventsTransactions: this.formatTxToChartData(eventContractTransactionsWeiCost, eventContractTransactions),
       ticketsTransactions: this.formatTxToChartData(ticketContractTransactionsWeiCost, ticketContractTransactions),
       ticketsDeploy: this.formatTxToChartData(ticketsWeiCost, ticketsDeploy),
       eventsDeploy: this.formatTxToChartData(eventsWeiCost, eventsDeploy),
       costsByOperatorType: this.costsByOperatorType(allOnChainInteractions),
+      usersTransactions: this.formatTxToChartData(usersTransactionsWeiCost, usersTransactions),
       count: {
         all: allOnChainInteractions.length,
         eventsTransactions: eventContractTransactions.length,

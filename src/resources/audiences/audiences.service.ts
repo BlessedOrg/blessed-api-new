@@ -3,6 +3,7 @@ import { DatabaseService } from "@/common/services/database/database.service";
 import slugify from "slugify";
 import { UsersService } from "@/resources/users/users.service";
 import { CreateAudiencesDto } from "@/resources/audiences/dto/create-audience.dto";
+import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
 
 @Injectable()
 export class AudiencesService {
@@ -44,6 +45,24 @@ export class AudiencesService {
     return createdAudience;
   }
 
+  deleteUserFromAudience(appId: string, audienceId: string, audienceUserId: string) {
+    return this.database.audienceUser.update({
+      where: {
+        id: audienceUserId,
+        Audiences: {
+          some: {
+            appId
+          }
+        }
+      },
+      data: {
+        Audiences: {
+          disconnect: { id: audienceId }
+        }
+      }
+    });
+  }
+
   update(
     appId: string,
     audienceId: string,
@@ -64,7 +83,7 @@ export class AudiencesService {
         throw new HttpException("No changes to update!", 400);
       }
     } catch (e) {
-      throw new HttpException(e.message, 400);
+      throw new CustomHttpException(e);
     }
   }
 
@@ -82,7 +101,6 @@ export class AudiencesService {
     audienceId: string,
     usersToAssign: CreateAudiencesDto
   ) {
-    console.log(usersToAssign);
     return this.database.$transaction(async (prisma) => {
       const { users } = await this.usersService.createManyUserAccounts(
         { users: usersToAssign?.emails || [] },

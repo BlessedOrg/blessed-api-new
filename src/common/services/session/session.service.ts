@@ -3,6 +3,7 @@ import { DatabaseService } from "@/common/services/database/database.service";
 import { JwtService } from "@nestjs/jwt";
 import { v4 as uuidv4 } from "uuid";
 import { createVaultAccessTokenItem, updateVaultItem } from "@/lib/1pwd-vault";
+import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
 
 export interface SessionResult {
   refreshToken?: string;
@@ -57,7 +58,7 @@ export class SessionService {
         return this.updateUserSession(identifier, appId);
       }
     } catch (e) {
-      throw new HttpException(e.message, 500);
+      throw new CustomHttpException(e);
     }
   }
 

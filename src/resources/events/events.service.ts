@@ -16,6 +16,7 @@ import slugify from "slugify";
 import { v4 as uuidv4 } from "uuid";
 import { isAddress } from "viem";
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
 
 @Injectable()
 export class EventsService {
@@ -334,6 +335,17 @@ export class EventsService {
     });
   }
 
+  getEventTicketDetails(eventId: string, ticketId: string) {
+    return this.database.event.findUnique({
+      where: {
+        id: eventId,
+        Tickets: {
+          some: { id: ticketId }
+        }
+      }
+    });
+  }
+
   getEventDetails(appId: string, eventId: string) {
     return this.database.event.findUnique({
       where: {
@@ -419,7 +431,7 @@ export class EventsService {
       };
     } catch (e) {
       console.log(e);
-      throw new HttpException(e.message, e.status ?? HttpStatus.BAD_REQUEST);
+      throw new CustomHttpException(e);
     }
   }
 
@@ -478,7 +490,7 @@ export class EventsService {
         externalAddresses: notFoundAddresses
       };
     } catch (e) {
-      throw new HttpException(e.message, 500);
+      throw new CustomHttpException(e);
     }
   }
 
@@ -515,7 +527,7 @@ export class EventsService {
         }
       });
     } catch (e) {
-      throw new HttpException(e.message, e.status || 500);
+      throw new CustomHttpException(e);
     }
   }
 
