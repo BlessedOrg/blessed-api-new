@@ -14,10 +14,7 @@ export class AudiencesController {
     return this.audiencesService.getAllAudiences(req.appId);
   }
   @Post()
-  create(
-    @Req() req: RequestWithApiKey,
-    @Body() createAudienceDto: CreateAudiencesDto
-  ) {
+  create(@Req() req: RequestWithApiKey, @Body() createAudienceDto: CreateAudiencesDto) {
     return this.audiencesService.create(createAudienceDto, req.appId);
   }
 }
@@ -51,6 +48,19 @@ export class AudiencesPrivateController {
       req.appId,
       audienceId,
       updateAudienceDto
+    );
+  }
+
+  @Delete(":audienceId/:audienceUserId")
+  deleteUserFromAudience(
+    @Req() req: RequestWithDevAccessToken & AppValidate,
+    @Param("audienceId") audienceId: string,
+    @Param("audienceUserId") audienceUserId: string
+  ) {
+    return this.audienceService.deleteUserFromAudience(
+      req.appId,
+      audienceId,
+      audienceUserId
     );
   }
 

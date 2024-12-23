@@ -45,6 +45,24 @@ export class AudiencesService {
     return createdAudience;
   }
 
+  deleteUserFromAudience(appId: string, audienceId: string, audienceUserId: string) {
+    return this.database.audienceUser.update({
+      where: {
+        id: audienceUserId,
+        Audiences: {
+          some: {
+            appId
+          }
+        }
+      },
+      data: {
+        Audiences: {
+          disconnect: { id: audienceId }
+        }
+      }
+    });
+  }
+
   update(
     appId: string,
     audienceId: string,
@@ -83,7 +101,6 @@ export class AudiencesService {
     audienceId: string,
     usersToAssign: CreateAudiencesDto
   ) {
-    console.log(usersToAssign);
     return this.database.$transaction(async (prisma) => {
       const { users } = await this.usersService.createManyUserAccounts(
         { users: usersToAssign?.emails || [] },
