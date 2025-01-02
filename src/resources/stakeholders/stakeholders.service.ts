@@ -43,6 +43,7 @@ export class StakeholdersService {
           walletAddress: sh.walletAddress,
           feePercentage: sh.feePercentage,
           userId: sh.id,
+					paymentDistributionMethod: "CRYPTO",
           ...relations,
         })),
       });
