@@ -1,6 +1,6 @@
-import { IsArray, IsISO8601, IsNotEmpty, IsOptional, IsString, IsUrl, ValidateNested } from "class-validator";
-import { Type } from "class-transformer";
 import { isEmailOrEthAddress } from "@/resources/tickets/dto/create-ticket.dto";
+import { Type } from "class-transformer";
+import { IsArray, IsISO8601, IsNotEmpty, IsNumber, IsOptional, IsString, IsUrl, ValidateNested } from "class-validator";
 
 export class EventLocationDto {
   @IsString()
@@ -60,6 +60,18 @@ export class EventLocationDto {
   countryFlag?: string;
 }
 
+class StakeholderDto {
+  @IsString()
+  @IsNotEmpty()
+  email: string;
+
+  @IsNumber()
+  feePercentage: number;
+
+  @IsString()
+  walletAddress: string;
+}
+
 export class CreateEventDto {
   @IsString()
   @IsNotEmpty()
@@ -91,9 +103,9 @@ export class CreateEventDto {
   endsAt?: Date;
 
   @IsOptional()
-  @IsArray()
-  @isEmailOrEthAddress({ each: true })
-  stakeholders: [string, number][];
+  @ValidateNested()
+  @Type(() => StakeholderDto)
+  stakeholders?: StakeholderDto[];
 
   @IsOptional()
   @IsArray()

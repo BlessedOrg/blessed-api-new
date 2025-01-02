@@ -1,6 +1,6 @@
+import { DatabaseService } from "@/common/services/database/database.service";
 import { CallHandler, ExecutionContext, HttpException, Injectable, NestInterceptor } from "@nestjs/common";
 import { Observable } from "rxjs";
-import { DatabaseService } from "@/common/services/database/database.service";
 
 @Injectable()
 export class AppIdInterceptor implements NestInterceptor {

@@ -1,6 +1,8 @@
-import { UseInterceptors } from "@nestjs/common";
 import { EventIdInterceptor } from "@/common/interceptors/param-protect/event-id-interceptor";
+import { applyDecorators, UseInterceptors } from "@nestjs/common";
 
-export function UseEventIdInterceptor() {
-  return UseInterceptors(EventIdInterceptor);
+export function UseEventIdInterceptor(throwError = true) {
+  return applyDecorators(
+    UseInterceptors(EventIdInterceptor({throwError}))
+  )
 }
