@@ -2,12 +2,17 @@
   Warnings:
 
   - Added the required column `appId` to the `Stakeholder` table without a default value. This is not possible if the table is not empty.
+  - Added the required column `paymentDistributionMethod` to the `Stakeholder` table without a default value. This is not possible if the table is not empty.
   - Added the required column `userId` to the `Stakeholder` table without a default value. This is not possible if the table is not empty.
 
 */
+-- CreateEnum
+CREATE TYPE "StakeholderPaymentDistributionMethod" AS ENUM ('CRYPTO', 'FIAT');
+
 -- AlterTable
 ALTER TABLE "Stakeholder" ADD COLUMN     "appId" TEXT NOT NULL,
 ADD COLUMN     "notifiedAt" TIMESTAMP(3),
+ADD COLUMN     "paymentDistributionMethod" "StakeholderPaymentDistributionMethod" NOT NULL,
 ADD COLUMN     "userId" TEXT NOT NULL,
 ALTER COLUMN "eventId" DROP NOT NULL;
 
