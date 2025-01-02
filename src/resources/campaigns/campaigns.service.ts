@@ -1,9 +1,9 @@
-import { Injectable } from "@nestjs/common";
+import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
 import { DatabaseService } from "@/common/services/database/database.service";
-import slugify from "slugify";
 import { CreateCampaignDto } from "@/resources/campaigns/dto/create-campaign.dto";
 import { TicketsService } from "@/resources/tickets/tickets.service";
-import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
+import { Injectable } from "@nestjs/common";
+import slugify from "slugify";
 
 @Injectable()
 export class CampaignsService {
@@ -20,7 +20,7 @@ export class CampaignsService {
     return this.database.campaign.create({
       data: {
         name: createCampaignDto.name,
-        slug,
+        slug, 
         appId
       }
     });

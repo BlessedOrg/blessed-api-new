@@ -1,8 +1,8 @@
-import { HttpException, Injectable } from "@nestjs/common";
+import { envVariables } from "@/common/env-variables";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { MailerService } from "@nestjs-modules/mailer";
+import { HttpException, Injectable } from "@nestjs/common";
 import * as nodemailer from "nodemailer";
-import { envVariables } from "@/common/env-variables";
 
 @Injectable()
 export class EmailService {
@@ -69,6 +69,31 @@ export class EmailService {
       });
       this.logEmailinDevelopment(result);
       return { message: "Ticket purchase confirmation sent successfully" };
+    } catch (error) {
+      throw new Error(error);
+    }
+  }
+
+	async sendRevenueNotificationEmail(to: string, sharesPercentage: number, destination: {
+		appName: string,
+		eventName?: string,
+		ticketName?:string
+	}) {
+    try {
+			const destinationString = destination?.ticketName || destination?.eventName || destination?.appName
+      const result = await this.mailerService.sendMail({
+        from: envVariables.mail.email || "test@blessed.fan",
+        to,
+        subject: `You have been added to the revenue list for ${destinationString}`,
+        template: "./revenueNotification",
+        context: {
+          destinationString,
+					sharesPercentage,
+					now: new Date().getTime()
+        }
+      });
+      this.logEmailinDevelopment(result);
+      return { message: "Revenue notification sent successfully" };
     } catch (error) {
       throw new Error(error);
     }

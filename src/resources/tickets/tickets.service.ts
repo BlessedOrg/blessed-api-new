@@ -1,5 +1,6 @@
 import { EmailDto } from "@/common/dto/email.dto";
 import { envVariables } from "@/common/env-variables";
+import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { biconomyMetaTx } from "@/lib/biconomy";
 import { getSmartWalletForCapsuleWallet } from "@/lib/capsule";
@@ -25,7 +26,6 @@ import { isEmpty } from "lodash";
 import slugify from "slugify";
 import Stripe from "stripe";
 import { v4 as uuidv4 } from "uuid";
-import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
 
 @Injectable()
 export class TicketsService {
@@ -113,17 +113,17 @@ export class TicketsService {
     });
 
     let stakeholders = [];
-    if (createTicketDto?.stakeholders && !isEmpty(createTicketDto.stakeholders)) {
-      stakeholders = await this.eventsService.transformStakeholders(
-        createTicketDto.stakeholders,
-        appId
-      );
-    } else {
-      stakeholders = ticket.Event.Stakeholders.map(sh => ({
-        wallet: sh.walletAddress,
-        feePercentage: sh.feePercentage
-      }));
-    }
+    // if (createTicketDto?.stakeholders && !isEmpty(createTicketDto.stakeholders)) {
+    //   stakeholders = await this.eventsService.transformStakeholders(
+    //     createTicketDto.stakeholders,
+    //     appId
+    //   );
+    // } else {
+    //   stakeholders = ticket.Event.Stakeholders.map(sh => ({
+    //     wallet: sh.walletAddress,
+    //     feePercentage: sh.feePercentage
+    //   }));
+    // }
 
     const args = {
       _owner: developerWalletAddress,
@@ -170,14 +170,14 @@ export class TicketsService {
       }
     });
 
-    await this.database.stakeholder.createMany({
-      data: stakeholders.map(sh => ({
-        walletAddress: sh.wallet,
-        feePercentage: sh.feePercentage,
-        eventId: eventId,
-        ticketId: updatedTicket.id
-      }))
-    });
+    // await this.database.stakeholder.createMany({
+    //   data: stakeholders.map(sh => ({
+    //     walletAddress: sh.wallet,
+    //     feePercentage: sh.feePercentage,
+    //     eventId: eventId,
+    //     ticketId: updatedTicket.id
+    //   }))
+    // });
 
     return {
       success: true,

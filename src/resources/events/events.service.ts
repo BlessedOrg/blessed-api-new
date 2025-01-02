@@ -1,4 +1,5 @@
 import { EmailDto } from "@/common/dto/email.dto";
+import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { biconomyMetaTx } from "@/lib/biconomy";
 import { uploadMetadata } from "@/lib/irys";
@@ -10,20 +11,20 @@ import { UsersService } from "@/resources/users/users.service";
 import { generateEventKey } from "@/utils/eventKey";
 import { logoBase64 } from "@/utils/logo_base64";
 import { ConflictException, HttpException, HttpStatus, Injectable, NotFoundException } from "@nestjs/common";
+import { EventEmitter2 } from "@nestjs/event-emitter";
 import { PrefixedHexString } from "ethereumjs-util";
 import { isEmpty, omit } from "lodash";
 import slugify from "slugify";
 import { v4 as uuidv4 } from "uuid";
-import { isAddress } from "viem";
-import { EventEmitter2 } from "@nestjs/event-emitter";
-import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
+import { StakeholdersService } from '../stakeholders/stakeholders.service';
 
 @Injectable()
 export class EventsService {
   constructor(
     private eventEmitter: EventEmitter2,
     private database: DatabaseService,
-    private usersService: UsersService
+    private usersService: UsersService,
+    private stakeholdersService: StakeholdersService
   ) {}
 
   async create(
@@ -96,17 +97,9 @@ export class EventsService {
       });
 
       if (createEventDto?.stakeholders && !isEmpty(createEventDto.stakeholders)) {
-        const stakeholders = await this.transformStakeholders(
-          createEventDto.stakeholders,
-          appId
-        );
-
-        await this.database.stakeholder.createMany({
-          data: stakeholders.map(sh => ({
-            walletAddress: sh.wallet,
-            feePercentage: sh.feePercentage,
-            eventId: initEvent.id
-          }))
+        await this.stakeholdersService.createStakeholder(createEventDto.stakeholders, {
+          appId,
+          eventId: initEvent.id
         });
       }
 
@@ -178,33 +171,6 @@ export class EventsService {
         throw new Error(error.message);
       }
     }
-  }
-
-  async transformStakeholders(
-    stakeholders: [string, number][],
-    appId: string
-  ): Promise<{ wallet: PrefixedHexString; feePercentage: number }[]> {
-    const stakeholderPromises = stakeholders.map(
-      async ([identifier, amount]) => {
-        let walletAddress: PrefixedHexString;
-        if (isAddress(identifier)) {
-          walletAddress = identifier;
-        } else {
-          const { users } = await this.usersService.createManyUserAccounts(
-            { users: [{ email: identifier }] },
-            appId
-          );
-          walletAddress = users[0].smartWalletAddress;
-        }
-
-        return {
-          wallet: walletAddress,
-          feePercentage: amount
-        };
-      }
-    );
-
-    return Promise.all(stakeholderPromises);
   }
 
   getAllEventsByDevId(developerId: string) {

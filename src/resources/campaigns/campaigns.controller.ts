@@ -1,8 +1,8 @@
+import { RequireApiKey, RequireDeveloperAuth } from "@/common/decorators/auth.decorator";
+import { UseAppIdInterceptor } from "@/common/decorators/use-app-id.decorator";
+import { CreateCampaignDto } from "@/resources/campaigns/dto/create-campaign.dto";
 import { Body, Controller, Delete, Get, Param, Patch, Post, Req } from "@nestjs/common";
 import { CampaignsService } from "./campaigns.service";
-import { RequireApiKey, RequireDeveloperAuth } from "@/common/decorators/auth.decorator";
-import { CreateCampaignDto } from "@/resources/campaigns/dto/create-campaign.dto";
-import { UseAppIdInterceptor } from "@/common/decorators/use-app-id.decorator";
 
 @RequireApiKey()
 @Controller("campaigns")

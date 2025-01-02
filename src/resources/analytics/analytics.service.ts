@@ -1,9 +1,9 @@
-import { Injectable } from "@nestjs/common";
 import { DatabaseService } from "@/common/services/database/database.service";
-import { ethers } from "ethers";
-import { Interaction } from "@prisma/client";
 import { GeneralStatsQueryDto } from "@/resources/analytics/dto/general-stats-query.dto";
 import { shortenWalletAddress } from "@/utils/shortenWalletAddress";
+import { Injectable } from "@nestjs/common";
+import { Interaction } from "@prisma/client";
+import { ethers } from "ethers";
 import { isEmpty } from "lodash";
 
 @Injectable()
@@ -76,10 +76,9 @@ export class AnalyticsService {
       all: isAdmin ? {} : { developerId: callerDevId },
       app: {
         OR: [
-          { eventId: { in: apps[0].Events.map(e => e.id) } },
-          { ticketId: { in: apps[0].Tickets.map(t => t.id) } },
-          { userId: { in: apps[0].Users.map(u => u.id) } },
-          { developerId: apps[0].developerId }
+          { eventId: { in: apps?.[0]?.Events?.map(e => e.id) } },
+          { ticketId: { in: apps?.[0]?.Tickets?.map(t => t.id) } },
+          { userId: { in: apps?.[0]?.Users?.map(u => u.id) } },
         ]
       },
       developer: { developerId },
@@ -89,6 +88,7 @@ export class AnalyticsService {
     const allOnChainInteractions = await this.database.interaction.findMany({
       where: interactionsFilter[getBy]
     });
+
 
     const eventsDeploy = allOnChainInteractions.filter(i => i.method.includes("deployEventContract"));
     const eventsWeiCost = eventsDeploy.reduce((a: any, b) => {
@@ -154,17 +154,17 @@ export class AnalyticsService {
 
     return {
       irys: {
-        ethCost: ethers.utils.formatEther(this.getTotalWeiPrice(irys)),
+        ethCost: ethers.utils.formatEther(this.getTotalWeiPrice(irys).toString()),
         usdCost: this.getTotalUsdPrice(irys),
         label: "Data Storage"
       },
       biconomy: {
-        ethCost: ethers.utils.formatEther(this.getTotalWeiPrice(biconomy)),
+        ethCost: ethers.utils.formatEther(this.getTotalWeiPrice(biconomy).toString()),
         usdCost: this.getTotalUsdPrice(biconomy),
         label: "Gasless transactions"
       },
       operator: {
-        ethCost: ethers.utils.formatEther(this.getTotalWeiPrice(operator)),
+        ethCost: ethers.utils.formatEther(this.getTotalWeiPrice(operator).toString()),
         usdCost: this.getTotalUsdPrice(operator),
         label: "On-chain transactions"
       }
