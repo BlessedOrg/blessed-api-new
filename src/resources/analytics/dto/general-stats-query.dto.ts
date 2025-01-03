@@ -4,7 +4,8 @@ export enum GetGeneralStatsByType {
   ALL = "all",
   DEVELOPER = "developer",
   APP = "app",
-  EVENT = "event"
+  EVENT = "event",
+  TICKET = "ticket"
 }
 
 export class GeneralStatsQueryDto {
@@ -22,4 +23,8 @@ export class GeneralStatsQueryDto {
   @ValidateIf(o => o.getBy === GetGeneralStatsByType.EVENT)
   @IsString()
   eventId?: string;
+
+  @ValidateIf(o => o.getBy === GetGeneralStatsByType.TICKET)
+  @IsString()
+  ticketId?: string;
 }
