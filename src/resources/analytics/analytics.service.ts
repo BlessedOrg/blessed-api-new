@@ -33,7 +33,8 @@ export class AnalyticsService {
 
     const filters = {
       apps: apps.map(i => ({ label: i.name, id: i.id, param: "app", key: "appId" })),
-      events: events.map(i => ({ label: i.name, id: i.id, param: "event", key: "eventId" }))
+      events: events.map(i => ({ label: i.name, id: i.id, param: "event", key: "eventId" })),
+      tickets: apps.flatMap(i => i.Tickets).map(i => ({ label: i.name, id: i.id, param: "ticket", key: "ticketId" }))
     };
 
     if (isAdmin) {
@@ -48,7 +49,7 @@ export class AnalyticsService {
   }
 
   async getAdminStatistics(callerDevId: string, params: GeneralStatsQueryDto) {
-    const { getBy, appId, eventId, developerId } = params || {};
+    const { getBy, appId, eventId, developerId, ticketId } = params || {};
 
     const devAccount = await this.database.developer.findUnique({
       where: { id: callerDevId }
@@ -60,7 +61,8 @@ export class AnalyticsService {
       all: isAdmin ? {} : { developerId: callerDevId },
       app: { id: appId },
       developer: { developerId },
-      event: { Events: { some: { id: eventId } } }
+      event: { Events: { some: { id: eventId } } },
+      ticket: { Tickets: { some: { id: ticketId } } }
     };
 
     const apps = await this.database.app.findMany({
@@ -82,7 +84,8 @@ export class AnalyticsService {
         ]
       },
       developer: { developerId },
-      event: { eventId }
+      event: { eventId },
+      ticket: { ticketId }
     };
 
     const allOnChainInteractions = await this.database.interaction.findMany({
