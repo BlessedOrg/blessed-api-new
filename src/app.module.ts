@@ -10,8 +10,8 @@ import { AuthGuardsModule } from "@/common/guards/auth/auth-guards.module";
 import { EmailModule } from "@/common/services/email/email.module";
 import { SessionModule } from "@/common/services/session/session.module";
 import { PrismaExceptionFilter } from "@/common/exceptions/prisma-exception.filter";
-import { ResourcesModule } from "@/resources/resources.module";
-import { WebhooksModule } from "./webhooks/webhooks.module";
+import { ResourcesModule } from "@/routes/resources.module";
+import { WebhooksModule } from "@/routes/webhooks/webhooks.module";
 import { EventsModule } from "@/common/events/events.module";
 import { EventEmitterModule } from "@nestjs/event-emitter";
 
