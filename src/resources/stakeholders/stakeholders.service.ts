@@ -1,3 +1,4 @@
+import { StakeholderDto } from '@/common/dto/stakeholder.dto';
 import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { EmailService } from "@/common/services/email/email.service";
@@ -13,11 +14,7 @@ export class StakeholdersService {
   ) {}
 
   async createStakeholder(
-    stakeholders: {
-      email: string;
-      feePercentage: number;
-      walletAddress: string;
-    }[],
+    stakeholders: StakeholderDto[],
     relations: {
       appId: string;
       eventId?: string;
@@ -25,7 +22,7 @@ export class StakeholdersService {
     }
   ) {
     try {
-			const {appId, eventId, ticketId} = relations
+			const {appId } = relations
       const stakeholdersAccounts =
         await this.usersService.createManyUserAccounts(
           { users: stakeholders.map((sh) => ({ email: sh.email })) },
@@ -43,7 +40,7 @@ export class StakeholdersService {
           walletAddress: sh.walletAddress,
           feePercentage: sh.feePercentage,
           userId: sh.id,
-					paymentDistributionMethod: "CRYPTO",
+					paymentMethods: sh.paymentMethods,
           ...relations,
         })),
       });

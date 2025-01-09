@@ -2,6 +2,7 @@ import { RequireDeveloperAuth } from "@/common/decorators/auth.decorator";
 import { UseEventIdInterceptor } from '@/common/decorators/event-id-decorator';
 import { UseAppIdInterceptor } from "@/common/decorators/use-app-id.decorator";
 import { UseTicketIdInterceptor } from '@/common/decorators/use-ticket-id.decorator';
+import { StakeholderDto } from '@/common/dto/stakeholder.dto';
 import { Body, Controller, Delete, Get, Param, Post, Req } from "@nestjs/common";
 import { StakeholdersService } from "./stakeholders.service";
 
@@ -17,15 +18,10 @@ export class StakeholdersController {
   async addStakeholders(
     @Body()
     body: {
-      stakeholders: {
-        email: string;
-        feePercentage: number;
-        walletAddress: string;
-      }[];
+      stakeholders: StakeholderDto[];
     },
 		@Req() req: RequestWithDevAccessToken & AppValidate & EventValidate & TicketValidate
   ) {
-		console.log(body)
     return this.stakeholdersService.createStakeholder(
       body.stakeholders,
       {

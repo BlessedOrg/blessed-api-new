@@ -1,4 +1,5 @@
 import { NameDto } from "@/common/dto/name.dto";
+import { StakeholderDto } from '@/common/dto/stakeholder.dto';
 import { AirdropEnum } from "@/common/enums.enum";
 import { Type } from "class-transformer";
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, isEmail, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, Length, Min, registerDecorator, ValidateNested, ValidationArguments, ValidationOptions } from "class-validator";
@@ -70,9 +71,9 @@ export class CreateTicketDto extends NameDto {
   whitelistOnly: boolean;
 
   @IsOptional()
-  @IsArray()
-  @isEmailOrEthAddress({ each: true })
-  stakeholders: [string, number][];
+  @ValidateNested()
+  @Type(() => StakeholderDto)
+  stakeholders?: StakeholderDto[];
 
   @IsOptional()
   imageUrl?: string;
