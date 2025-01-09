@@ -26,6 +26,7 @@ import { isEmpty } from "lodash";
 import slugify from "slugify";
 import Stripe from "stripe";
 import { v4 as uuidv4 } from "uuid";
+import { StakeholdersService } from '../stakeholders/stakeholders.service';
 
 @Injectable()
 export class TicketsService {
@@ -38,7 +39,8 @@ export class TicketsService {
     private eventsService: EventsService,
     private ticketSnapshotService: TicketsSnapshotService,
     private ticketDistributeService: TicketsDistributeService,
-    private ticketDistributeCampaignService: TicketsDistributeCampaignService
+    private ticketDistributeCampaignService: TicketsDistributeCampaignService,
+    private stakeholdersService: StakeholdersService
   ) {
     this.stripe = stripe;
   }
@@ -113,18 +115,13 @@ export class TicketsService {
       functionName: "decimals"
     });
 
-    let stakeholders = [];
-    // if (createTicketDto?.stakeholders && !isEmpty(createTicketDto.stakeholders)) {
-    //   stakeholders = await this.eventsService.transformStakeholders(
-    //     createTicketDto.stakeholders,
-    //     appId
-    //   );
-    // } else {
-    //   stakeholders = ticket.Event.Stakeholders.map(sh => ({
-    //     wallet: sh.walletAddress,
-    //     feePercentage: sh.feePercentage
-    //   }));
-    // }
+		if (createTicketDto?.stakeholders && !isEmpty(createTicketDto.stakeholders)) {
+			await this.stakeholdersService.createStakeholder(createTicketDto.stakeholders, {
+				appId,
+				eventId,
+				ticketId: ticket.id
+			});
+		}
 
     const args = {
       _owner: developerWalletAddress,
@@ -139,7 +136,7 @@ export class TicketsService {
       _maxSupply: createTicketDto.maxSupply,
       _transferable: createTicketDto.transferable,
       _whitelistOnly: createTicketDto.whitelistOnly,
-      _stakeholders: stakeholders
+      _stakeholders: createTicketDto.stakeholders.map(sh => ({wallet: sh.walletAddress, feePercentage: sh.feePercentage}))
     };
 
     const contract = await deployContract(contractName, [args]);
@@ -167,8 +164,11 @@ export class TicketsService {
           symbol: createTicketDto.symbol,
           description: createTicketDto.description,
           ...(metadataImageUrl && { metadataImageUrl })
-        }
-      }
+        },
+      },
+			include: {
+				Stakeholders: true
+			}
     });
 
     // await this.database.stakeholder.createMany({
@@ -182,7 +182,7 @@ export class TicketsService {
 
     return {
       success: true,
-      ticket: { ...updatedTicket, stakeholders: stakeholders },
+      ticket: updatedTicket,
       contract,
       explorerUrls: {
         contract: getExplorerUrl(contract.contractAddr)
