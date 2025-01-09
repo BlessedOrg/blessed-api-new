@@ -22,7 +22,7 @@ export class StakeholdersService {
     }
   ) {
     try {
-			const {appId } = relations
+			const { appId } = relations
       const stakeholdersAccounts =
         await this.usersService.createManyUserAccounts(
           { users: stakeholders.map((sh) => ({ email: sh.email })) },
