@@ -7,18 +7,19 @@ import { getSmartWalletForCapsuleWallet } from "@/lib/capsule";
 import { uploadMetadata } from "@/lib/irys";
 import { stripe } from "@/lib/stripe";
 import { contractArtifacts, deployContract, getExplorerUrl, readContract } from "@/lib/viem";
-import { EventsService } from "@/resources/events/events.service";
-import { CreateTicketDto, SnapshotDto } from "@/resources/tickets/dto/create-ticket.dto";
-import { DistributeDto } from "@/resources/tickets/dto/distribute.dto";
-import { SupplyDto } from "@/resources/tickets/dto/supply.dto";
-import { WhitelistDto } from "@/resources/tickets/dto/whitelist.dto";
-import { TicketsDistributeCampaignService } from "@/resources/tickets/services/tickets-distribute-campaign.service";
-import { TicketsDistributeService } from "@/resources/tickets/services/tickets-distribute.service";
-import { TicketsSnapshotService } from "@/resources/tickets/services/tickets-snapshot.service";
-import { UsersService } from "@/resources/users/users.service";
+import { EventsService } from "@/routes/events/events.service";
+import { CreateTicketDto, SnapshotDto } from "@/routes/tickets/dto/create-ticket.dto";
+import { DistributeDto } from "@/routes/tickets/dto/distribute.dto";
+import { SupplyDto } from "@/routes/tickets/dto/supply.dto";
+import { WhitelistDto } from "@/routes/tickets/dto/whitelist.dto";
+import { TicketsDistributeCampaignService } from "@/routes/tickets/services/tickets-distribute-campaign.service";
+import { TicketsDistributeService } from "@/routes/tickets/services/tickets-distribute.service";
+import { TicketsSnapshotService } from "@/routes/tickets/services/tickets-snapshot.service";
+import { StakeholdersService } from "@/routes/stakeholders/stakeholders.service";
+import { UsersService } from "@/routes/users/users.service";
 import { decryptQrCodePayload, encryptQrCodePayload } from "@/utils/eventKey";
 import { logoBase64 } from "@/utils/logo_base64";
-import { WebhooksDto } from "@/webhooks/webhooks.dto";
+import { WebhooksDto } from "@/routes/webhooks/dto/webhooks.dto";
 import { BadRequestException, HttpException, Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { PrefixedHexString } from "ethereumjs-util";
@@ -38,7 +39,8 @@ export class TicketsService {
     private eventsService: EventsService,
     private ticketSnapshotService: TicketsSnapshotService,
     private ticketDistributeService: TicketsDistributeService,
-    private ticketDistributeCampaignService: TicketsDistributeCampaignService
+    private ticketDistributeCampaignService: TicketsDistributeCampaignService,
+    private stakeholdersService: StakeholdersService
   ) {
     this.stripe = stripe;
   }
@@ -113,17 +115,13 @@ export class TicketsService {
     });
 
     let stakeholders = [];
-    // if (createTicketDto?.stakeholders && !isEmpty(createTicketDto.stakeholders)) {
-    //   stakeholders = await this.eventsService.transformStakeholders(
-    //     createTicketDto.stakeholders,
-    //     appId
-    //   );
-    // } else {
-    //   stakeholders = ticket.Event.Stakeholders.map(sh => ({
-    //     wallet: sh.walletAddress,
-    //     feePercentage: sh.feePercentage
-    //   }));
-    // }
+
+    if (createTicketDto?.stakeholders && !isEmpty(createTicketDto.stakeholders)) {
+      await this.stakeholdersService.createStakeholder(
+        createTicketDto.stakeholders,
+        { appId, eventId: params.eventId }
+      );
+    }
 
     const args = {
       _owner: developerWalletAddress,
@@ -143,7 +141,13 @@ export class TicketsService {
 
     const contract = await deployContract(contractName, [args]);
 
-    this.eventEmitter.emit("ticket.created", { eventAddress: ticket.Event.address, ticketAddress: contract.contractAddr, capsuleTokenVaultKey, developerId, eventId });
+    this.eventEmitter.emit("ticket.create", {
+      eventAddress: ticket.Event.address,
+      ticketAddress: contract.contractAddr,
+      capsuleTokenVaultKey,
+      developerId,
+      eventId
+    });
 
     this.eventEmitter.emit("interaction.create", {
       method: "deployTicketContract",
@@ -169,15 +173,6 @@ export class TicketsService {
         }
       }
     });
-
-    // await this.database.stakeholder.createMany({
-    //   data: stakeholders.map(sh => ({
-    //     walletAddress: sh.wallet,
-    //     feePercentage: sh.feePercentage,
-    //     eventId: eventId,
-    //     ticketId: updatedTicket.id
-    //   }))
-    // });
 
     return {
       success: true,
@@ -357,9 +352,7 @@ export class TicketsService {
       return {
         success: true,
         explorerUrls: {
-          tx: getExplorerUrl(
-            metaTxResult.data.transactionReceipt.transactionHash
-          )
+          tx: getExplorerUrl(metaTxResult.data.transactionReceipt.transactionHash)
         },
         transactionReceipt: metaTxResult.data.transactionReceipt
       };
@@ -633,9 +626,9 @@ export class TicketsService {
       });
 
       const denominatedPrice = Number(price) / 10 ** Number(erc20Decimals);
-      console.log(price);
-      console.log(denominatedPrice);
-      console.log(erc20Decimals);
+      console.log("🏷️ price", price);
+      console.log("🏷️ denominatedPrice", denominatedPrice);
+      console.log("💯 erc20Decimals", erc20Decimals);
 
       const session = await this.stripe.checkout.sessions.create({
         payment_method_types: ["card"],

@@ -118,6 +118,12 @@ export class AnalyticsService {
       return Number(a) + Number(b.gasWeiPrice);
     }, [0]);
 
+    const fiatStripeIncomeRecords = allOnChainInteractions.filter(i => i.method.includes("fiat-stripe"));
+    const fiatStripeIncome = fiatStripeIncomeRecords.map(i => ({
+      priceCents: i.value,
+      currency: i.currency,
+    }))
+
     return {
       eventsTransactions: this.formatTxToChartData(eventContractTransactionsWeiCost, eventContractTransactions),
       ticketsTransactions: this.formatTxToChartData(ticketContractTransactionsWeiCost, ticketContractTransactions),
@@ -125,6 +131,9 @@ export class AnalyticsService {
       eventsDeploy: this.formatTxToChartData(eventsWeiCost, eventsDeploy),
       costsByOperatorType: this.costsByOperatorType(allOnChainInteractions),
       usersTransactions: this.formatTxToChartData(usersTransactionsWeiCost, usersTransactions),
+      fiatIncome: {
+        stripe: fiatStripeIncome
+      },
       count: {
         all: allOnChainInteractions.length,
         eventsTransactions: eventContractTransactions.length,

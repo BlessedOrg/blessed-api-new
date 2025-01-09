@@ -7,7 +7,7 @@ import { DatabaseService } from "@/common/services/database/database.service";
 import { parseEventLogs } from "viem";
 import { getTicketUrl } from "@/utils/getTicketUrl";
 import { EmailService } from "@/common/services/email/email.service";
-import { OrderStatus } from "@prisma/client";
+import { InteractionType, OrderStatus } from "@prisma/client";
 import { stripe } from "@/lib/stripe";
 import { ReclaimClient } from "@reclaimprotocol/zk-fetch";
 import { transformForOnchain, verifyProof } from "@reclaimprotocol/js-sdk";
@@ -49,15 +49,15 @@ export class WebhooksService {
     switch (event.type) {
       case "payment_intent.succeeded":
         const paymentIntentSucceeded = event.data.object as Stripe.PaymentIntent;
-        const { metadata, id, amount } = paymentIntentSucceeded;
-        await this.handlePaymentSucceeded(metadata.ticketId, metadata.userId, id, amount);
+        const { metadata, id, amount, currency } = paymentIntentSucceeded;
+        await this.handlePaymentSucceeded(metadata.ticketId, metadata.userId, id, amount, currency);
         break;
       default:
         console.log(`Unhandled event type ${event.type}`);
     }
   }
 
-  private async handlePaymentSucceeded(ticketId: string, userId: string, providerId: string, priceCents: number): Promise<void> {
+  private async handlePaymentSucceeded(ticketId: string, userId: string, providerId: string, priceCents: number, currency: string): Promise<void> {
     let orderId: string;
     try {
       const order = await this.database.order.create({
@@ -107,8 +107,18 @@ export class WebhooksService {
         }
       });
 
-      const client = new ReclaimClient(envVariables.reclaimAppId, envVariables.reclaimAppSecret);
+      this.eventEmitter.emit("interaction.create.income", {
+        method: "fiat-stripe",
+        operatorType: "operator",
+        developerId: ticket.App.developerId,
+        ticketId: ticket.id,
+        eventId: ticket.Event.id,
+        value: priceCents.toString(),
+        currency,
+        type: InteractionType.INCOME
+      });
 
+      const client = new ReclaimClient(envVariables.reclaimAppId, envVariables.reclaimAppSecret);
       const publicOptions = {
         method: "GET",
         headers: { "Content-Type": "application/x-www-form-urlencoded" }

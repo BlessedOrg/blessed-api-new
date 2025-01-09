@@ -10,7 +10,7 @@ import { ethers } from "ethers";
 export class TicketCreateEvent {
   constructor(private database: DatabaseService) {}
 
-  @OnEvent("ticket.created")
+  @OnEvent("ticket.create")
   async handleTicketCreateEvent({
     eventAddress,
     ticketAddress,
