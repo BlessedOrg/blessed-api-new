@@ -260,28 +260,34 @@ model AudienceUser {
 }
 
 model Ticket {
-  id              String        @id @default(cuid())
+  id              String          @id @default(cuid())
   name            String
   slug            String
-  address         String        @unique
+  address         String          @unique
   logoUrl         String?
   metadataUrl     String?
   metadataPayload Json
-  Developer       Developer?    @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  Developer       Developer?      @relation(fields: [developerId], references: [id], onDelete: Cascade)
   developerId     String?
-  App             App           @relation(fields: [appId], references: [id], onDelete: Cascade)
+  App             App             @relation(fields: [appId], references: [id], onDelete: Cascade)
   appId           String
-  Event           Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  Event           Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
   eventId         String
+  paymentMethods  PaymentMethod[] @default([])
   Orders          Order[]
   Interactions    Interaction[]
   Campaigns       Campaign[]
   Stakeholders    Stakeholder[]
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
   deletedAt       DateTime?
 
   @@unique([slug, eventId])
+}
+
+enum PaymentMethod {
+  CRYPTO
+  FIAT
 }
 
 model Interaction {

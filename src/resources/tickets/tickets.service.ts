@@ -69,7 +69,8 @@ export class TicketsService {
         metadataPayload: {},
         appId,
         eventId,
-        developerId
+        developerId,
+        paymentMethods: createTicketDto.paymentMethods
       },
       include: {
         Event: {
