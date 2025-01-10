@@ -115,8 +115,6 @@ export class TicketsService {
       await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
     const ownerSmartWallet = await smartWallet.getAccountAddress();
 
-    const contractName = "tickets";
-
     const erc20Decimals = await readContract({
       abi: contractArtifacts["erc20"].abi,
       address: envVariables.erc20Address,
@@ -156,7 +154,7 @@ export class TicketsService {
       })),
     };
 
-    const contract = await deployContract(contractName, [args]);
+    const contract = await deployContract("tickets", [args]);
 
     this.eventEmitter.emit("ticket.create", {
       eventAddress: ticket.Event.address,
