@@ -1,10 +1,9 @@
 import { NameDto } from "@/common/dto/name.dto";
-import { StakeholderDto } from '@/common/dto/stakeholder.dto';
 import { AirdropEnum } from "@/common/enums.enum";
+import { StakeholderDto } from "@/routes/stakeholders/dto/stakeholder-dto";
 import { Type } from "class-transformer";
 import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, isEmail, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, Length, Min, registerDecorator, ValidateNested, ValidationArguments, ValidationOptions } from "class-validator";
 import { isAddress } from "viem";
-import { StakeholderDto } from "@/routes/stakeholders/dto/stakeholder-dto";
 
 export class AirdropDto {
   @IsEnum(AirdropEnum, { message: "Invalid airdrop type, available types: [attendees, holders]" })
