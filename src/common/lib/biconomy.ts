@@ -1,10 +1,11 @@
-import { encodeFunctionData } from "viem";
-import { Bundler, createSmartAccountClient, LightSigner, PaymasterMode, UserOpReceipt } from "@biconomy/account";
+import { envVariables } from "@/common/env-variables";
 import { getVaultItem } from "@/lib/1pwd-vault";
 import { contractArtifacts, getExplorerUrl, provider } from "@/lib/viem";
-import { Capsule } from "@usecapsule/server-sdk";
+import { Bundler, createSmartAccountClient, LightSigner, PaymasterMode, UserOpReceipt } from "@biconomy/account";
 import { CapsuleEthersV5Signer } from "@usecapsule/ethers-v5-integration";
-import { envVariables } from "@/common/env-variables";
+import { Capsule } from "@usecapsule/server-sdk";
+import { encodeFunctionData } from "viem";
+import { calculateClientTransactionFeeInWei } from '../utils/transactions';
 
 interface MetaTxParams {
   contractName: "tickets" | "event";
@@ -70,7 +71,8 @@ export const biconomyMetaTx = async ({ contractName, address, functionName, args
   }
   if (userOpReceipt && userOpReceipt?.success == "true") {
     const transactionHash = userOpReceipt.receipt.transactionHash;
-    const { actualGasCost } = userOpReceipt;
+
+    const actualGasCost = calculateClientTransactionFeeInWei(userOpReceipt.receipt);
 
     console.log("💨 transactionHash", getExplorerUrl(transactionHash));
     return {

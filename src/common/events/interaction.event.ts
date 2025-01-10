@@ -1,8 +1,8 @@
 import { DatabaseService } from "@/common/services/database/database.service";
-import { OnEvent } from "@nestjs/event-emitter";
-import { Injectable } from "@nestjs/common";
-import { Interaction } from "@prisma/client";
 import { getEthPrice } from "@/utils/getEthPrice";
+import { Injectable } from "@nestjs/common";
+import { OnEvent } from "@nestjs/event-emitter";
+import { Interaction } from "@prisma/client";
 import { ethers } from "ethers";
 
 @Injectable()
