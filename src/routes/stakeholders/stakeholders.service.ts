@@ -1,9 +1,9 @@
 import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { EmailService } from "@/common/services/email/email.service";
+import { StakeholderDto } from "@/routes/stakeholders/dto/stakeholder-dto";
 import { Injectable } from "@nestjs/common";
 import { UsersService } from "../users/users.service";
-import { StakeholderDto } from "@/routes/stakeholders/dto/stakeholder-dto";
 
 @Injectable()
 export class StakeholdersService {
@@ -31,7 +31,8 @@ export class StakeholdersService {
 
       const stakeholdersWithIds = stakeholders.map((sh) => ({
         ...sh,
-        id: stakeholdersAccounts.users.find((user) => user.email === sh.email)?.id
+        id: stakeholdersAccounts.users.find((user) => user.email === sh.email)
+          ?.id,
       }));
 
       await this.database.stakeholder.createMany({
@@ -39,9 +40,9 @@ export class StakeholdersService {
           walletAddress: sh.walletAddress,
           feePercentage: sh.feePercentage,
           userId: sh.id,
-          paymentDistributionMethod: "CRYPTO",
-          ...relations
-        }))
+          paymentMethods: sh.paymentMethods,
+          ...relations,
+        })),
       });
 
       return { success: true };
@@ -53,7 +54,7 @@ export class StakeholdersService {
   async getStakeholders({
     appId,
     eventId,
-    ticketId
+    ticketId,
   }: {
     appId: string;
     eventId?: string;
@@ -61,13 +62,13 @@ export class StakeholdersService {
   }) {
     return this.database.stakeholder.findMany({
       where: { appId, eventId, ticketId },
-      include: { User: true }
+      include: { User: true },
     });
   }
 
   async deleteStakeholder(stakeholderId: string, appId: string) {
     return this.database.stakeholder.delete({
-      where: { id: stakeholderId, appId }
+      where: { id: stakeholderId, appId },
     });
   }
 
@@ -76,16 +77,16 @@ export class StakeholdersService {
       const stakeholders = await this.database.stakeholder.findMany({
         where: {
           id: {
-            in: stakeholdersIds
+            in: stakeholdersIds,
           },
-          appId
+          appId,
         },
         include: {
           User: true,
           App: true,
           Event: true,
-          Ticket: true
-        }
+          Ticket: true,
+        },
       });
 
       for (const stakeholder of stakeholders) {
@@ -95,12 +96,12 @@ export class StakeholdersService {
           {
             appName: stakeholder.App.name,
             eventName: stakeholder.Event?.name,
-            ticketName: stakeholder.Ticket?.name
+            ticketName: stakeholder.Ticket?.name,
           }
         );
         await this.database.stakeholder.update({
           where: { id: stakeholder.id },
-          data: { notifiedAt: new Date() }
+          data: { notifiedAt: new Date() },
         });
       }
       return { success: true };

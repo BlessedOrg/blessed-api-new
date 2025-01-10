@@ -1,9 +1,9 @@
 import { DatabaseService } from "@/common/services/database/database.service";
-import { OnEvent } from "@nestjs/event-emitter";
-import { Injectable } from "@nestjs/common";
 import { biconomyMetaTx } from "@/lib/biconomy";
-import { PrefixedHexString } from "ethereumjs-util";
 import { getEthPrice } from "@/utils/getEthPrice";
+import { Injectable } from "@nestjs/common";
+import { OnEvent } from "@nestjs/event-emitter";
+import { PrefixedHexString } from "ethereumjs-util";
 import { ethers } from "ethers";
 
 @Injectable()

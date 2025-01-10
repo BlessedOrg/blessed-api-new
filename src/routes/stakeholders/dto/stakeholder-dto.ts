@@ -36,7 +36,8 @@
 //   eitherWalletOrStripe: any;
 // }
 
-import { IsNotEmpty, IsNumber, IsString } from "class-validator";
+import { PaymentMethod } from "@prisma/client";
+import { IsArray, IsEnum, IsNotEmpty, IsNumber, IsString } from "class-validator";
 
 export class StakeholderDto {
   @IsString()
@@ -48,4 +49,8 @@ export class StakeholderDto {
 
   @IsString()
   walletAddress: string;
+
+  @IsArray()
+  @IsEnum(PaymentMethod, { each: true })
+  paymentMethods: PaymentMethod[];
 }

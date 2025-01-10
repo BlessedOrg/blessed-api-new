@@ -1,7 +1,7 @@
+import { StakeholderDto } from "@/routes/stakeholders/dto/stakeholder-dto";
 import { isEmailOrEthAddress } from "@/routes/tickets/dto/create-ticket.dto";
 import { Type } from "class-transformer";
 import { IsArray, IsISO8601, IsNotEmpty, IsOptional, IsString, IsUrl, ValidateNested } from "class-validator";
-import { StakeholderDto } from "@/routes/stakeholders/dto/stakeholder-dto";
 
 export class EventLocationDto {
   @IsString()

@@ -8,6 +8,7 @@ import { uploadMetadata } from "@/lib/irys";
 import { stripe } from "@/lib/stripe";
 import { contractArtifacts, deployContract, getExplorerUrl, readContract } from "@/lib/viem";
 import { EventsService } from "@/routes/events/events.service";
+import { StakeholdersService } from "@/routes/stakeholders/stakeholders.service";
 import { CreateTicketDto, SnapshotDto } from "@/routes/tickets/dto/create-ticket.dto";
 import { DistributeDto } from "@/routes/tickets/dto/distribute.dto";
 import { SupplyDto } from "@/routes/tickets/dto/supply.dto";
@@ -15,11 +16,10 @@ import { WhitelistDto } from "@/routes/tickets/dto/whitelist.dto";
 import { TicketsDistributeCampaignService } from "@/routes/tickets/services/tickets-distribute-campaign.service";
 import { TicketsDistributeService } from "@/routes/tickets/services/tickets-distribute.service";
 import { TicketsSnapshotService } from "@/routes/tickets/services/tickets-snapshot.service";
-import { StakeholdersService } from "@/routes/stakeholders/stakeholders.service";
 import { UsersService } from "@/routes/users/users.service";
+import { WebhooksDto } from "@/routes/webhooks/dto/webhooks.dto";
 import { decryptQrCodePayload, encryptQrCodePayload } from "@/utils/eventKey";
 import { logoBase64 } from "@/utils/logo_base64";
-import { WebhooksDto } from "@/routes/webhooks/dto/webhooks.dto";
 import { BadRequestException, HttpException, Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { PrefixedHexString } from "ethereumjs-util";
@@ -55,12 +55,18 @@ export class TicketsService {
       eventId: string;
     }
   ) {
-    const { developerId, appId, capsuleTokenVaultKey, developerWalletAddress, eventId } = params;
+    const {
+      developerId,
+      appId,
+      capsuleTokenVaultKey,
+      developerWalletAddress,
+      eventId,
+    } = params;
 
     const slug = slugify(createTicketDto.name, {
       lower: true,
       strict: true,
-      trim: true
+      trim: true,
     });
     const ticket = await this.database.ticket.create({
       data: {
@@ -71,7 +77,8 @@ export class TicketsService {
         metadataPayload: {},
         appId,
         eventId,
-        developerId
+        developerId,
+        paymentMethods: createTicketDto.paymentMethods,
       },
       include: {
         Event: {
@@ -79,20 +86,21 @@ export class TicketsService {
             address: true,
             Stakeholders: {
               where: {
-                ticketId: null
-              }
-            }
-          }
-        }
-      }
+                ticketId: null,
+              },
+            },
+          },
+        },
+      },
     });
 
-    const { metadataUrl, metadataImageUrl, totalWeiPrice } = await uploadMetadata({
-      name: createTicketDto.name,
-      symbol: createTicketDto.symbol,
-      description: createTicketDto.description,
-      image: createTicketDto?.imageUrl || logoBase64
-    });
+    const { metadataUrl, metadataImageUrl, totalWeiPrice } =
+      await uploadMetadata({
+        name: createTicketDto.name,
+        symbol: createTicketDto.symbol,
+        description: createTicketDto.description,
+        image: createTicketDto?.imageUrl || logoBase64,
+      });
 
     this.eventEmitter.emit("interaction.create", {
       method: "uploadMetadata-ticket",
@@ -100,10 +108,11 @@ export class TicketsService {
       developerId,
       eventId,
       txHash: "none",
-      operatorType: "irys"
+      operatorType: "irys",
     });
 
-    const smartWallet = await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
+    const smartWallet =
+      await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
     const ownerSmartWallet = await smartWallet.getAccountAddress();
 
     const contractName = "tickets";
@@ -111,15 +120,20 @@ export class TicketsService {
     const erc20Decimals = await readContract({
       abi: contractArtifacts["erc20"].abi,
       address: envVariables.erc20Address,
-      functionName: "decimals"
+      functionName: "decimals",
     });
 
-    let stakeholders = [];
-
-    if (createTicketDto?.stakeholders && !isEmpty(createTicketDto.stakeholders)) {
+    if (
+      createTicketDto?.stakeholders &&
+      !isEmpty(createTicketDto.stakeholders)
+    ) {
       await this.stakeholdersService.createStakeholder(
         createTicketDto.stakeholders,
-        { appId, eventId: params.eventId }
+        {
+          appId,
+          eventId,
+          ticketId: ticket.id,
+        }
       );
     }
 
@@ -136,7 +150,10 @@ export class TicketsService {
       _maxSupply: createTicketDto.maxSupply,
       _transferable: createTicketDto.transferable,
       _whitelistOnly: createTicketDto.whitelistOnly,
-      _stakeholders: stakeholders
+      _stakeholders: createTicketDto.stakeholders.map((sh) => ({
+        wallet: sh.walletAddress,
+        feePercentage: sh.feePercentage,
+      })),
     };
 
     const contract = await deployContract(contractName, [args]);
@@ -146,7 +163,7 @@ export class TicketsService {
       ticketAddress: contract.contractAddr,
       capsuleTokenVaultKey,
       developerId,
-      eventId
+      eventId,
     });
 
     this.eventEmitter.emit("interaction.create", {
@@ -155,12 +172,12 @@ export class TicketsService {
       developerId,
       eventId,
       txHash: contract.hash,
-      operatorType: "operator"
+      operatorType: "operator",
     });
 
     const updatedTicket = await this.database.ticket.update({
       where: {
-        id: ticket.id
+        id: ticket.id,
       },
       data: {
         address: contract.contractAddr,
@@ -169,31 +186,33 @@ export class TicketsService {
           name: createTicketDto.name,
           symbol: createTicketDto.symbol,
           description: createTicketDto.description,
-          ...(metadataImageUrl && { metadataImageUrl })
-        }
-      }
+          ...(metadataImageUrl && { metadataImageUrl }),
+        },
+      },
+      include: {
+        Stakeholders: true,
+      },
     });
 
     return {
       success: true,
-      ticket: { ...updatedTicket, stakeholders: stakeholders },
+      ticket: updatedTicket,
       contract,
       explorerUrls: {
-        contract: getExplorerUrl(contract.contractAddr)
-      }
+        contract: getExplorerUrl(contract.contractAddr),
+      },
     };
-
   }
 
   getTicketDetailsForPurchase(eventId: string, ticketId: string) {
     return this.database.ticket.findUnique({
       where: {
         id: ticketId,
-        eventId
+        eventId,
       },
       include: {
-        Event: true
-      }
+        Event: true,
+      },
     });
   }
 
@@ -202,21 +221,21 @@ export class TicketsService {
 
     const app = await this.database.app.findUnique({
       where: {
-        id: appId
-      }
+        id: appId,
+      },
     });
 
     const sc = await this.database.ticket.findUnique({
       where: {
-        id: ticketId
+        id: ticketId,
       },
       include: {
         Event: {
           select: {
-            name: true
-          }
-        }
-      }
+            name: true,
+          },
+        },
+      },
     });
 
     const readTicketContract = (
@@ -227,7 +246,7 @@ export class TicketsService {
         abi: contractArtifacts["tickets"].abi,
         address: ticketContractAddress,
         functionName: functionName,
-        args: args
+        args: args,
       });
     };
 
@@ -256,17 +275,21 @@ export class TicketsService {
       tokensSold: Number(nextTokenId),
       transferable,
       whitelistOnly,
-      createdAt: new Date(sc.createdAt)
+      createdAt: new Date(sc.createdAt),
     };
   }
 
   async getAllEventTicketsWithOnchainData(appId: string, eventId: string) {
-    const readTicketContract = (functionName: string, address: string, args: [] | null = null) => {
+    const readTicketContract = (
+      functionName: string,
+      address: string,
+      args: [] | null = null
+    ) => {
       return readContract({
         abi: contractArtifacts["tickets"].abi,
         address,
         functionName: functionName,
-        args: args
+        args: args,
       });
     };
     const tickets = await this.database.ticket.findMany({
@@ -274,22 +297,28 @@ export class TicketsService {
         eventId,
         appId,
         address: {
-          contains: "0x"
-        }
-      }
+          contains: "0x",
+        },
+      },
     });
     let formattedTickets = [];
     for (const ticket of tickets) {
       const erc20Decimals = await readContract({
         abi: contractArtifacts["erc20"].abi,
         address: envVariables.erc20Address,
-        functionName: "decimals"
+        functionName: "decimals",
       });
 
-      const ticketSupply = await readTicketContract("currentSupply", ticket.address);
+      const ticketSupply = await readTicketContract(
+        "currentSupply",
+        ticket.address
+      );
       const maxSupply = await readTicketContract("maxSupply", ticket.address);
       const price = await readTicketContract("price", ticket.address);
-      const ticketOwners = await this.getTicketHolders(ticket.address, { start: 0, pageSize: Number(ticketSupply) });
+      const ticketOwners = await this.getTicketHolders(ticket.address, {
+        start: 0,
+        pageSize: Number(ticketSupply),
+      });
       const denominatedPrice = Number(price) / 10 ** Number(erc20Decimals);
 
       formattedTickets.push({
@@ -297,7 +326,7 @@ export class TicketsService {
         ticketSupply: Number(ticketSupply),
         maxSupply: Number(maxSupply),
         price: denominatedPrice,
-        ticketOwners
+        ticketOwners,
       });
     }
     return formattedTickets;
@@ -322,14 +351,23 @@ export class TicketsService {
     );
   }
 
-  async changeSupply(supplyDto: SupplyDto, params: {
-    ticketContractAddress: string;
-    capsuleTokenVaultKey: string;
-    developerWalletAddress: string;
-    developerId: string;
-    ticketId: string
-  }) {
-    const { ticketContractAddress, capsuleTokenVaultKey, developerWalletAddress, developerId, ticketId } = params;
+  async changeSupply(
+    supplyDto: SupplyDto,
+    params: {
+      ticketContractAddress: string;
+      capsuleTokenVaultKey: string;
+      developerWalletAddress: string;
+      developerId: string;
+      ticketId: string;
+    }
+  ) {
+    const {
+      ticketContractAddress,
+      capsuleTokenVaultKey,
+      developerWalletAddress,
+      developerId,
+      ticketId,
+    } = params;
     try {
       const metaTxResult = await biconomyMetaTx({
         contractName: "tickets",
@@ -337,7 +375,7 @@ export class TicketsService {
         functionName: "updateSupply",
         args: [supplyDto.additionalSupply],
         capsuleTokenVaultKey: capsuleTokenVaultKey,
-        userWalletAddress: developerWalletAddress
+        userWalletAddress: developerWalletAddress,
       });
 
       this.eventEmitter.emit("interaction.create", {
@@ -346,15 +384,17 @@ export class TicketsService {
         txHash: metaTxResult.data.transactionReceipt.transactionHash,
         operatorType: "biconomy",
         ticketId,
-        developerId
+        developerId,
       });
 
       return {
         success: true,
         explorerUrls: {
-          tx: getExplorerUrl(metaTxResult.data.transactionReceipt.transactionHash)
+          tx: getExplorerUrl(
+            metaTxResult.data.transactionReceipt.transactionHash
+          ),
         },
-        transactionReceipt: metaTxResult.data.transactionReceipt
+        transactionReceipt: metaTxResult.data.transactionReceipt,
       };
     } catch (e) {
       throw new CustomHttpException(e);
@@ -366,18 +406,27 @@ export class TicketsService {
     req: RequestWithApiKey & TicketValidate
   ) {
     try {
-      const { capsuleTokenVaultKey, ticketContractAddress, developerWalletAddress, appId, ticketId, developerId } = req;
+      const {
+        capsuleTokenVaultKey,
+        ticketContractAddress,
+        developerWalletAddress,
+        appId,
+        ticketId,
+        developerId,
+      } = req;
 
       const allEmails = [
         ...whitelistDto.addEmails,
-        ...whitelistDto.removeEmails
+        ...whitelistDto.removeEmails,
       ];
       const { users } = await this.usersService.createManyUserAccounts(
         { users: allEmails },
         appId
       );
 
-      const emailToWalletMap = new Map(users.map((account) => [account.email, account.smartWalletAddress]));
+      const emailToWalletMap = new Map(
+        users.map((account) => [account.email, account.smartWalletAddress])
+      );
 
       const whitelistUpdates = [
         ...whitelistDto.addEmails.map((user) => {
@@ -387,7 +436,7 @@ export class TicketsService {
         ...(whitelistDto.removeEmails || []).map((user) => {
           const walletAddress = emailToWalletMap.get(user.email);
           return walletAddress ? [walletAddress, false] : null;
-        })
+        }),
       ].filter((item): item is [string, boolean] => item !== null);
 
       const metaTxResult = await biconomyMetaTx({
@@ -396,7 +445,7 @@ export class TicketsService {
         functionName: "updateWhitelist",
         args: [whitelistUpdates],
         capsuleTokenVaultKey,
-        userWalletAddress: developerWalletAddress
+        userWalletAddress: developerWalletAddress,
       });
 
       this.eventEmitter.emit("interaction.create", {
@@ -405,12 +454,12 @@ export class TicketsService {
         txHash: metaTxResult.data.transactionReceipt.transactionHash,
         operatorType: "biconomy",
         ticketId,
-        developerId
+        developerId,
       });
 
       const updatedUsersWhitelist = users.filter((user) => ({
         email: user.email,
-        walletAddress: user.smartWalletAddress
+        walletAddress: user.smartWalletAddress,
       }));
       const usersAndUpdatedWhitelistStatus = whitelistUpdates.map(
         (whitelistUpdate) => {
@@ -421,7 +470,7 @@ export class TicketsService {
           return {
             email: user?.email,
             walletAddress,
-            isWhitelisted
+            isWhitelisted,
           };
         }
       );
@@ -432,8 +481,8 @@ export class TicketsService {
         explorerUrls: {
           tx: getExplorerUrl(
             metaTxResult.data.transactionReceipt.transactionHash
-          )
-        }
+          ),
+        },
       };
     } catch (e) {
       throw new CustomHttpException(e);
@@ -458,24 +507,27 @@ export class TicketsService {
     ticketContractAddress: string,
     pagination: { start?: number; pageSize?: number } = {
       start: 0,
-      pageSize: 100
+      pageSize: 100,
     }
   ) {
     try {
-      const lowercaseHolders = await this.getTicketHolders(ticketContractAddress, pagination);
+      const lowercaseHolders = await this.getTicketHolders(
+        ticketContractAddress,
+        pagination
+      );
 
       const owners = await this.database.user.findMany({
         where: {
           smartWalletAddress: {
-            in: lowercaseHolders
-          }
+            in: lowercaseHolders,
+          },
         },
         select: {
           email: true,
           smartWalletAddress: true,
           walletAddress: true,
-          id: true
-        }
+          id: true,
+        },
       });
 
       const foundAddresses = new Set(
@@ -487,7 +539,7 @@ export class TicketsService {
 
       return {
         owners,
-        externalAddresses
+        externalAddresses,
       };
     } catch (e) {
       throw new CustomHttpException(e);
@@ -503,13 +555,13 @@ export class TicketsService {
     try {
       const user = await this.database.user.findUnique({
         where: {
-          email
+          email,
         },
         select: {
           email: true,
           walletAddress: true,
-          smartWalletAddress: true
-        }
+          smartWalletAddress: true,
+        },
       });
 
       if (!user) {
@@ -520,19 +572,19 @@ export class TicketsService {
         abi: contractArtifacts["tickets"].abi,
         address: ticketContractAddress,
         functionName: "getTokensByUser",
-        args: [user.smartWalletAddress]
+        args: [user.smartWalletAddress],
       });
 
       return {
         user: {
           hasTicket: !isEmpty(result),
           ...(!isEmpty(result) && {
-            ownedIds: [result].map((id) => id.toString())
+            ownedIds: [result].map((id) => id.toString()),
           }),
           email: user.email,
           walletAddress: user.walletAddress,
-          smartWalletAddress: user.smartWalletAddress
-        }
+          smartWalletAddress: user.smartWalletAddress,
+        },
       };
     } catch (e) {
       throw new CustomHttpException(e);
@@ -542,8 +594,8 @@ export class TicketsService {
   getAllEventTickets(eventId: string) {
     return this.database.ticket.findMany({
       where: {
-        eventId
-      }
+        eventId,
+      },
     });
   }
 
@@ -554,15 +606,21 @@ export class TicketsService {
     capsuleTokenVaultKey: string
   ) {
     try {
-      const developer = await this.database.developer.findUnique({ where: { walletAddress: developerWalletAddress }, select: { id: true } });
-      const ticket = await this.database.ticket.findUnique({ where: { address: ticketContractAddress }, select: { id: true, Event: { select: { id: true } } } });
+      const developer = await this.database.developer.findUnique({
+        where: { walletAddress: developerWalletAddress },
+        select: { id: true },
+      });
+      const ticket = await this.database.ticket.findUnique({
+        where: { address: ticketContractAddress },
+        select: { id: true, Event: { select: { id: true } } },
+      });
       const metaTxResult = await biconomyMetaTx({
         contractName: "tickets",
         address: ticketContractAddress as PrefixedHexString,
         functionName: "distribute",
         args: [users.map((dist) => [dist.wallet, dist.amount])],
         capsuleTokenVaultKey,
-        userWalletAddress: developerWalletAddress
+        userWalletAddress: developerWalletAddress,
       });
 
       this.eventEmitter.emit("interaction.create", {
@@ -572,15 +630,15 @@ export class TicketsService {
         operatorType: "biconomy",
         ticketId: ticket.id,
         developerId: developer.id,
-        eventId: ticket.Event.id
+        eventId: ticket.Event.id,
       });
 
       return {
         explorerUrls: {
           tx: getExplorerUrl(
             metaTxResult.data.transactionReceipt.transactionHash
-          )
-        }
+          ),
+        },
       };
     } catch (e) {
       throw new CustomHttpException(e);
@@ -591,38 +649,38 @@ export class TicketsService {
     try {
       const user = await this.database.user.findUnique({
         where: {
-          id: webhooksDto.userId
+          id: webhooksDto.userId,
         },
         select: {
           id: true,
           smartWalletAddress: true,
-          email: true
-        }
+          email: true,
+        },
       });
 
       const ticket = await this.database.ticket.findUnique({
         where: {
-          id: webhooksDto.ticketId
+          id: webhooksDto.ticketId,
         },
         include: {
           Event: {
             select: {
-              name: true
-            }
-          }
-        }
+              name: true,
+            },
+          },
+        },
       });
 
       const price = await readContract({
         abi: contractArtifacts["tickets"].abi,
         address: ticket.address,
-        functionName: "price"
+        functionName: "price",
       });
 
       const erc20Decimals = await readContract({
         abi: contractArtifacts["erc20"].abi,
         address: envVariables.erc20Address,
-        functionName: "decimals"
+        functionName: "decimals",
       });
 
       const denominatedPrice = Number(price) / 10 ** Number(erc20Decimals);
@@ -638,24 +696,26 @@ export class TicketsService {
               currency: "usd",
               product_data: {
                 name: `${ticket.Event.name} ticket (${ticket.name})`,
-                images: ["https://avatars.githubusercontent.com/u/164048341"]
+                images: ["https://avatars.githubusercontent.com/u/164048341"],
               },
-              unit_amount: 100
+              unit_amount: 100,
             },
-            quantity: 1
-          }
+            quantity: 1,
+          },
         ],
         mode: "payment",
-        success_url: webhooksDto.successUrl ?? `${envVariables.ticketerAppUrl}/?ticketId=${ticket.id}`,
+        success_url:
+          webhooksDto.successUrl ??
+          `${envVariables.ticketerAppUrl}/?ticketId=${ticket.id}`,
         // cancel_url: webhooksDto.cancelUrl ?? req.get("host"),
         payment_intent_data: {
           metadata: {
             userSmartWalletAddress: user.smartWalletAddress,
             ticketAddress: ticket.address,
             userId: user.id,
-            ticketId: ticket.id
-          }
-        }
+            ticketId: ticket.id,
+          },
+        },
       });
 
       console.log("💳 checkout session: ", session);
@@ -670,7 +730,7 @@ export class TicketsService {
   async getOwnedTickets(userId: string) {
     const user = await this.database.user.findUnique({
       where: {
-        id: userId
+        id: userId,
       },
       include: {
         Apps: {
@@ -680,13 +740,13 @@ export class TicketsService {
                 EventLocation: true,
                 Tickets: {
                   where: { address: { contains: "0x" } },
-                  include: { Event: true }
-                }
-              }
-            }
-          }
-        }
-      }
+                  include: { Event: true },
+                },
+              },
+            },
+          },
+        },
+      },
     });
     if (!user) {
       throw new HttpException("User does not exist", 404);
@@ -694,7 +754,7 @@ export class TicketsService {
     let ownedTickets = [];
 
     try {
-      for (const event of user.Apps.flatMap(app => app.Events)) {
+      for (const event of user.Apps.flatMap((app) => app.Events)) {
         const { Tickets, ...eventData } = event;
         let ownedTicketsOfEvent = [];
         let hasEventEntry = false;
@@ -702,35 +762,39 @@ export class TicketsService {
         for (const ticket of event.Tickets) {
           const { Event, ...ticketData } = ticket;
 
-          const ownedTokens = await readContract({
+          const ownedTokens = (await readContract({
             abi: contractArtifacts["tickets"].abi,
             address: ticket.address,
             functionName: "getTokensByUser",
-            args: [user.smartWalletAddress]
-          }) as BigInt[];
-          const ownedTokenIds = ownedTokens.map(i => Number(i));
+            args: [user.smartWalletAddress],
+          })) as BigInt[];
+          const ownedTokenIds = ownedTokens.map((i) => Number(i));
 
           let usedTokenIds = [];
           if (ticket?.Event) {
-            const entranceEntries = await readContract({
+            const entranceEntries = (await readContract({
               abi: contractArtifacts["event"].abi,
               address: ticket.Event.address,
               functionName: "entries",
-              args: [user.smartWalletAddress]
-            }) as { ticketId: BigInt, timestamp: BigInt, wallet: string }[];
+              args: [user.smartWalletAddress],
+            })) as { ticketId: BigInt; timestamp: BigInt; wallet: string }[];
 
-            const usedToken = entranceEntries.find((entry: any) => ownedTokenIds.includes(Number(entry?.ticketId)));
+            const usedToken = entranceEntries.find((entry: any) =>
+              ownedTokenIds.includes(Number(entry?.ticketId))
+            );
 
             if (!!usedToken?.ticketId) {
               usedTokenIds.push(Number(usedToken?.ticketId));
             }
-            hasEventEntry = usedToken?.wallet?.toLowerCase() === user.smartWalletAddress.toLowerCase();
+            hasEventEntry =
+              usedToken?.wallet?.toLowerCase() ===
+              user.smartWalletAddress.toLowerCase();
           }
           if (!!ownedTokenIds.length) {
             ownedTicketsOfEvent.push({
               ticket: ticketData,
               usedTokenIds,
-              ownedTokenIds
+              ownedTokenIds,
             });
           }
         }
@@ -738,7 +802,7 @@ export class TicketsService {
           ownedTickets.push({
             event: eventData,
             ownedTicketsOfEvent,
-            hasEventEntry
+            hasEventEntry,
           });
         }
       }
@@ -750,35 +814,46 @@ export class TicketsService {
   }
 
   async getTicketQrCode(params: {
-    ticketId: string, eventId: string, userId: string, userSmartWalletAddress: string, tokenId: number
+    ticketId: string;
+    eventId: string;
+    userId: string;
+    userSmartWalletAddress: string;
+    tokenId: number;
   }) {
-    const { ticketId, eventId, userId, userSmartWalletAddress, tokenId } = params;
-    const ticket = await this.database.ticket.findUnique({ where: { id: ticketId, eventId }, include: { Event: { select: { id: true, EventKey: true } } } });
+    const { ticketId, eventId, userId, userSmartWalletAddress, tokenId } =
+      params;
+    const ticket = await this.database.ticket.findUnique({
+      where: { id: ticketId, eventId },
+      include: { Event: { select: { id: true, EventKey: true } } },
+    });
     if (!ticket) {
       throw new HttpException("Ticket not found", 404);
     }
-    const ownedTokensRes = await readContract({
+    const ownedTokensRes = (await readContract({
       abi: contractArtifacts["tickets"].abi,
       address: ticket.address,
       functionName: "getTokensByUser",
-      args: [userSmartWalletAddress]
-    }) as any;
+      args: [userSmartWalletAddress],
+    })) as any;
     const ownedTokens = ownedTokensRes.map((i: BigInt) => Number(i));
     if (!ownedTokens.includes(tokenId)) {
       throw new HttpException("User does not own this token", 403);
     }
     return {
-      code: encryptQrCodePayload({
-        eventId: ticket.eventId,
-        ticketId: ticket.id,
-        ticketHolderId: userId,
-        tokenId,
-        timestamp: new Date().getTime()
-      }, ticket.Event.EventKey.key),
+      code: encryptQrCodePayload(
+        {
+          eventId: ticket.eventId,
+          ticketId: ticket.id,
+          ticketHolderId: userId,
+          tokenId,
+          timestamp: new Date().getTime(),
+        },
+        ticket.Event.EventKey.key
+      ),
       tokenId,
       eventId: ticket.eventId,
       ticketId: ticket.id,
-      validBySeconds: 10
+      validBySeconds: 10,
     };
   }
 
@@ -786,9 +861,14 @@ export class TicketsService {
     return this.eventsService.getEventEntriesPerTicketId(ticketId);
   }
 
-  async verifyUserTicketAndMakeEventEntry(body: { code: string, eventId: string, ticketId: string }, bouncerId: string) {
+  async verifyUserTicketAndMakeEventEntry(
+    body: { code: string; eventId: string; ticketId: string },
+    bouncerId: string
+  ) {
     const { code, eventId, ticketId } = body;
-    const eventKey = await this.database.eventKey.findUnique({ where: { eventId } });
+    const eventKey = await this.database.eventKey.findUnique({
+      where: { eventId },
+    });
     const decodedCodeData = decryptQrCodePayload(code, eventKey.key);
     const { timestamp } = decodedCodeData;
     if (new Date().getTime() - timestamp > 11500) {
@@ -797,11 +877,21 @@ export class TicketsService {
     if (!decodedCodeData?.ticketHolderId) {
       throw new BadRequestException("Invalid QR code");
     }
-    const bouncerData = await this.database.user.findUnique({ where: { id: bouncerId }, include: { EventBouncers: { include: { Event: { include: { Tickets: true } } } } } });
-    const bouncerEvents = bouncerData.EventBouncers.flatMap(i => i.Event);
-    const bouncerEventTickets = bouncerEvents.flatMap(i => i.Tickets);
+    const bouncerData = await this.database.user.findUnique({
+      where: { id: bouncerId },
+      include: {
+        EventBouncers: { include: { Event: { include: { Tickets: true } } } },
+      },
+    });
+    const bouncerEvents = bouncerData.EventBouncers.flatMap((i) => i.Event);
+    const bouncerEventTickets = bouncerEvents.flatMap((i) => i.Tickets);
 
-    if (!(bouncerEvents.some(i => i.id === eventId) && bouncerEventTickets.some(i => i.id === ticketId))) {
+    if (
+      !(
+        bouncerEvents.some((i) => i.id === eventId) &&
+        bouncerEventTickets.some((i) => i.id === ticketId)
+      )
+    ) {
       throw new HttpException("User is not allowed to verify tickets", 403);
     }
     return this.eventsService.letUserIntoEvent(bouncerId, decodedCodeData);
@@ -811,7 +901,7 @@ export class TicketsService {
     ticketContractAddress: string,
     pagination: { start?: number; pageSize?: number } = {
       start: 0,
-      pageSize: 100
+      pageSize: 100,
     }
   ) {
     const pageSize = pagination.pageSize || 100;
@@ -824,7 +914,7 @@ export class TicketsService {
             abi: contractArtifacts["tickets"].abi,
             address: ticketContractAddress,
             functionName: "getTicketHolders",
-            args: [start, pageSize]
+            args: [start, pageSize],
           });
           allHolders = allHolders.concat(holders);
           start += holders.length;
