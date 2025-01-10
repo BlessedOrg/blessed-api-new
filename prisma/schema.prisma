@@ -295,16 +295,24 @@ model Interaction {
   ticketId     String?
   Event        Event?                    @relation(fields: [eventId], references: [id], onDelete: SetNull)
   eventId      String?
-  method       String
-  txHash       String
+  method       String?
+  txHash       String?
   output       Json?
   input        Json?
-  gasWeiPrice  String
-  gasUsdPrice  String
+  gasWeiPrice  String?
+  gasUsdPrice  String?
+  value        String?
+  currency     String?
   operatorType SmartContractOperatorType
+  type         InteractionType           @default(EXPENSE)
   createdAt    DateTime                  @default(now())
   updatedAt    DateTime                  @updatedAt
   deletedAt    DateTime?
+}
+
+enum InteractionType {
+  INCOME
+  EXPENSE
 }
 
 enum SmartContractOperatorType {
