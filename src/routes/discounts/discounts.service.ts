@@ -2,6 +2,7 @@ import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { CreateDiscountCodeDto, CreateDiscountDto } from "./dto/create-discount.dto";
 import { UpdateDiscountDto } from './dto/update-discount.dto';
 import { DatabaseService } from "@/common/services/database/database.service";
+import { omit } from "lodash";
 
 @Injectable()
 export class DiscountsService {
@@ -12,7 +13,7 @@ export class DiscountsService {
   async create(createDiscountDto: CreateDiscountDto) {
     return this.database.discount.create({
       data: {
-        ...createDiscountDto,
+        ...omit(createDiscountDto, "discountCode"),
         DiscountCodes: createDiscountDto.discountCode ? {
           create: {
             value: createDiscountDto.discountCode
