@@ -358,7 +358,6 @@ export class CampaignsService {
       ).filter((user) => user?.User?.email);
 
       const rewards = campaignData.Discounts;
-
       for (const reward of rewards) {
         if (reward.uniqueDiscountCodes) {
           const mappedUsers = usersWithEmail.map((user, idx) => ({
@@ -373,6 +372,7 @@ export class CampaignsService {
                 {
                   recipientEmail: user.email,
                   subject: "Your Discount Code",
+									template: "./discountCode",
                   context: {
                     code: user.code,
                     discountName: reward.name,
@@ -392,6 +392,7 @@ export class CampaignsService {
             usersWithEmail.map((user) => ({
               recipientEmail: user.User.email,
               subject: "Your Discount Code",
+							template: "./discountCode",
               context: {
                 code: reward.DiscountCodes[0].value,
                 discountName: reward.name,
