@@ -1,6 +1,6 @@
-import { IsString, IsNotEmpty, IsOptional, IsBoolean, IsInt, Min, Max, IsDate, IsUrl } from "class-validator";
-import { Type } from "class-transformer";
 import { OmitType } from "@nestjs/mapped-types";
+import { Type } from "class-transformer";
+import { IsBoolean, IsDate, IsInt, IsNotEmpty, IsOptional, IsString, IsUrl, Max, Min } from "class-validator";
 
 export class CreateDiscountDto {
   @IsString()
@@ -20,6 +20,10 @@ export class CreateDiscountDto {
   @Min(1)
   @Max(100)
   percentage: number;
+
+  @IsBoolean()
+  @IsOptional()
+  reusable?: boolean;
 
   @IsInt()
   @IsOptional()

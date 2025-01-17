@@ -1,10 +1,10 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from "@nestjs/common";
+import { RequireDeveloperAuth } from "@/common/decorators/auth.decorator";
+import { UseEventIdInterceptor } from "@/common/decorators/event-id-decorator";
+import { UseAppIdInterceptor } from "@/common/decorators/use-app-id.decorator";
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req } from "@nestjs/common";
 import { DiscountCodesService, DiscountsService } from "./discounts.service";
 import { CreateDiscountCodeDto, CreateDiscountDto, CreateTemplateDiscountDto } from "./dto/create-discount.dto";
 import { UpdateDiscountDto } from "./dto/update-discount.dto";
-import { RequireDeveloperAuth } from "@/common/decorators/auth.decorator";
-import { UseAppIdInterceptor } from "@/common/decorators/use-app-id.decorator";
-import { UseEventIdInterceptor } from "@/common/decorators/event-id-decorator";
 
 @RequireDeveloperAuth()
 @UseAppIdInterceptor()
@@ -14,18 +14,18 @@ export class DiscountsPrivateController {
   constructor(private readonly discountsService: DiscountsService) {}
 
   @Post()
-  create(@Body() createDiscountDto: CreateDiscountDto) {
-    return this.discountsService.create(createDiscountDto);
+  create(@Body() createDiscountDto: CreateDiscountDto, @Req() req: RequestWithDevAccessToken & AppValidate) {
+    return this.discountsService.create(createDiscountDto, req.appId);
   }
 
   @Post("template")
-  createTemplate(@Body() createTemplateDiscountDto: CreateTemplateDiscountDto) {
-    return this.discountsService.create(createTemplateDiscountDto);
+  createTemplate(@Body() createTemplateDiscountDto: CreateTemplateDiscountDto, @Req() req: RequestWithDevAccessToken & AppValidate) {
+    return this.discountsService.create(createTemplateDiscountDto, req.appId);
   }
 
   @Get()
-  findAll() {
-    return this.discountsService.findAll();
+  findAll(@Req() req: RequestWithDevAccessToken & AppValidate) {
+    return this.discountsService.findAll(req.appId);
   }
 
   @Get(":id")

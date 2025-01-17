@@ -1,8 +1,8 @@
+import { DatabaseService } from "@/common/services/database/database.service";
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
+import { omit } from "lodash";
 import { CreateDiscountCodeDto, CreateDiscountDto } from "./dto/create-discount.dto";
 import { UpdateDiscountDto } from './dto/update-discount.dto';
-import { DatabaseService } from "@/common/services/database/database.service";
-import { omit } from "lodash";
 
 @Injectable()
 export class DiscountsService {
@@ -10,13 +10,16 @@ export class DiscountsService {
     private database: DatabaseService
   ) {}
 
-  async create(createDiscountDto: CreateDiscountDto) {
+  async create(createDiscountDto: CreateDiscountDto, appId: string) {
+		console.log(createDiscountDto)
     return this.database.discount.create({
       data: {
-        ...omit(createDiscountDto, "discountCode"),
-        DiscountCodes: createDiscountDto.discountCode ? {
+        ...omit(createDiscountDto, "discountCode", "reusable"),
+        appId, 
+        DiscountCodes: !!createDiscountDto.discountCode && !createDiscountDto.uniqueDiscountCodes ? {
           create: {
-            value: createDiscountDto.discountCode
+            value: createDiscountDto.discountCode,
+            reusable: createDiscountDto.reusable,
           }
         } : undefined
       },
@@ -26,8 +29,13 @@ export class DiscountsService {
     });
   }
 
-  async findAll() {
-    return this.database.discount.findMany();
+  async findAll(appId: string) {
+    return this.database.discount.findMany({
+      where: {
+        appId,
+				isTemplate: true
+      }
+    });
   }
 
   async findOne(id: string) {

@@ -2,7 +2,7 @@ import { NameDto } from "@/common/dto/name.dto";
 import { AirdropEnum } from "@/common/enums.enum";
 import { StakeholderDto } from "@/routes/stakeholders/dto/stakeholder-dto";
 import { Type } from "class-transformer";
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, isEmail, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, Length, Min, registerDecorator, ValidateNested, ValidationArguments, ValidationOptions } from "class-validator";
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, isEmail, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, Length, Min, registerDecorator, ValidateNested, ValidationArguments, ValidationOptions } from "class-validator";
 import { isAddress } from "viem";
 
 export class AirdropDto {
@@ -81,6 +81,11 @@ export class CreateTicketDto extends NameDto {
   @IsArray()
   @IsEnum(PaymentMethod, { each: true })
   paymentMethods: PaymentMethod[];
+
+	@IsOptional()
+	@IsArray()
+	@IsString({ each: true })
+	ticketRewards: string[]
 }
 
 function IsLessThanOrEqual(property: string, validationOptions?: ValidationOptions) {
