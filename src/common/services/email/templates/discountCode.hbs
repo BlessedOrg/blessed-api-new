@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <style>
+      body {
+         background-color: #f4f4f4;
+         font-family: Arial, sans-serif;
+      }
+
+      .container {
+         max-width: 600px;
+         margin: 0 auto;
+         padding: 20px;
+         background-color: #ffffff;
+         border-radius: 8px;
+         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .logo {
+         display: block;
+         margin: 0 auto;
+         max-width: 100px;
+      }
+
+      .title {
+         font-size: 24px;
+         font-weight: bold;
+         color: #333333;
+         text-align: center;
+         margin-bottom: 24px;
+      }
+
+      .discount-code {
+         font-size: 32px;
+         font-weight: bold;
+         color: #38a169;
+         margin: 24px 0;
+         text-align: center;
+         padding: 12px;
+         border: 2px dashed #38a169;
+         border-radius: 8px;
+         background-color: #f0fff4;
+      }
+
+      .text-center {
+         text-align: center;
+      }
+
+      .link {
+         display: block;
+         width: fit-content;
+         margin: 24px auto 0 auto;
+         padding: 10px 20px;
+         background-color: #38a169;
+         color: #ffffff;
+         text-decoration: none;
+         border-radius: 9999px;
+      }
+
+      .details {
+         margin: 24px 0;
+         padding: 16px;
+         background-color: #f8f9fa;
+         border-radius: 8px;
+      }
+
+      .note {
+         font-size: 14px;
+         color: #666666;
+         margin-top: 24px;
+      }
+
+      .redemption-link {
+         word-break: break-all;
+         color: #38a169;
+         text-decoration: underline;
+      }
+
+			  .hidden {
+         font-size: 1px;
+      }
+   </style>
+</head>
+<body>
+<div class="container">
+   <img src="https://blessed.fan/img/logo-card.png" alt="Blessed.fan logo" class="logo">
+   <h1 class="title">Your Reward is Here! 🎉</h1>
+   <div class="text-center">
+      <p>Congratulations!</p>
+      <p>You've received a {{discountType}} code for {{discountName}}:</p>
+      <div class="discount-code">{{code}}</div>
+      
+      <div class="details">
+         {{#if reusable}}
+         <p>This code can be used multiple times.</p>
+         {{else}}
+         <p>This is a single-use code.</p>
+         {{/if}}
+         
+         {{#if eventName}}
+         <p>This {{discountType}} can be used for the event: <strong>{{eventName}}</strong></p>
+         {{/if}}
+
+         {{#if redemptionUrl}}
+         <p>You can redeem this {{discountType}} at:</p>
+         <p><a href="{{redemptionUrl}}" class="redemption-link">{{redemptionUrl}}</a></p>
+         {{/if}}
+      </div>
+
+      {{#if redemptionUrl}}
+      <a href="{{redemptionUrl}}" class="link">Redeem Now</a>
+      {{/if}}
+      
+      <p class="note">If you have any questions about your {{discountType}} code, please contact our support team.</p>
+			<div class="hidden">{{now}}</div>
+   </div>
+</div>
+</body>
+</html>

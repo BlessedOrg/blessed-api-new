@@ -2,11 +2,31 @@ import { NameDto } from "@/common/dto/name.dto";
 import { AirdropEnum } from "@/common/enums.enum";
 import { StakeholderDto } from "@/routes/stakeholders/dto/stakeholder-dto";
 import { Type } from "class-transformer";
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, isEmail, IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, Length, Min, registerDecorator, ValidateNested, ValidationArguments, ValidationOptions } from "class-validator";
+import {
+	ArrayMaxSize,
+	ArrayMinSize,
+	IsArray,
+	IsBoolean,
+	isEmail,
+	IsEnum,
+	IsNotEmpty,
+	IsNumber,
+	IsOptional,
+	IsPositive,
+	IsString,
+	Length,
+	Min,
+	registerDecorator,
+	ValidateNested,
+	ValidationArguments,
+	ValidationOptions
+} from "class-validator";
 import { isAddress } from "viem";
 
 export class AirdropDto {
-  @IsEnum(AirdropEnum, { message: "Invalid airdrop type, available types: [attendees, holders]" })
+  @IsEnum(AirdropEnum, {
+    message: "Invalid airdrop type, available types: [attendees, holders]"
+  })
   type: AirdropEnum;
 
   @IsNotEmpty({ message: "Event id is required" })
@@ -51,7 +71,9 @@ export class CreateTicketDto extends NameDto {
   @IsPositive({ message: "Price must be positive number (can be 0)" })
   price: number;
 
-  @IsLessThanOrEqual("maxSupply", { message: "Initial supply must be less than or equal to max supply" })
+  @IsLessThanOrEqual("maxSupply", {
+    message: "Initial supply must be less than or equal to max supply"
+  })
   @Min(1, { message: "Initial supply must be a positive number" })
   @IsNumber({}, { message: "Initial supply must be a number" })
   @IsNotEmpty({ message: "Initial supply is required" })
@@ -81,9 +103,17 @@ export class CreateTicketDto extends NameDto {
   @IsArray()
   @IsEnum(PaymentMethod, { each: true })
   paymentMethods: PaymentMethod[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  ticketRewards: string[];
 }
 
-function IsLessThanOrEqual(property: string, validationOptions?: ValidationOptions) {
+function IsLessThanOrEqual(
+  property: string,
+  validationOptions?: ValidationOptions
+) {
   return function (object: Object, propertyName: string) {
     registerDecorator({
       name: "isLessThanOrEqual",
@@ -95,9 +125,11 @@ function IsLessThanOrEqual(property: string, validationOptions?: ValidationOptio
         validate(value: any, args: ValidationArguments) {
           const [relatedPropertyName] = args.constraints;
           const relatedValue = (args.object as any)[relatedPropertyName];
-          return typeof value === "number" &&
+          return (
+            typeof value === "number" &&
             typeof relatedValue === "number" &&
-            value <= relatedValue;
+            value <= relatedValue
+          );
         },
         defaultMessage(args: ValidationArguments) {
           const [relatedPropertyName] = args.constraints;
@@ -122,7 +154,10 @@ export function isEmailOrEthAddress(validationOptions?: ValidationOptions) {
           }
           const [address, percentage] = value;
           const isValidAddress = isEmail(address) || isAddress(address);
-          const isValidPercentage = typeof percentage === "number" && percentage >= 1 && percentage <= 10000;
+          const isValidPercentage =
+            typeof percentage === "number" &&
+            percentage >= 1 &&
+            percentage <= 10000;
           return isValidAddress && isValidPercentage;
         },
         defaultMessage(args: ValidationArguments) {
