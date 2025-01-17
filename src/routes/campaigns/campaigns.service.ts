@@ -21,14 +21,14 @@ export class CampaignsService {
     const slug = slugify(createCampaignDto.name, {
       lower: true,
       strict: true,
-      trim: true,
+      trim: true
     });
     return this.database.campaign.create({
       data: {
         name: createCampaignDto.name,
         slug,
-        appId,
-      },
+        appId
+      }
     });
   }
 
@@ -37,35 +37,35 @@ export class CampaignsService {
       where: {
         appId,
         deletedAt: {
-          equals: null,
-        },
+          equals: null
+        }
       },
       include: {
         Audiences: {
           include: {
             AudienceUsers: {
               include: {
-                User: true,
-              },
-            },
-          },
+                User: true
+              }
+            }
+          }
         },
         Tickets: {
           include: {
-            Event: true,
-          },
+            Event: true
+          }
         },
         Discounts: {
           include: {
-            DiscountCodes: true,
-          },
+            DiscountCodes: true
+          }
         },
         CampaignDistribution: {
           include: {
-            AudienceUsers: true,
-          },
-        },
-      },
+            AudienceUsers: true
+          }
+        }
+      }
     });
   }
 
@@ -73,13 +73,13 @@ export class CampaignsService {
     return this.database.campaign.findUnique({
       where: {
         id,
-        appId,
+        appId
       },
       include: {
         Audiences: true,
         Tickets: true,
-        CampaignDistribution: true,
-      },
+        CampaignDistribution: true
+      }
     });
   }
 
@@ -88,17 +88,17 @@ export class CampaignsService {
       const slug = slugify(name, {
         lower: true,
         strict: true,
-        trim: true,
+        trim: true
       });
       const campaign = await this.database.campaign.update({
         where: {
           id: campaignId,
-          appId,
+          appId
         },
         data: {
           name,
-          slug,
-        },
+          slug
+        }
       });
       return campaign;
     } catch (e) {
@@ -116,12 +116,12 @@ export class CampaignsService {
         await tx.campaign.update({
           where: {
             id: campaignId,
-            appId,
+            appId
           },
           data: {
             type: body.campaignType,
-            isDraft: false,
-          },
+            isDraft: false
+          }
         });
 
         if (body.campaignType === CampaignType.REWARD) {
@@ -130,9 +130,9 @@ export class CampaignsService {
               isTemplate: true,
               appId,
               id: {
-                in: body.rewardsIds.map((reward) => reward.rewardId),
-              },
-            },
+                in: body.rewardsIds.map((reward) => reward.rewardId)
+              }
+            }
           });
           await tx.discount.createMany({
             data: templates.map((template) => ({
@@ -147,10 +147,10 @@ export class CampaignsService {
                 ? {
                     eventId: body.rewardsIds.find(
                       (reward) => reward.rewardId === template.id
-                    )?.eventId,
+                    )?.eventId
                   }
-                : {}),
-            })),
+                : {})
+            }))
           });
 
           const createdCampaignRewards = await tx.discount.findMany({
@@ -158,26 +158,26 @@ export class CampaignsService {
               campaignId,
               appId,
               templateId: {
-                in: body.rewardsIds.map((reward) => reward.rewardId),
-              },
+                in: body.rewardsIds.map((reward) => reward.rewardId)
+              }
             },
             include: {
-              DiscountCodes: true,
-            },
+              DiscountCodes: true
+            }
           });
 
           for (const reward of createdCampaignRewards) {
             const campaignData = await tx.campaign.findUnique({
               where: {
-                id: campaignId,
+                id: campaignId
               },
               include: {
                 Audiences: {
                   include: {
-                    AudienceUsers: true,
-                  },
-                },
-              },
+                    AudienceUsers: true
+                  }
+                }
+              }
             });
             if (reward.uniqueDiscountCodes) {
               await tx.discountCode.createMany({
@@ -190,22 +190,22 @@ export class CampaignsService {
                       reward.prefix +
                       idx +
                       Math.floor(Math.random() * 1000000).toString(),
-                    reusable: false,
+                    reusable: false
                   };
-                }),
+                })
               });
             } else {
               const templateDiscountCode = await tx.discountCode.findFirst({
                 where: {
-                  discountId: reward.templateId,
-                },
+                  discountId: reward.templateId
+                }
               });
               await tx.discountCode.create({
                 data: {
                   discountId: reward.id,
                   value: templateDiscountCode.value,
-                  reusable: templateDiscountCode.reusable,
-                },
+                  reusable: templateDiscountCode.reusable
+                }
               });
             }
           }
@@ -217,15 +217,15 @@ export class CampaignsService {
           const assignedTickets = await tx.campaign.update({
             where: {
               id: campaignId,
-              appId,
+              appId
             },
             data: {
               Tickets: {
                 connect: body.ticketsIds.map((ticket) => ({
-                  id: ticket.ticketId,
-                })),
-              },
-            },
+                  id: ticket.ticketId
+                }))
+              }
+            }
           });
 
           return { success: true };
@@ -249,25 +249,25 @@ export class CampaignsService {
         for (const discountId of body.discountsToRemove) {
           await this.database.discount.update({
             where: {
-              id: discountId,
+              id: discountId
             },
             data: {
               Campaign: {
-                disconnect: true,
-              },
-            },
+                disconnect: true
+              }
+            }
           });
         }
       }
       return this.database.discount.updateMany({
         where: {
           id: {
-            in: body.discounts,
-          },
+            in: body.discounts
+          }
         },
         data: {
-          campaignId,
-        },
+          campaignId
+        }
       });
     } catch (e) {
       throw new CustomHttpException(e);
@@ -285,33 +285,33 @@ export class CampaignsService {
     if (updateCampaignAudienceDto?.audiencesToRemove?.length) {
       await this.database.campaign.update({
         where: {
-          id: campaignId,
+          id: campaignId
         },
         data: {
           Audiences: {
             disconnect: (
               updateCampaignAudienceDto?.audiencesToRemove || []
-            ).map((id) => ({ id })),
-          },
-        },
+            ).map((id) => ({ id }))
+          }
+        }
       });
     }
     return this.database.campaign.update({
       where: {
         id: campaignId,
-        appId,
+        appId
       },
       data: {
         appId,
         Audiences: {
           connect: (updateCampaignAudienceDto?.audiences || []).map((id) => ({
-            id,
-          })),
-        },
+            id
+          }))
+        }
       },
       include: {
-        Audiences: true,
-      },
+        Audiences: true
+      }
     });
   }
 
@@ -319,11 +319,11 @@ export class CampaignsService {
     return this.database.campaign.update({
       where: {
         id: campaignId,
-        appId,
+        appId
       },
       data: {
-        deletedAt: new Date(),
-      },
+        deletedAt: new Date()
+      }
     });
   }
 
@@ -332,25 +332,25 @@ export class CampaignsService {
       const campaignData = await this.database.campaign.findUnique({
         where: {
           id: campaignId,
-          appId,
+          appId
         },
         include: {
           Discounts: {
             include: {
               Event: true,
-              DiscountCodes: true,
-            },
+              DiscountCodes: true
+            }
           },
           Audiences: {
             include: {
               AudienceUsers: {
                 include: {
-                  User: true,
-                },
-              },
-            },
-          },
-        },
+                  User: true
+                }
+              }
+            }
+          }
+        }
       });
 
       const usersWithEmail = campaignData.Audiences.flatMap(
@@ -364,11 +364,11 @@ export class CampaignsService {
           const mappedUsers = usersWithEmail.map((user, idx) => ({
             userId: user.User.id,
             code: reward.DiscountCodes[idx].value,
-            email: user.User.email,
+            email: user.User.email
           }));
 
           for (const user of mappedUsers) {
-            await this.emailService.sendBatchDiscountCodeEmails(
+            await this.emailService.sendBatchEmails(
               [
                 {
                   recipientEmail: user.email,
@@ -380,14 +380,15 @@ export class CampaignsService {
                     reusable: false,
                     redemptionUrl: reward.locationUrl,
                     eventName: reward.Event?.name,
-                  },
-                },
+                    now: new Date().getTime()
+                  }
+                }
               ],
               false
             );
           }
         } else {
-          await this.emailService.sendBatchDiscountCodeEmails(
+          await this.emailService.sendBatchEmails(
             usersWithEmail.map((user) => ({
               recipientEmail: user.User.email,
               subject: "Your Discount Code",
@@ -398,7 +399,8 @@ export class CampaignsService {
                 redemptionUrl: reward.locationUrl,
                 eventName: reward.Event?.name,
                 discountType: reward.isVoucher ? "voucher" : "discount",
-              },
+                now: new Date().getTime()
+              }
             })),
             false
           );
@@ -412,21 +414,21 @@ export class CampaignsService {
               connect: rewards
                 .flatMap((reward) => reward.DiscountCodes)
                 .map((discountCode) => ({
-                  id: discountCode.id,
-                })),
+                  id: discountCode.id
+                }))
             },
             AudienceUsers: {
               connect: campaignData.Audiences.flatMap(
                 (audience) => audience.AudienceUsers
               ).map((audienceUser) => ({
-                id: audienceUser.id,
-              })),
-            },
+                id: audienceUser.id
+              }))
+            }
           },
           include: {
             DiscountCodes: true,
-            AudienceUsers: true,
-          },
+            AudienceUsers: true
+          }
         });
       return { success: true, campaignDistribution };
     } catch (e) {
@@ -437,7 +439,7 @@ export class CampaignsService {
   distributeCampaignTickets(appId: string, campaignId: string, req: any) {
     return this.ticketsService.distributeCampaignTickets(campaignId, appId, {
       developerWalletAddress: req?.developerWalletAddress || req?.walletAddress,
-      capsuleTokenVaultKey: req.capsuleTokenVaultKey,
+      capsuleTokenVaultKey: req.capsuleTokenVaultKey
     });
   }
 }

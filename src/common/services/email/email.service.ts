@@ -37,49 +37,6 @@ export class EmailService {
     return sendResults;
   }
 
-  async sendBatchDiscountCodeEmails(
-    emailDataArray: {
-      recipientEmail: string;
-      subject: string;
-      context: {
-        code: string;
-        discountName: string;
-        discountType: "voucher" | "discount";
-        eventName?: string;
-        reusable: boolean;
-        redemptionUrl?: string;
-      };
-    }[],
-    isLocalhost: boolean
-  ) {
-    const emailPromises = emailDataArray.map(
-      ({ recipientEmail, subject, context }) => {
-        const options = {
-          from: envVariables.mail.email || "test@blessed.fan",
-          to: recipientEmail,
-          subject: subject,
-          template: "./discountCode",
-          context: {
-            ...context,
-            now: new Date().getTime(),
-          },
-        };
-
-        return this.mailerService.sendMail(options);
-      }
-    );
-    const sendResults = await Promise.all(emailPromises);
-    if (isLocalhost) {
-      sendResults.forEach((result, index) => {
-        console.log(
-          `📨 Email ${index + 1} sent. Preview URL: ${nodemailer.getTestMessageUrl(result)}`
-        );
-      });
-    }
-
-    return sendResults;
-  }
-
   async sendVerificationCodeEmail(to: string) {
     try {
       const otpCode = await this.generateOTP(to);

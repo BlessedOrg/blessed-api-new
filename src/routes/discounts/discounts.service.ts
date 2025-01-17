@@ -1,27 +1,32 @@
 import { DatabaseService } from "@/common/services/database/database.service";
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
 import { omit } from "lodash";
-import { CreateDiscountCodeDto, CreateDiscountDto } from "./dto/create-discount.dto";
-import { UpdateDiscountDto } from './dto/update-discount.dto';
+import {
+	CreateDiscountCodeDto,
+	CreateDiscountDto
+} from "./dto/create-discount.dto";
+import { UpdateDiscountDto } from "./dto/update-discount.dto";
 
 @Injectable()
 export class DiscountsService {
-  constructor(
-    private database: DatabaseService
-  ) {}
+  constructor(private database: DatabaseService) {}
 
   async create(createDiscountDto: CreateDiscountDto, appId: string) {
-		console.log(createDiscountDto)
+    console.log(createDiscountDto);
     return this.database.discount.create({
       data: {
         ...omit(createDiscountDto, "discountCode", "reusable"),
-        appId, 
-        DiscountCodes: !!createDiscountDto.discountCode && !createDiscountDto.uniqueDiscountCodes ? {
-          create: {
-            value: createDiscountDto.discountCode,
-            reusable: createDiscountDto.reusable,
-          }
-        } : undefined
+        appId,
+        DiscountCodes:
+          !!createDiscountDto.discountCode &&
+          !createDiscountDto.uniqueDiscountCodes
+            ? {
+                create: {
+                  value: createDiscountDto.discountCode,
+                  reusable: createDiscountDto.reusable
+                }
+              }
+            : undefined
       },
       include: {
         DiscountCodes: true
@@ -33,7 +38,7 @@ export class DiscountsService {
     return this.database.discount.findMany({
       where: {
         appId,
-				isTemplate: true
+        isTemplate: true
       }
     });
   }
@@ -61,14 +66,12 @@ export class DiscountsService {
 
 @Injectable()
 export class DiscountCodesService {
-  constructor(
-    private database: DatabaseService
-  ) {}
+  constructor(private database: DatabaseService) {}
 
   async generate(prefix: string, discountId: string) {
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     const codeLength = 8;
-    let code = prefix ? prefix + '-' : '';
+    let code = prefix ? prefix + "-" : "";
 
     for (let i = 0; i < codeLength; i++) {
       const randomIndex = Math.floor(Math.random() * characters.length);
@@ -116,7 +119,10 @@ export class DiscountCodesService {
     const discountCode = await this.findOne(id);
 
     if (discountCode.reusable) {
-      throw new HttpException("This code is reusable, you cannot perform this action", HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        "This code is reusable, you cannot perform this action",
+        HttpStatus.BAD_REQUEST
+      );
     }
 
     return this.database.discountCode.update({
