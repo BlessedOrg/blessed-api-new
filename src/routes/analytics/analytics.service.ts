@@ -5,6 +5,8 @@ import { Injectable } from "@nestjs/common";
 import { Interaction } from "@prisma/client";
 import { ethers } from "ethers";
 import { isEmpty } from "lodash";
+import { envVariables } from "@/common/env-variables";
+import * as util from "node:util";
 
 @Injectable()
 export class AnalyticsService {
@@ -122,7 +124,45 @@ export class AnalyticsService {
     const fiatStripeIncome = fiatStripeIncomeRecords.map(i => ({
       priceCents: i.value,
       currency: i.currency,
-    }))
+    }));
+
+    // 🏗️ TODO: we need filtering here so we can match GeneralStatsQueryDto params
+    const subgraphUrl = `https://gateway.thegraph.com/api/${envVariables.subgraphApiKey}/subgraphs/id/${envVariables.subgraphId}`
+    const subgraphDataRes = await fetch(subgraphUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: `
+          query Subgraphs {
+            transfers {
+              price
+              stakeholdersShare
+              tokenId
+              to
+              ticket {
+                address
+                ownerSmartWallet
+              }
+            }
+          }
+        `,
+        operationName: 'Subgraphs',
+        variables: {}
+      })
+    });
+
+    const subgraphData = await subgraphDataRes.json();
+    console.log("✅ subgraphData.data:");
+    console.log(util.inspect(subgraphData.data, false, null, true));
+
+
+    const ticketsPurchaseRevenue = subgraphData.data.transfers.reduce((sum, transfer) => {
+      sum.totalPrice += Number(transfer.price);
+      sum.totalStakeholdersShare += Number(transfer.stakeholdersShare);
+      return sum;
+    }, { totalPrice: Number(0), totalStakeholdersShare: Number(0) })
 
     return {
       eventsTransactions: this.formatTxToChartData(eventContractTransactionsWeiCost, eventContractTransactions),
@@ -134,6 +174,7 @@ export class AnalyticsService {
       fiatIncome: {
         stripe: fiatStripeIncome
       },
+      cryptoIncome: ticketsPurchaseRevenue,
       count: {
         all: allOnChainInteractions.length,
         eventsTransactions: eventContractTransactions.length,
