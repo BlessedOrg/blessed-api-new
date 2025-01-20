@@ -46,6 +46,10 @@ enum PaymentMethod {
 }
 
 export class SnapshotDto {
+  @IsBoolean({ message: "isEachTicketRequirementMet must be a boolean value" })
+  @IsNotEmpty({ message: "isEachTicketRequirementMet is required" })
+  isEachTicketRequirementMet: boolean;
+
   @IsArray({ message: "Airdrop must be an array" })
   @ArrayMinSize(0, { message: "Airdrop array cannot be empty" })
   @ArrayMaxSize(10, {

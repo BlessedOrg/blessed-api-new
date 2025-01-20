@@ -6,10 +6,18 @@ import { biconomyMetaTx } from "@/lib/biconomy";
 import { getSmartWalletForCapsuleWallet } from "@/lib/capsule";
 import { uploadMetadata } from "@/lib/irys";
 import { stripe } from "@/lib/stripe";
-import { contractArtifacts, deployContract, getExplorerUrl, readContract } from "@/lib/viem";
+import {
+	contractArtifacts,
+	deployContract,
+	getExplorerUrl,
+	readContract
+} from "@/lib/viem";
 import { EventsService } from "@/routes/events/events.service";
 import { StakeholdersService } from "@/routes/stakeholders/stakeholders.service";
-import { CreateTicketDto, SnapshotDto } from "@/routes/tickets/dto/create-ticket.dto";
+import {
+	CreateTicketDto,
+	SnapshotDto
+} from "@/routes/tickets/dto/create-ticket.dto";
 import { DistributeDto } from "@/routes/tickets/dto/distribute.dto";
 import { SupplyDto } from "@/routes/tickets/dto/supply.dto";
 import { WhitelistDto } from "@/routes/tickets/dto/whitelist.dto";
@@ -22,6 +30,7 @@ import { decryptQrCodePayload, encryptQrCodePayload } from "@/utils/eventKey";
 import { logoBase64 } from "@/utils/logo_base64";
 import { BadRequestException, forwardRef, HttpException, Inject, Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import { PaymentMethod } from "@prisma/client";
 import { PrefixedHexString } from "ethereumjs-util";
 import { isEmpty, omit } from "lodash";
 import slugify from "slugify";
@@ -122,10 +131,37 @@ export class TicketsService {
       functionName: "decimals"
     });
 
+    let stakeholders: any[] = [];
     if (
       createTicketDto?.stakeholders &&
       !isEmpty(createTicketDto.stakeholders)
     ) {
+      const stakeholdersAccounts =
+        await this.usersService.createManyUserAccounts(
+          {
+            users: createTicketDto.stakeholders.map((sh) => ({
+              email: sh.email
+            }))
+          },
+          appId
+        );
+      const stakeholdersWithUserData = stakeholders.map((sh) => {
+        const user =
+          stakeholdersAccounts.users.find((user) => user.email === sh.email) ||
+          {};
+        return {
+          ...sh,
+          ...user
+        };
+      }) as {
+        id: string;
+        email: string;
+        walletAddress: string;
+        smartWalletAddress: string;
+        feePercentage: number;
+        paymentMethods: PaymentMethod[];
+      }[];
+      stakeholders = stakeholdersWithUserData;
       await this.stakeholdersService.createStakeholder(
         createTicketDto.stakeholders,
         {
@@ -149,7 +185,7 @@ export class TicketsService {
       _maxSupply: createTicketDto.maxSupply,
       _transferable: createTicketDto.transferable,
       _whitelistOnly: createTicketDto.whitelistOnly,
-      _stakeholders: createTicketDto.stakeholders.map((sh) => ({
+      _stakeholders: stakeholders.map((sh) => ({
         wallet: sh.walletAddress,
         feePercentage: sh.feePercentage
       }))
