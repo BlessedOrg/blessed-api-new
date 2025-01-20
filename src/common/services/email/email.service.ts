@@ -19,7 +19,7 @@ export class EmailService {
           to: recipientEmail,
           subject: subject,
           template,
-          context
+          context,
         };
 
         return this.mailerService.sendMail(options);
@@ -28,7 +28,9 @@ export class EmailService {
     const sendResults = await Promise.all(emailPromises);
     if (isLocalhost) {
       sendResults.forEach((result, index) => {
-        console.log(`📨 Email ${index + 1} sent. Preview URL: ${nodemailer.getTestMessageUrl(result)}`);
+        console.log(
+          `📨 Email ${index + 1} sent. Preview URL: ${nodemailer.getTestMessageUrl(result)}`
+        );
       });
     }
 
@@ -44,8 +46,8 @@ export class EmailService {
         subject: "Your One-Time Password for Blessed.fan",
         template: "./verificationCode",
         context: {
-          otp: otpCode
-        }
+          otp: otpCode,
+        },
       });
       this.logEmailinDevelopment(result);
       return { success: true, message: "Verification code sent successfully" };
@@ -54,7 +56,12 @@ export class EmailService {
     }
   }
 
-  async sendTicketPurchasedEmail(to: string, imageUrl: string, eventName: string, ticketUrl: string) {
+  async sendTicketPurchasedEmail(
+    to: string,
+    imageUrl: string,
+    eventName: string,
+    ticketUrl: string
+  ) {
     try {
       const result = await this.mailerService.sendMail({
         from: envVariables.mail.email || "test@blessed.fan",
@@ -64,8 +71,8 @@ export class EmailService {
         context: {
           imageUrl,
           eventName,
-          ticketUrl
-        }
+          ticketUrl,
+        },
       });
       this.logEmailinDevelopment(result);
       return { message: "Ticket purchase confirmation sent successfully" };
@@ -74,13 +81,20 @@ export class EmailService {
     }
   }
 
-	async sendRevenueNotificationEmail(to: string, sharesPercentage: number, destination: {
-		appName: string,
-		eventName?: string,
-		ticketName?:string
-	}) {
+  async sendRevenueNotificationEmail(
+    to: string,
+    sharesPercentage: number,
+    destination: {
+      appName: string;
+      eventName?: string;
+      ticketName?: string;
+    }
+  ) {
     try {
-			const destinationString = destination?.ticketName || destination?.eventName || destination?.appName
+      const destinationString =
+        destination?.ticketName ||
+        destination?.eventName ||
+        destination?.appName;
       const result = await this.mailerService.sendMail({
         from: envVariables.mail.email || "test@blessed.fan",
         to,
@@ -88,9 +102,9 @@ export class EmailService {
         template: "./revenueNotification",
         context: {
           destinationString,
-					sharesPercentage,
-					now: new Date().getTime()
-        }
+          sharesPercentage,
+          now: new Date().getTime(),
+        },
       });
       this.logEmailinDevelopment(result);
       return { message: "Revenue notification sent successfully" };
@@ -103,8 +117,8 @@ export class EmailService {
     const existingCodeData =
       await this.database.emailVerificationCode.findFirst({
         where: {
-          code
-        }
+          code,
+        },
       });
     if (!existingCodeData) {
       throw new HttpException("Invalid code", 400);
@@ -113,20 +127,20 @@ export class EmailService {
     if (new Date(existingCodeData.expiresAt).getTime() < new Date().getTime()) {
       await this.database.emailVerificationCode.delete({
         where: {
-          id: existingCodeData.id
-        }
+          id: existingCodeData.id,
+        },
       });
       throw new HttpException("Code expired", 400);
     }
 
     await this.database.emailVerificationCode.delete({
       where: {
-        id: existingCodeData.id
-      }
+        id: existingCodeData.id,
+      },
     });
 
     return {
-      email: existingCodeData.email
+      email: existingCodeData.email,
     };
   }
 
@@ -144,8 +158,8 @@ export class EmailService {
       data: {
         code: otp,
         email: to,
-        expiresAt: new Date(Date.now() + 3 * 60 * 1000)
-      }
+        expiresAt: new Date(Date.now() + 3 * 60 * 1000),
+      },
     });
     if (newCode) {
       console.log(`📧 Created verification code record:`, newCode.code);

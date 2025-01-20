@@ -53,6 +53,7 @@ model App {
   Campaigns    Campaign[]
   Audiences    Audience[]
   Stakeholders Stakeholder[]
+  Discounts    Discount[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   deletedAt    DateTime?
@@ -137,6 +138,7 @@ model Event {
   Tickets            Ticket[]
   EventBouncers      EventBouncer[]
   Stakeholders       Stakeholder[]
+  Discounts          Discount[]
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
   deletedAt          DateTime?
@@ -210,12 +212,20 @@ model Campaign {
   slug                 String
   Audiences            Audience[]
   CampaignDistribution CampaignDistribution?
+  type                 CampaignType          @default(TICKET)
+  Discounts            Discount[]
   Tickets              Ticket[]
   App                  App                   @relation(fields: [appId], references: [id], onDelete: Cascade)
+  isDraft              Boolean               @default(true)
   appId                String
   createdAt            DateTime              @default(now())
   updatedAt            DateTime?             @updatedAt
   deletedAt            DateTime?
+}
+
+enum CampaignType {
+  REWARD
+  TICKET
 }
 
 model CampaignDistribution {
@@ -223,6 +233,7 @@ model CampaignDistribution {
   Campaign      Campaign       @relation(fields: [campaignId], references: [id], onDelete: Cascade)
   campaignId    String         @unique
   AudienceUsers AudienceUser[]
+  DiscountCodes DiscountCode[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   deletedAt     DateTime?
@@ -273,6 +284,7 @@ model Ticket {
   Interactions    Interaction[]
   Campaigns       Campaign[]
   Stakeholders    Stakeholder[]
+  Discounts       Discount[]
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   deletedAt       DateTime?
@@ -340,4 +352,49 @@ enum OrderStatus {
   PENDING
   FAILED
   COMPLETED
+}
+
+model Discount {
+  id                  String         @id @default(cuid())
+  name                String
+  description         String
+  percentage          Int
+  minOrderValue       Int?
+  prefix              String?
+  logoUrl             String
+  locationLatitude    String?
+  locationLongitude   String?
+  locationUrl         String?
+  validFrom           DateTime
+  validTo             DateTime
+  isTemplate          Boolean        @default(false)
+  isVoucher           Boolean        @default(false)
+  uniqueDiscountCodes Boolean        @default(false)
+  DiscountCodes       DiscountCode[]
+  Campaign            Campaign?      @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaignId          String?
+  Event               Event?         @relation(fields: [eventId], references: [id])
+  eventId             String?
+  Ticket              Ticket?        @relation(fields: [ticketId], references: [id], onDelete: NoAction)
+  ticketId            String?
+  templateId          String?
+  App                 App            @relation(fields: [appId], references: [id], onDelete: Cascade)
+  appId               String
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+}
+
+model DiscountCode {
+  id                     String                @id @default(cuid())
+  value                  String
+  used                   Boolean               @default(false)
+  reusable               Boolean               @default(false)
+  Discount               Discount              @relation(fields: [discountId], references: [id], onDelete: Cascade)
+  discountId             String
+  CampaignDistribution   CampaignDistribution? @relation(fields: [campaignDistributionId], references: [id])
+  campaignDistributionId String?
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+
+  @@unique([value, discountId])
 }

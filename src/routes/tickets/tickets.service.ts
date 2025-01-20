@@ -28,11 +28,11 @@ import { UsersService } from "@/routes/users/users.service";
 import { WebhooksDto } from "@/routes/webhooks/dto/webhooks.dto";
 import { decryptQrCodePayload, encryptQrCodePayload } from "@/utils/eventKey";
 import { logoBase64 } from "@/utils/logo_base64";
-import { BadRequestException, HttpException, Injectable } from "@nestjs/common";
+import { BadRequestException, forwardRef, HttpException, Inject, Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
 import { PaymentMethod } from "@prisma/client";
 import { PrefixedHexString } from "ethereumjs-util";
-import { isEmpty } from "lodash";
+import { isEmpty, omit } from "lodash";
 import slugify from "slugify";
 import Stripe from "stripe";
 import { v4 as uuidv4 } from "uuid";
@@ -48,6 +48,7 @@ export class TicketsService {
     private eventsService: EventsService,
     private ticketSnapshotService: TicketsSnapshotService,
     private ticketDistributeService: TicketsDistributeService,
+    @Inject(forwardRef(() => TicketsDistributeCampaignService))
     private ticketDistributeCampaignService: TicketsDistributeCampaignService,
     private stakeholdersService: StakeholdersService
   ) {
@@ -209,6 +210,26 @@ export class TicketsService {
       operatorType: "operator"
     });
 
+    if (!!createTicketDto?.ticketRewards?.length) {
+      const templates = await this.database.discount.findMany({
+        where: {
+          id: {
+            in: createTicketDto.ticketRewards
+          }
+        }
+      });
+
+      await this.database.discount.createMany({
+        data: templates.map((template) => ({
+          ...omit(template, ["id"]),
+          templateId: template.id,
+          appId,
+          eventId,
+          ticketId: ticket.id
+        }))
+      });
+    }
+
     const updatedTicket = await this.database.ticket.update({
       where: {
         id: ticket.id
@@ -224,7 +245,8 @@ export class TicketsService {
         }
       },
       include: {
-        Stakeholders: true
+        Stakeholders: true,
+        Discounts: true
       }
     });
 
@@ -333,6 +355,9 @@ export class TicketsService {
         address: {
           contains: "0x"
         }
+      },
+      include: {
+        Discounts: true
       }
     });
     let formattedTickets = [];

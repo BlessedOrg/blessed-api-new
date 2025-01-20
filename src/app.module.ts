@@ -14,6 +14,7 @@ import { ResourcesModule } from "@/routes/resources.module";
 import { WebhooksModule } from "@/routes/webhooks/webhooks.module";
 import { EventsModule } from "@/common/events/events.module";
 import { EventEmitterModule } from "@nestjs/event-emitter";
+import { DiscountsModule } from "@/routes/discounts/discounts.module";
 
 @Module({
   imports: [
@@ -28,7 +29,8 @@ import { EventEmitterModule } from "@nestjs/event-emitter";
     AuthGuardsModule,
     SessionModule,
     WebhooksModule,
-    EventsModule
+    EventsModule,
+    DiscountsModule
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: AuthGuard }, {

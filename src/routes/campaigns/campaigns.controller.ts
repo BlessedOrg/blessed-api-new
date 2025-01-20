@@ -1,8 +1,12 @@
-import { RequireApiKey, RequireDeveloperAuth } from "@/common/decorators/auth.decorator";
+import {
+	RequireApiKey,
+	RequireDeveloperAuth,
+} from "@/common/decorators/auth.decorator";
 import { UseAppIdInterceptor } from "@/common/decorators/use-app-id.decorator";
 import { CreateCampaignDto } from "@/routes/campaigns/dto/create-campaign.dto";
 import { Body, Controller, Delete, Get, Param, Patch, Post, Req } from "@nestjs/common";
 import { CampaignsService } from "./campaigns.service";
+import { SaveCampaignDto } from "./dto/save-campaign.dto";
 
 @RequireApiKey()
 @Controller("campaigns")
@@ -23,7 +27,10 @@ export class CampaignsController {
   }
 
   @Get(":campaign")
-  getCampaignById(@Req() req: RequestWithApiKey, @Param("campaign") id: string) {
+  getCampaignById(
+    @Req() req: RequestWithApiKey,
+    @Param("campaign") id: string
+  ) {
     return this.campaignsService.getCampaignById(req.appId, id);
   }
 
@@ -44,23 +51,12 @@ export class CampaignsController {
     );
   }
 
-  @Patch(":campaign/tickets")
-  updateCampaignTickets(
-    @Req() req: RequestWithApiKey,
-    @Param("campaign") id: string,
-    @Body()
-    updateCampaignTicketsDto: { tickets: string[]; ticketsToRemove?: string[] }
-  ) {
-    return this.campaignsService.updateCampaignTickets(
-      req.appId,
-      id,
-      updateCampaignTicketsDto
-    );
-  }
-
   @Post(":campaign/distribute")
-  distributeCampaign(@Req() req: RequestWithApiKey, @Param("campaign") id: string) {
-    return this.campaignsService.distributeCampaign(req.appId, id, req);
+  distributeCampaign(
+    @Req() req: RequestWithApiKey,
+    @Param("campaign") id: string
+  ) {
+    return this.campaignsService.distributeCampaignTickets(req.appId, id, req);
   }
 }
 
@@ -95,6 +91,17 @@ export class CampaignsPrivateController {
       updateCampaignNameDto.name
     );
   }
+
+  @Patch(":campaign/save")
+  saveCampaignState(
+    @Req() req: RequestWithApiKey,
+    @Param("campaign") id: string,
+    @Body()
+    body: SaveCampaignDto
+  ) {
+    return this.campaignService.saveCampaignState(req.appId, id, body);
+  }
+
   @Patch(":campaign/audiences")
   updateCampaignAudiences(
     @Req() req: RequestWithDevAccessToken & AppValidate,
@@ -112,26 +119,22 @@ export class CampaignsPrivateController {
     );
   }
 
-  @Patch(":campaign/tickets")
-  updateCampaignTickets(
-    @Req() req: RequestWithDevAccessToken & AppValidate,
-    @Param("campaign") id: string,
-    @Body()
-    updateCampaignTicketsDto: { tickets: string[]; ticketsToRemove?: string[] }
-  ) {
-    return this.campaignService.updateCampaignTickets(
-      req.appId,
-      id,
-      updateCampaignTicketsDto
-    );
-  }
-  @Post(":campaign/distribute")
-  distributeCampaign(
+  @Post(":campaign/distribute-tickets")
+  distributeCampaignTickets(
     @Req() req: RequestWithDevAccessToken & AppValidate,
     @Param("campaign") id: string
   ) {
-    return this.campaignService.distributeCampaign(req.appId, id, req);
+    return this.campaignService.distributeCampaignTickets(req.appId, id, req);
   }
+
+  @Post(":campaign/distribute-rewards")
+  distributeCampaignRewards(
+    @Req() req: RequestWithDevAccessToken & AppValidate,
+    @Param("campaign") id: string
+  ) {
+    return this.campaignService.distributeCampaignRewards(req.appId, id, req);
+  }
+
   @Delete(":campaignId")
   deleteCampaign(
     @Req() req: RequestWithDevAccessToken & AppValidate,
@@ -140,4 +143,3 @@ export class CampaignsPrivateController {
     return this.campaignService.delete(campaignId, req.appId);
   }
 }
-
