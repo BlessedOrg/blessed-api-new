@@ -27,10 +27,13 @@ const envVariables = {
   stripeSecretKey: process.env.STRIPE_SECRET_KEY,
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
   erc20Address: process.env.ERC20_CONTRACT_ADDRESS,
+  ticketsFactoryAddress: process.env.TICKETS_FACTORY_CONTRACT_ADDRES,
   ticketerAppUrl: process.env.TICKETER_APP_URL,
   reclaimAppSecret: process.env.RECLAIM_APP_SECRET,
   reclaimAppId: process.env.RECLAIM_APP_ID,
-  alchemyApiKey: process.env.ALCHEMY_API_KEY
+  alchemyApiKey: process.env.ALCHEMY_API_KEY,
+  subgraphApiKey: process.env.SUBGRAPH_API_KEY,
+  subgraphId: process.env.SUBGRAPH_ID
 };
 
 export { envVariables };

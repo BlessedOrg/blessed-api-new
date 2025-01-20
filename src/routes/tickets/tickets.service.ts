@@ -6,7 +6,8 @@ import { biconomyMetaTx } from "@/lib/biconomy";
 import { getSmartWalletForCapsuleWallet } from "@/lib/capsule";
 import { uploadMetadata } from "@/lib/irys";
 import { stripe } from "@/lib/stripe";
-import { contractArtifacts, deployContract, getExplorerUrl, readContract } from "@/lib/viem";
+import { contractArtifacts, getExplorerUrl, readContract, writeContract } from "@/lib/viem";
+import { parseEventLogs } from "viem";
 import { EventsService } from "@/routes/events/events.service";
 import { StakeholdersService } from "@/routes/stakeholders/stakeholders.service";
 import { CreateTicketDto, SnapshotDto } from "@/routes/tickets/dto/create-ticket.dto";
@@ -95,8 +96,7 @@ export class TicketsService {
       }
     });
 
-    const { metadataUrl, metadataImageUrl, totalWeiPrice } =
-      await uploadMetadata({
+    const { metadataUrl, metadataImageUrl, totalWeiPrice } = await uploadMetadata({
         name: createTicketDto.name,
         symbol: createTicketDto.symbol,
         description: createTicketDto.description,
@@ -112,8 +112,7 @@ export class TicketsService {
       operatorType: "irys"
     });
 
-    const smartWallet =
-      await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
+    const smartWallet = await getSmartWalletForCapsuleWallet(capsuleTokenVaultKey);
     const ownerSmartWallet = await smartWallet.getAccountAddress();
 
     const erc20Decimals = await readContract({
@@ -122,10 +121,7 @@ export class TicketsService {
       functionName: "decimals"
     });
 
-    if (
-      createTicketDto?.stakeholders &&
-      !isEmpty(createTicketDto.stakeholders)
-    ) {
+    if (createTicketDto?.stakeholders && !isEmpty(createTicketDto.stakeholders)) {
       await this.stakeholdersService.createStakeholder(
         createTicketDto.stakeholders,
         {
@@ -155,7 +151,27 @@ export class TicketsService {
       }))
     };
 
-    const contract = await deployContract("tickets", [args]);
+    const deployTicketResult = await writeContract({
+      abi: contractArtifacts["tickets-factory"].abi,
+      address: envVariables.ticketsFactoryAddress,
+      functionName: "deployTicket",
+      args: [args]
+    });
+
+    const logs = parseEventLogs({
+      abi: contractArtifacts["tickets-factory"].abi,
+      logs: deployTicketResult.logs
+    });
+
+    const newTicketDeployedEventArgs = logs
+      .filter((log) => (log as any) !== "NewTicketDeployed")
+      .map((log) => (log as any)?.args);
+
+    const contract = {
+      contractAddr: newTicketDeployedEventArgs.find(args => args.ownerSmartWallet === ownerSmartWallet)?.ticketAddress,
+      gasWeiPrice: deployTicketResult.gasWeiPrice,
+      hash: deployTicketResult.transactionHash,
+    }
 
     this.eventEmitter.emit("ticket.create", {
       eventAddress: ticket.Event.address,
