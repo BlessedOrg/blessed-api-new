@@ -1,11 +1,11 @@
-import { forwardRef, Inject, Injectable } from "@nestjs/common";
-import { DatabaseService } from "@/common/services/database/database.service";
-import { TicketsDistributeService } from "@/routes/tickets/services/tickets-distribute.service";
-import { EmailService } from "@/common/services/email/email.service";
-import { TicketsService } from "@/routes/tickets/tickets.service";
 import { envVariables } from "@/common/env-variables";
-import { contractArtifacts, readContract } from "@/lib/viem";
 import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
+import { DatabaseService } from "@/common/services/database/database.service";
+import { EmailService } from "@/common/services/email/email.service";
+import { contractArtifacts, readContract } from "@/lib/viem";
+import { TicketsDistributeService } from "@/routes/tickets/services/tickets-distribute.service";
+import { TicketsService } from "@/routes/tickets/tickets.service";
+import { forwardRef, Inject, Injectable } from "@nestjs/common";
 
 @Injectable()
 export class TicketsDistributeCampaignService {
