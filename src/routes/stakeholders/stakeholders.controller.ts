@@ -4,6 +4,7 @@ import { UseAppIdInterceptor } from "@/common/decorators/use-app-id.decorator";
 import { UseTicketIdInterceptor } from "@/common/decorators/use-ticket-id.decorator";
 import { StakeholderDto } from "@/routes/stakeholders/dto/stakeholder-dto";
 import { Body, Controller, Delete, Get, Param, Post, Req } from "@nestjs/common";
+import { PaymentMethod } from '@prisma/client';
 import { StakeholdersService } from "./stakeholders.service";
 
 @Controller("private/stakeholders")
@@ -32,6 +33,28 @@ export class StakeholdersController {
     );
   }
 
+	@RequireDeveloperAuth()
+  @UseAppIdInterceptor()
+  @UseEventIdInterceptor(false)
+  @UseTicketIdInterceptor(false)
+  @Post(["payment-method/:app", "payment-method/:app/:event", "payment-method/:app/:event/:ticketId"])
+  async togglePaymentMethod(
+    @Body()
+    body: {
+      paymentMethod: PaymentMethod[];
+    },
+    @Req() req: RequestWithDevAccessToken & AppValidate & EventValidate & TicketValidate
+  ) {
+    return this.stakeholdersService.togglePaymentMethod(
+      body.paymentMethod,
+      {
+        appId: req.appId,
+        eventId: req.eventId,
+        ticketId: req.ticketId
+      }
+    );
+  }
+
   @RequireDeveloperAuth()
   @UseAppIdInterceptor()
   @UseEventIdInterceptor(false)
@@ -47,7 +70,9 @@ export class StakeholdersController {
 
   @RequireDeveloperAuth()
   @UseAppIdInterceptor()
-  @Delete(":stakeholderId/:app")
+	@UseEventIdInterceptor(false)
+  @UseTicketIdInterceptor(false)
+  @Delete([":stakeholderId/:app", ":stakeholderId/:app/:event", ":stakeholderId/:app/:event/:ticketId"])
   async deleteStakeholder(
     @Req() req: RequestWithDevAccessToken & AppValidate,
     @Param("stakeholderId") stakeholderId: string

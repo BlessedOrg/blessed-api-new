@@ -1,12 +1,12 @@
-import { forwardRef, Inject, Injectable } from "@nestjs/common";
-import { AirdropDto, SnapshotDto } from "@/routes/tickets/dto/create-ticket.dto";
+import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
 import { DatabaseService } from "@/common/services/database/database.service";
 import { contractArtifacts, readContract } from "@/lib/viem";
-import { Ticket } from "@prisma/client";
-import { TicketsService } from "@/routes/tickets/tickets.service";
-import { PrefixedHexString } from "ethereumjs-util";
 import { EventsService } from "@/routes/events/events.service";
-import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
+import { AirdropDto, SnapshotDto } from "@/routes/tickets/dto/create-ticket.dto";
+import { TicketsService } from "@/routes/tickets/tickets.service";
+import { forwardRef, Inject, Injectable } from "@nestjs/common";
+import { Ticket } from "@prisma/client";
+import { PrefixedHexString } from "ethereumjs-util";
 
 @Injectable()
 export class TicketsSnapshotService {
@@ -23,8 +23,8 @@ export class TicketsSnapshotService {
       const { tickets, entranceTickets } = await this.getTicketsAndEntrances(snapshot);
 
       const [eligibleUsersForTicketHold, eligibleUsersForEntrance] = await Promise.all([
-        this.getEligibleUsersForTicketHold(tickets),
-        this.getEligibleUsersForEntrances(entranceTickets)
+        this.getEligibleUsersForTicketHold(tickets, snapshotDto.isEachTicketRequirementMet),
+        this.getEligibleUsersForEntrances(entranceTickets, snapshotDto.isEachTicketRequirementMet)
       ]);
 
       const eligibleUsersForTicketHoldMap = new Map(
@@ -55,7 +55,8 @@ export class TicketsSnapshotService {
       let eligibleUsers: any[] = [];
       let eligibleExternalAddresses: any[] = [];
 
-      const scenario = `${isEntranceRequired}_${isOwnerRequired}`;
+      const scenario = snapshotDto.isEachTicketRequirementMet ? `false_false`:`${isEntranceRequired}_${isOwnerRequired}`;
+
       switch (scenario) {
         case "true_true": {
           const usersWithMeetCriteria = Array.from(
@@ -80,6 +81,12 @@ export class TicketsSnapshotService {
           ).map((i) => ({ walletAddress: i, external: true }));
           break;
         }
+
+				case "false_false": {
+					eligibleUsers = [...eligibleUsersForTicketHold.owners, ...eligibleUsersForEntrance.flatMap((result) => result.entries)];
+					eligibleExternalAddresses = [...Array.from(eligibleExternalAddressesForTicketHold), ...Array.from(eligibleExternalAddressesForEntrance)];
+					break;
+				}
 
         default: {
           eligibleUsers = eligibleUsersForTicketHold.owners;
@@ -119,7 +126,7 @@ export class TicketsSnapshotService {
 
     return { tickets, entranceTickets };
   }
-  private async getEligibleUsersForTicketHold(tickets: Ticket[]) {
+  private async getEligibleUsersForTicketHold(tickets: Ticket[], isEachTicketRequirementMet: boolean) {
     const usersMap = new Map<string, { user: any; count: number }>();
 
     await Promise.all(
@@ -155,7 +162,7 @@ export class TicketsSnapshotService {
 
     const totalTickets = tickets.length;
     const eligibleUsersForAllTickets = Array.from(usersMap.values())
-      .filter(({ count }) => count === totalTickets)
+      .filter(({ count }) => isEachTicketRequirementMet ? count === totalTickets : true)
       .map(({ user }) => user);
 
     const users = eligibleUsersForAllTickets.filter((user) => !user?.external);
@@ -167,7 +174,7 @@ export class TicketsSnapshotService {
     };
   }
 
-  private async getEligibleUsersForEntrances(tickets: Ticket[]) {
+  private async getEligibleUsersForEntrances(tickets: Ticket[], isEachTicketRequirementMet: boolean) {
     return Promise.all(
       tickets.map(async (ticket) => {
         try {

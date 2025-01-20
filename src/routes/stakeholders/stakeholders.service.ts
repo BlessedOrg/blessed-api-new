@@ -3,6 +3,7 @@ import { DatabaseService } from "@/common/services/database/database.service";
 import { EmailService } from "@/common/services/email/email.service";
 import { StakeholderDto } from "@/routes/stakeholders/dto/stakeholder-dto";
 import { Injectable } from "@nestjs/common";
+import { PaymentMethod } from "@prisma/client";
 import { UsersService } from "../users/users.service";
 
 @Injectable()
@@ -29,20 +30,53 @@ export class StakeholdersService {
           appId
         );
 
-      const stakeholdersWithIds = stakeholders.map((sh) => ({
-        ...sh,
-        id: stakeholdersAccounts.users.find((user) => user.email === sh.email)
-          ?.id,
-      }));
+      const stakeholdersWithUserData = stakeholders.map((sh) => {
+        const user =
+          stakeholdersAccounts.users.find((user) => user.email === sh.email) ||
+          {};
+        return {
+          ...sh,
+          ...user
+        };
+      }) as {
+        id: string;
+        email: string;
+        walletAddress: string;
+        smartWalletAddress: string;
+        feePercentage: number;
+        paymentMethods: PaymentMethod[];
+      }[];
 
       await this.database.stakeholder.createMany({
-        data: stakeholdersWithIds.map((sh) => ({
+        data: stakeholdersWithUserData.map((sh) => ({
           walletAddress: sh.walletAddress,
           feePercentage: sh.feePercentage,
           userId: sh.id,
           paymentMethods: sh.paymentMethods,
-          ...relations,
-        })),
+          ...relations
+        }))
+      });
+
+      return { success: true };
+    } catch (error) {
+      throw new CustomHttpException(error);
+    }
+  }
+
+  async togglePaymentMethod(
+    paymentMethod: PaymentMethod[],
+    relations: {
+      appId: string;
+      eventId?: string;
+      ticketId?: string;
+    }
+  ) {
+    try {
+      await this.database.stakeholder.updateMany({
+        where: relations,
+        data: {
+          paymentMethods: paymentMethod
+        }
       });
 
       return { success: true };
@@ -54,21 +88,25 @@ export class StakeholdersService {
   async getStakeholders({
     appId,
     eventId,
-    ticketId,
+    ticketId
   }: {
     appId: string;
     eventId?: string;
     ticketId?: string;
   }) {
     return this.database.stakeholder.findMany({
-      where: { appId, eventId, ticketId },
-      include: { User: true },
+      where: {
+				appId,
+        eventId: !eventId ? { equals: null } : eventId,
+        ticketId: !ticketId ? { equals: null } : ticketId
+      },
+      include: { User: true }
     });
   }
 
   async deleteStakeholder(stakeholderId: string, appId: string) {
     return this.database.stakeholder.delete({
-      where: { id: stakeholderId, appId },
+      where: { id: stakeholderId, appId }
     });
   }
 
@@ -77,16 +115,16 @@ export class StakeholdersService {
       const stakeholders = await this.database.stakeholder.findMany({
         where: {
           id: {
-            in: stakeholdersIds,
+            in: stakeholdersIds
           },
-          appId,
+          appId
         },
         include: {
           User: true,
           App: true,
           Event: true,
-          Ticket: true,
-        },
+          Ticket: true
+        }
       });
 
       for (const stakeholder of stakeholders) {
@@ -96,12 +134,12 @@ export class StakeholdersService {
           {
             appName: stakeholder.App.name,
             eventName: stakeholder.Event?.name,
-            ticketName: stakeholder.Ticket?.name,
+            ticketName: stakeholder.Ticket?.name
           }
         );
         await this.database.stakeholder.update({
           where: { id: stakeholder.id },
-          data: { notifiedAt: new Date() },
+          data: { notifiedAt: new Date() }
         });
       }
       return { success: true };

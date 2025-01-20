@@ -47,9 +47,6 @@ export class StakeholderDto {
   @IsNumber()
   feePercentage: number;
 
-  @IsString()
-  walletAddress: string;
-
   @IsArray()
   @IsEnum(PaymentMethod, { each: true })
   paymentMethods: PaymentMethod[];
