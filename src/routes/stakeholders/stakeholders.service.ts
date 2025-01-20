@@ -96,7 +96,7 @@ export class StakeholdersService {
   }) {
     return this.database.stakeholder.findMany({
       where: {
-				appId,
+        appId,
         eventId: !eventId ? { equals: null } : eventId,
         ticketId: !ticketId ? { equals: null } : ticketId
       },
