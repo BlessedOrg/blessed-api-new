@@ -28,6 +28,7 @@ import { isEmpty, omit } from "lodash";
 import slugify from "slugify";
 import Stripe from "stripe";
 import { v4 as uuidv4 } from "uuid";
+import { PaymentMethod } from "@prisma/client";
 
 @Injectable()
 export class TicketsService {
@@ -121,7 +122,37 @@ export class TicketsService {
       functionName: "decimals"
     });
 
-    if (createTicketDto?.stakeholders && !isEmpty(createTicketDto.stakeholders)) {
+    let stakeholders: any[] = [];
+    if (
+      createTicketDto?.stakeholders &&
+      !isEmpty(createTicketDto.stakeholders)
+    ) {
+      const stakeholdersAccounts =
+        await this.usersService.createManyUserAccounts(
+          {
+            users: createTicketDto.stakeholders.map((sh) => ({
+              email: sh.email
+            }))
+          },
+          appId
+        );
+      const stakeholdersWithUserData = stakeholders.map((sh) => {
+        const user =
+          stakeholdersAccounts.users.find((user) => user.email === sh.email) ||
+          {};
+        return {
+          ...sh,
+          ...user
+        };
+      }) as {
+        id: string;
+        email: string;
+        walletAddress: string;
+        smartWalletAddress: string;
+        feePercentage: number;
+        paymentMethods: PaymentMethod[];
+      }[];
+      stakeholders = stakeholdersWithUserData;
       await this.stakeholdersService.createStakeholder(
         createTicketDto.stakeholders,
         {
@@ -145,7 +176,7 @@ export class TicketsService {
       _maxSupply: createTicketDto.maxSupply,
       _transferable: createTicketDto.transferable,
       _whitelistOnly: createTicketDto.whitelistOnly,
-      _stakeholders: createTicketDto.stakeholders.map((sh) => ({
+      _stakeholders: stakeholders.map((sh) => ({
         wallet: sh.walletAddress,
         feePercentage: sh.feePercentage
       }))
