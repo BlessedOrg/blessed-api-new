@@ -6,7 +6,7 @@ import { Interaction } from "@prisma/client";
 import { ethers } from "ethers";
 import { isEmpty } from "lodash";
 import { envVariables } from "@/common/env-variables";
-import * as util from "node:util";
+import { contractArtifacts, readContract } from "@/lib/viem";
 
 @Injectable()
 export class AnalyticsService {
@@ -51,6 +51,7 @@ export class AnalyticsService {
   }
 
   async getAdminStatistics(callerDevId: string, params: GeneralStatsQueryDto) {
+
     const { getBy, appId, eventId, developerId, ticketId } = params || {};
 
     const devAccount = await this.database.developer.findUnique({
@@ -61,17 +62,30 @@ export class AnalyticsService {
 
     const appsFilter = {
       all: isAdmin ? {} : { developerId: callerDevId },
-      app: { id: appId },
-      developer: { developerId },
-      event: { Events: { some: { id: eventId } } },
-      ticket: { Tickets: { some: { id: ticketId } } }
+      app: appId ? { id: appId } : {},
+      developer: developerId ? { developerId } : {},
+      event: eventId ? { Events: { some: { id: eventId } } } : {},
+      ticket: ticketId ? { Tickets: { some: { id: ticketId } } } : {}
     };
-
+    
     const apps = await this.database.app.findMany({
       where: appsFilter[getBy],
       include: {
-        Tickets: true,
-        Events: true,
+        Tickets: ticketId ? {
+          where: {
+            id: ticketId
+          }
+        } : true,
+        Events: {
+          include: {
+            Tickets: {
+              where: ticketId ? { id: ticketId } : undefined,
+              select: {
+                address: true
+              }
+            }
+          }
+        },
         Users: true
       }
     });
@@ -80,9 +94,9 @@ export class AnalyticsService {
       all: isAdmin ? {} : { developerId: callerDevId },
       app: {
         OR: [
-          { eventId: { in: apps?.[0]?.Events?.map(e => e.id) } },
-          { ticketId: { in: apps?.[0]?.Tickets?.map(t => t.id) } },
-          { userId: { in: apps?.[0]?.Users?.map(u => u.id) } },
+          { eventId: { in: apps?.flatMap(i => i.Events)?.map(e => e.id) } },
+          { ticketId: { in: apps?.flatMap(i => i.Tickets)?.map(t => t.id) } },
+          { userId: { in: apps?.flatMap(i => i.Users)?.map(u => u.id) } },
         ]
       },
       developer: { developerId },
@@ -125,8 +139,42 @@ export class AnalyticsService {
       priceCents: i.value,
       currency: i.currency,
     }));
+    
+    const subgraphFilters = {
+      app: {
+        filter: `(where: {ticket_: {address_in: $addresses}})`,
+        variableDefinition: `($addresses: [String!]!)`,
+        variableName: "addresses",
+        variables: {
+          addresses: apps
+            ?.flatMap(i => i.Tickets)
+            ?.map(i => i.address)
+        }
+      },
+      event: {
+        filter: `(where: {ticket_: {address_in: $addresses}})`,
+        variableDefinition: `($addresses: [String!]!)`,
+        variableName: "addresses",
+        variables: {
+          addresses: apps
+            ?.flatMap(i => i.Events)
+            ?.flatMap(i => i.Tickets)
+            ?.map(i => i.address)
+        }
+      },
+      ticket: {
+        filter: `(where: {ticket_: {address: $ticketAddress}})`,
+        variableDefinition: `($ticketAddress: String!)`,
+        variableName: "ticketAddress",
+        variables: {
+          ticketAddress:  apps
+            ?.flatMap(i => i.Events)
+            ?.flatMap(i => i.Tickets)
+            ?.map(i => i.address)[0]
+        }
+      }
+    }
 
-    // 🏗️ TODO: we need filtering here so we can match GeneralStatsQueryDto params
     const subgraphUrl = `https://gateway.thegraph.com/api/${envVariables.subgraphApiKey}/subgraphs/id/${envVariables.subgraphId}`
     const subgraphDataRes = await fetch(subgraphUrl, {
       method: 'POST',
@@ -135,8 +183,8 @@ export class AnalyticsService {
       },
       body: JSON.stringify({
         query: `
-          query Subgraphs {
-            transfers {
+          query Subgraphs${subgraphFilters?.[getBy]?.variableDefinition ?? ""} {
+            transfers ${subgraphFilters?.[getBy]?.filter ?? ""} {
               price
               stakeholdersShare
               tokenId
@@ -149,39 +197,51 @@ export class AnalyticsService {
           }
         `,
         operationName: 'Subgraphs',
-        variables: {}
+        variables: subgraphFilters?.[getBy]?.variables ?? {}
       })
     });
-
     const subgraphData = await subgraphDataRes.json();
-    console.log("✅ subgraphData.data:");
-    console.log(util.inspect(subgraphData.data, false, null, true));
 
+    const erc20Decimals = await readContract({
+      abi: contractArtifacts["erc20"].abi,
+      address: envVariables.erc20Address,
+      functionName: "decimals"
+    });
 
-    const ticketsPurchaseRevenue = subgraphData.data.transfers.reduce((sum, transfer) => {
+    const ticketsPurchaseIncome = subgraphData.data.transfers.reduce((sum, transfer) => {
       sum.totalPrice += Number(transfer.price);
       sum.totalStakeholdersShare += Number(transfer.stakeholdersShare);
-      return sum;
-    }, { totalPrice: Number(0), totalStakeholdersShare: Number(0) })
+      return {
+        totalPrice: sum.totalPrice / 10 ** Number(erc20Decimals),
+        totalStakeholdersShare: sum.totalStakeholdersShare / 10 ** Number(erc20Decimals)
+      };
+    }, { totalPrice: Number(0), totalStakeholdersShare: Number(0) });
 
     return {
-      eventsTransactions: this.formatTxToChartData(eventContractTransactionsWeiCost, eventContractTransactions),
-      ticketsTransactions: this.formatTxToChartData(ticketContractTransactionsWeiCost, ticketContractTransactions),
-      ticketsDeploy: this.formatTxToChartData(ticketsWeiCost, ticketsDeploy),
-      eventsDeploy: this.formatTxToChartData(eventsWeiCost, eventsDeploy),
-      costsByOperatorType: this.costsByOperatorType(allOnChainInteractions),
-      usersTransactions: this.formatTxToChartData(usersTransactionsWeiCost, usersTransactions),
-      fiatIncome: {
-        stripe: fiatStripeIncome
+      income: {
+        fiat: {
+          stripe: fiatStripeIncome
+        },
+        crypto: {
+          totalIncome: ticketsPurchaseIncome.totalPrice,
+          totalStakeholdersShare: ticketsPurchaseIncome.totalStakeholdersShare,
+        }
       },
-      cryptoIncome: ticketsPurchaseRevenue,
-      count: {
-        all: allOnChainInteractions.length,
-        eventsTransactions: eventContractTransactions.length,
-        ticketsTransactions: ticketContractTransactions.length,
-        ticketsDeploy: ticketsDeploy.length,
-        eventsDeploy: eventsDeploy.length
-      }
+      expense: {
+        eventsTransactions: this.formatTxToChartData(eventContractTransactionsWeiCost, eventContractTransactions),
+        ticketsTransactions: this.formatTxToChartData(ticketContractTransactionsWeiCost, ticketContractTransactions),
+        ticketsDeploy: this.formatTxToChartData(ticketsWeiCost, ticketsDeploy),
+        eventsDeploy: this.formatTxToChartData(eventsWeiCost, eventsDeploy),
+        costsByOperatorType: this.costsByOperatorType(allOnChainInteractions),
+        usersTransactions: this.formatTxToChartData(usersTransactionsWeiCost, usersTransactions),
+        count: {
+          all: allOnChainInteractions.length,
+          eventsTransactions: eventContractTransactions.length,
+          ticketsTransactions: ticketContractTransactions.length,
+          ticketsDeploy: ticketsDeploy.length,
+          eventsDeploy: eventsDeploy.length
+        }
+      },
     };
   }
 
