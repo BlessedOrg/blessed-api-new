@@ -1,12 +1,12 @@
+import { envVariables } from "@/common/env-variables";
 import { DatabaseService } from "@/common/services/database/database.service";
+import { contractArtifacts, readContract } from "@/lib/viem";
 import { GeneralStatsQueryDto } from "@/routes/analytics/dto/general-stats-query.dto";
 import { shortenWalletAddress } from "@/utils/shortenWalletAddress";
 import { Injectable } from "@nestjs/common";
 import { Interaction } from "@prisma/client";
 import { ethers } from "ethers";
 import { isEmpty } from "lodash";
-import { envVariables } from "@/common/env-variables";
-import { contractArtifacts, readContract } from "@/lib/viem";
 
 @Injectable()
 export class AnalyticsService {
@@ -208,7 +208,7 @@ export class AnalyticsService {
       functionName: "decimals"
     });
 
-    const ticketsPurchaseIncome = subgraphData.data.transfers.reduce((sum, transfer) => {
+    const ticketsPurchaseIncome = subgraphData?.data?.transfers?.reduce((sum, transfer) => {
       sum.totalPrice += Number(transfer.price);
       sum.totalStakeholdersShare += Number(transfer.stakeholdersShare);
       return {
@@ -223,8 +223,8 @@ export class AnalyticsService {
           stripe: fiatStripeIncome
         },
         crypto: {
-          totalIncome: ticketsPurchaseIncome.totalPrice,
-          totalStakeholdersShare: ticketsPurchaseIncome.totalStakeholdersShare,
+          totalIncome: ticketsPurchaseIncome?.totalPrice || 0, 
+          totalStakeholdersShare: ticketsPurchaseIncome?.totalStakeholdersShare || 0,
         }
       },
       expense: {
