@@ -361,33 +361,36 @@ export class TicketsService {
       }
     });
     let formattedTickets = [];
-    for (const ticket of tickets) {
-      const erc20Decimals = await readContract({
-        abi: contractArtifacts["erc20"].abi,
-        address: envVariables.erc20Address,
-        functionName: "decimals"
-      });
+		
+    const erc20Decimals = await readContract({
+      abi: contractArtifacts["erc20"].abi,
+      address: envVariables.erc20Address, 
+      functionName: "decimals"
+    });
 
-      const ticketSupply = await readTicketContract(
-        "currentSupply",
-        ticket.address
-      );
-      const maxSupply = await readTicketContract("maxSupply", ticket.address);
-      const price = await readTicketContract("price", ticket.address);
-      const ticketOwners = await this.getTicketHolders(ticket.address, {
-        start: 0,
-        pageSize: Number(ticketSupply)
-      });
+    const formattedTicketsPromises = tickets.map(async (ticket) => {
+      const [ticketSupply, maxSupply, price, ticketOwners] = await Promise.all([
+        readTicketContract("currentSupply", ticket.address),
+        readTicketContract("maxSupply", ticket.address),
+        readTicketContract("price", ticket.address),
+        this.getTicketHolders(ticket.address, {
+          start: 0,
+          pageSize: Number(await readTicketContract("currentSupply", ticket.address))
+        })
+      ]);
+
       const denominatedPrice = Number(price) / 10 ** Number(erc20Decimals);
 
-      formattedTickets.push({
+      return {
         ...ticket,
         ticketSupply: Number(ticketSupply),
-        maxSupply: Number(maxSupply),
+        maxSupply: Number(maxSupply), 
         price: denominatedPrice,
         ticketOwners
-      });
-    }
+      };
+    });
+
+    formattedTickets = await Promise.all(formattedTicketsPromises);
     return formattedTickets;
   }
 
