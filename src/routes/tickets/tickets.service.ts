@@ -29,6 +29,7 @@ import slugify from "slugify";
 import Stripe from "stripe";
 import { v4 as uuidv4 } from "uuid";
 import { PaymentMethod } from "@prisma/client";
+import { fetchSubgraphData } from "@/lib/graph";
 
 @Injectable()
 export class TicketsService {
@@ -385,10 +386,7 @@ export class TicketsService {
       );
       const maxSupply = await readTicketContract("maxSupply", ticket.address);
       const price = await readTicketContract("price", ticket.address);
-      const ticketOwners = await this.getTicketHolders(ticket.address, {
-        start: 0,
-        pageSize: Number(ticketSupply)
-      });
+      const ticketOwners = await this.getTicketHolders([ticket.address]);
       const denominatedPrice = Number(price) / 10 ** Number(erc20Decimals);
 
       formattedTickets.push({
@@ -573,44 +571,9 @@ export class TicketsService {
     return this.ticketDistributeService.distribute(distributeDto, params);
   }
 
-  async getTicketOwners(
-    ticketContractAddress: string,
-    pagination: { start?: number; pageSize?: number } = {
-      start: 0,
-      pageSize: 100
-    }
-  ) {
+  async getTicketOwners(ticketContractAddresses: PrefixedHexString[]) {
     try {
-      const lowercaseHolders = await this.getTicketHolders(
-        ticketContractAddress,
-        pagination
-      );
-
-      const owners = await this.database.user.findMany({
-        where: {
-          smartWalletAddress: {
-            in: lowercaseHolders
-          }
-        },
-        select: {
-          email: true,
-          smartWalletAddress: true,
-          walletAddress: true,
-          id: true
-        }
-      });
-
-      const foundAddresses = new Set(
-        owners.map((owner) => owner.smartWalletAddress.toLowerCase())
-      );
-      const externalAddresses = lowercaseHolders
-        .filter((address) => !foundAddresses.has(address))
-        .map((address) => ({ walletAddress: address, external: true }));
-
-      return {
-        owners,
-        externalAddresses
-      };
+      return this.getTicketHolders(ticketContractAddresses);
     } catch (e) {
       throw new CustomHttpException(e);
     }
@@ -967,40 +930,26 @@ export class TicketsService {
     return this.eventsService.letUserIntoEvent(bouncerId, decodedCodeData);
   }
 
-  private async getTicketHolders(
-    ticketContractAddress: string,
-    pagination: { start?: number; pageSize?: number } = {
-      start: 0,
-      pageSize: 100
-    }
-  ) {
-    const pageSize = pagination.pageSize || 100;
-    let allHolders = [];
-    let start = pagination.start || 0;
-    try {
-      while (true) {
-        try {
-          const holders: any = await readContract({
-            abi: contractArtifacts["tickets"].abi,
-            address: ticketContractAddress,
-            functionName: "getTicketHolders",
-            args: [start, pageSize]
-          });
-          allHolders = allHolders.concat(holders);
-          start += holders.length;
-
-          if (holders.length < pageSize) {
-            break;
+  private async getTicketHolders(ticketContractAddresses: PrefixedHexString[]) {
+    const subgraphRequestBody = {
+      query: `
+        query TicketHolders($ticketContractAddresses: [String!]!) {
+          ticketHolders(
+            where: {ticket_: {address_in: $ticketContractAddresses}}
+            orderBy: ticket__createdAt
+            orderDirection: desc
+          ) {
+            ownedTokenIds
+            address
           }
-        } catch (error) {
-          console.error("Error fetching ticket holders:", error);
-          break;
         }
+      `,
+      operationName: "TicketHolders",
+      variables: {
+        ticketContractAddresses
       }
-      return allHolders.map((a: string) => a.toLowerCase());
-    } catch (error) {
-      console.error("Error fetching ticket holders:", error);
-      return [];
     }
+    const { data } = await fetchSubgraphData(subgraphRequestBody);
+    return data.ticketHolders;
   }
 }

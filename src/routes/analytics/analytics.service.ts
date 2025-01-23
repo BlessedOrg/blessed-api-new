@@ -7,6 +7,7 @@ import { Injectable } from "@nestjs/common";
 import { Interaction } from "@prisma/client";
 import { ethers } from "ethers";
 import { isEmpty } from "lodash";
+import { fetchSubgraphData } from "@/lib/graph";
 
 @Injectable()
 export class AnalyticsService {
@@ -67,7 +68,7 @@ export class AnalyticsService {
       event: eventId ? { Events: { some: { id: eventId } } } : {},
       ticket: ticketId ? { Tickets: { some: { id: ticketId } } } : {}
     };
-    
+
     const apps = await this.database.app.findMany({
       where: appsFilter[getBy],
       include: {
@@ -96,7 +97,7 @@ export class AnalyticsService {
         OR: [
           { eventId: { in: apps?.flatMap(i => i.Events)?.map(e => e.id) } },
           { ticketId: { in: apps?.flatMap(i => i.Tickets)?.map(t => t.id) } },
-          { userId: { in: apps?.flatMap(i => i.Users)?.map(u => u.id) } },
+          { userId: { in: apps?.flatMap(i => i.Users)?.map(u => u.id) } }
         ]
       },
       developer: { developerId },
@@ -107,7 +108,6 @@ export class AnalyticsService {
     const allOnChainInteractions = await this.database.interaction.findMany({
       where: interactionsFilter[getBy]
     });
-
 
     const eventsDeploy = allOnChainInteractions.filter(i => i.method.includes("deployEventContract"));
     const eventsWeiCost = eventsDeploy.reduce((a: any, b) => {
@@ -137,9 +137,9 @@ export class AnalyticsService {
     const fiatStripeIncomeRecords = allOnChainInteractions.filter(i => i.method.includes("fiat-stripe"));
     const fiatStripeIncome = fiatStripeIncomeRecords.map(i => ({
       priceCents: i.value,
-      currency: i.currency,
+      currency: i.currency
     }));
-    
+
     const subgraphFilters = {
       app: {
         filter: `(where: {ticket_: {address_in: $addresses}})`,
@@ -167,40 +167,33 @@ export class AnalyticsService {
         variableDefinition: `($ticketAddress: String!)`,
         variableName: "ticketAddress",
         variables: {
-          ticketAddress:  apps
+          ticketAddress: apps
             ?.flatMap(i => i.Events)
             ?.flatMap(i => i.Tickets)
             ?.map(i => i.address)[0]
         }
       }
-    }
+    };
 
-    const subgraphUrl = `https://gateway.thegraph.com/api/${envVariables.subgraphApiKey}/subgraphs/id/${envVariables.subgraphId}`
-    const subgraphDataRes = await fetch(subgraphUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        query: `
-          query Subgraphs${subgraphFilters?.[getBy]?.variableDefinition ?? ""} {
-            transfers ${subgraphFilters?.[getBy]?.filter ?? ""} {
-              price
-              stakeholdersShare
-              tokenId
-              to
-              ticket {
-                address
-                ownerSmartWallet
-              }
+    const subgraphRequestBody = {
+      query: `
+        query Transfers${subgraphFilters?.[getBy]?.variableDefinition ?? ""} {
+          transfers ${subgraphFilters?.[getBy]?.filter ?? ""} {
+            price
+            stakeholdersShare
+            tokenId
+            to
+            ticket {
+              address
+              ownerSmartWallet
             }
           }
-        `,
-        operationName: 'Subgraphs',
-        variables: subgraphFilters?.[getBy]?.variables ?? {}
-      })
-    });
-    const subgraphData = await subgraphDataRes.json();
+        }
+      `,
+      operationName: "Transfers",
+      variables: subgraphFilters?.[getBy]?.variables ?? {}
+    }
+    const subgraphData = await fetchSubgraphData(subgraphRequestBody);
 
     const erc20Decimals = await readContract({
       abi: contractArtifacts["erc20"].abi,
@@ -223,8 +216,8 @@ export class AnalyticsService {
           stripe: fiatStripeIncome
         },
         crypto: {
-          totalIncome: ticketsPurchaseIncome?.totalPrice || 0, 
-          totalStakeholdersShare: ticketsPurchaseIncome?.totalStakeholdersShare || 0,
+          totalIncome: ticketsPurchaseIncome?.totalPrice ?? 0,
+          totalStakeholdersShare: ticketsPurchaseIncome?.totalStakeholdersShare ?? 0
         }
       },
       expense: {
@@ -241,7 +234,7 @@ export class AnalyticsService {
           ticketsDeploy: ticketsDeploy.length,
           eventsDeploy: eventsDeploy.length
         }
-      },
+      }
     };
   }
 

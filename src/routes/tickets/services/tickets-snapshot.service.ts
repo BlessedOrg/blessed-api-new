@@ -2,10 +2,7 @@ import { CustomHttpException } from "@/common/exceptions/custom-error-exception"
 import { DatabaseService } from "@/common/services/database/database.service";
 import { contractArtifacts, readContract } from "@/lib/viem";
 import { EventsService } from "@/routes/events/events.service";
-import {
-	AirdropDto,
-	SnapshotDto
-} from "@/routes/tickets/dto/create-ticket.dto";
+import { AirdropDto, SnapshotDto } from "@/routes/tickets/dto/create-ticket.dto";
 import { TicketsService } from "@/routes/tickets/tickets.service";
 import { forwardRef, Inject, Injectable } from "@nestjs/common";
 import { Ticket } from "@prisma/client";
@@ -28,14 +25,8 @@ export class TicketsSnapshotService {
 
       const [eligibleUsersForTicketHold, eligibleUsersForEntrance] =
         await Promise.all([
-          this.getEligibleUsersForTicketHold(
-            tickets,
-            snapshotDto.isEachTicketRequirementMet
-          ),
-          this.getEligibleUsersForEntrances(
-            entranceTickets,
-            snapshotDto.isEachTicketRequirementMet
-          )
+          this.getEligibleUsersForTicketHold(tickets),
+          this.getEligibleUsersForEntrances(entranceTickets)
         ]);
 
       const eligibleUsersForTicketHoldMap = new Map(
@@ -147,67 +138,11 @@ export class TicketsSnapshotService {
 
     return { tickets, entranceTickets };
   }
-  private async getEligibleUsersForTicketHold(
-    tickets: Ticket[],
-    isEachTicketRequirementMet: boolean
-  ) {
-    const usersMap = new Map<string, { user: any; count: number }>();
-
-    await Promise.all(
-      tickets.map(async (ticket) => {
-        try {
-          const totalSupply = await this.getTotalSupply(
-            ticket.address as PrefixedHexString
-          );
-          const { owners, externalAddresses } =
-            await this.ticketsService.getTicketOwners(ticket.address, {
-              start: 0,
-              pageSize: totalSupply
-            });
-
-          owners.forEach((owner) => {
-            const key = owner.smartWalletAddress;
-            if (!usersMap.has(key)) {
-              usersMap.set(key, { user: owner, count: 0 });
-            }
-            usersMap.get(key).count += 1;
-          });
-
-          externalAddresses.forEach((external) => {
-            const key = external.walletAddress;
-            if (!usersMap.has(key)) {
-              usersMap.set(key, { user: external, count: 0 });
-            }
-            usersMap.get(key).count += 1;
-          });
-        } catch (e) {
-          throw new CustomHttpException(e);
-        }
-      })
-    );
-
-    const totalTickets = tickets.length;
-    const eligibleUsersForAllTickets = Array.from(usersMap.values())
-      .filter(({ count }) =>
-        isEachTicketRequirementMet ? count === totalTickets : true
-      )
-      .map(({ user }) => user);
-
-    const users = eligibleUsersForAllTickets.filter((user) => !user?.external);
-    const external = eligibleUsersForAllTickets.filter(
-      (user) => user?.external
-    );
-
-    return {
-      externalAddresses: external,
-      owners: users
-    };
+  private async getEligibleUsersForTicketHold(tickets: Ticket[]) {
+    return await this.ticketsService.getTicketOwners(tickets.map(t => t.address));
   }
 
-  private async getEligibleUsersForEntrances(
-    tickets: Ticket[],
-    isEachTicketRequirementMet: boolean
-  ) {
+  private async getEligibleUsersForEntrances(tickets: Ticket[]) {
     return Promise.all(
       tickets.map(async (ticket) => {
         try {
