@@ -348,18 +348,10 @@ export class TicketsService {
   }
 
   async getAllEventTicketsWithOnchainData(appId: string, eventId: string) {
-    const readTicketContract = (
-      functionName: string,
-      address: string,
-      args: [] | null = null
-    ) => {
-      return readContract({
-        abi: contractArtifacts["tickets"].abi,
-        address,
-        functionName: functionName,
-        args: args
-      });
+    const readTicketContract = (functionName: string, address: string) => {
+      return readContract({ abi: contractArtifacts["tickets"].abi, address, functionName: functionName });
     };
+
     const tickets = await this.database.ticket.findMany({
       where: {
         eventId,
@@ -372,32 +364,41 @@ export class TicketsService {
         Discounts: true
       }
     });
-    let formattedTickets = [];
-    for (const ticket of tickets) {
-      const erc20Decimals = await readContract({
-        abi: contractArtifacts["erc20"].abi,
-        address: envVariables.erc20Address,
-        functionName: "decimals"
-      });
 
-      const ticketSupply = await readTicketContract(
-        "currentSupply",
-        ticket.address
-      );
-      const maxSupply = await readTicketContract("maxSupply", ticket.address);
-      const price = await readTicketContract("price", ticket.address);
-      const ticketOwners = await this.getTicketHolders([ticket.address]);
+    const erc20Decimals = await readContract({
+      abi: contractArtifacts["erc20"].abi,
+      address: envVariables.erc20Address,
+      functionName: "decimals"
+    });
+
+    const ticketAddresses = tickets.map(ticket => ticket.address);
+    const ticketHoldersData = await this.getTicketHolders(ticketAddresses);
+    const ticketHoldersMap = Object.fromEntries(ticketAddresses.map(address => [address, []]));
+
+    ticketHoldersData.forEach(holder => {
+      const ticketAddress = holder.ticket.address;
+      ticketHoldersMap[ticketAddress].push(holder);
+    });
+
+    const formattedTicketsPromises = tickets.map(async (ticket) => {
+      const [ticketSupply, maxSupply, price] = await Promise.all([
+        readTicketContract("currentSupply", ticket.address),
+        readTicketContract("maxSupply", ticket.address),
+        readTicketContract("price", ticket.address)
+      ]);
+
       const denominatedPrice = Number(price) / 10 ** Number(erc20Decimals);
 
-      formattedTickets.push({
+      return {
         ...ticket,
         ticketSupply: Number(ticketSupply),
         maxSupply: Number(maxSupply),
         price: denominatedPrice,
-        ticketOwners
-      });
-    }
-    return formattedTickets;
+        ticketOwners: ticketHoldersMap[ticket.address] || []
+      };
+    });
+
+    return Promise.all(formattedTicketsPromises);
   }
 
   async snapshot(snapshotDto: SnapshotDto) {
@@ -941,6 +942,9 @@ export class TicketsService {
           ) {
             ownedTokenIds
             address
+            ticket {
+              address
+            }
           }
         }
       `,
