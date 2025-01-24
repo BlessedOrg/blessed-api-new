@@ -103,7 +103,7 @@ export const deployContract = async (contractName, args) => {
   }) as any;
 
   if (receipt?.contractAddress) {
-    contractAddr = getAddress(receipt.contractAddress);
+    contractAddr = getAddress(receipt.contractAddress).toLowerCase();
   }
 
   console.log("⛓️ Contract Explorer URL: ", getExplorerUrl(contractAddr));

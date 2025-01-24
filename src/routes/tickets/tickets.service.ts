@@ -99,11 +99,11 @@ export class TicketsService {
     });
 
     const { metadataUrl, metadataImageUrl, totalWeiPrice } = await uploadMetadata({
-        name: createTicketDto.name,
-        symbol: createTicketDto.symbol,
-        description: createTicketDto.description,
-        image: createTicketDto?.imageUrl || logoBase64
-      });
+      name: createTicketDto.name,
+      symbol: createTicketDto.symbol,
+      description: createTicketDto.description,
+      image: createTicketDto?.imageUrl || logoBase64
+    });
 
     this.eventEmitter.emit("interaction.create", {
       method: "uploadMetadata-ticket",
@@ -200,10 +200,12 @@ export class TicketsService {
       .map((log) => (log as any)?.args);
 
     const contract = {
-      contractAddr: newTicketDeployedEventArgs.find(args => args.ownerSmartWallet === ownerSmartWallet)?.ticketAddress,
+      contractAddr: newTicketDeployedEventArgs
+        .find(args => args.ownerSmartWallet === ownerSmartWallet)?.ticketAddress
+        .toLowerCase(),
       gasWeiPrice: deployTicketResult.gasWeiPrice,
-      hash: deployTicketResult.transactionHash,
-    }
+      hash: deployTicketResult.transactionHash
+    };
 
     this.eventEmitter.emit("ticket.create", {
       eventAddress: ticket.Event.address,
@@ -375,18 +377,14 @@ export class TicketsService {
       functionName: "decimals"
     });
 
-    const ticketAddresses = tickets.map((ticket) =>
-      ticket.address.toLowerCase()
-    );
-    const ticketHoldersData =
-      await this.getTicketHoldersByTicketContractAddress(ticketAddresses);
+    const ticketAddresses = tickets.map(t => t.address);
+    const ticketHoldersData = await this.getTicketHolders(ticketAddresses);
     const ticketHoldersMap = Object.fromEntries(
-      ticketAddresses.map((address) => [address.toLowerCase(), []])
+      ticketAddresses.map(address => [address, []])
     );
 
-    ticketHoldersData.forEach((holder) => {
-      const ticketAddress = holder.ticket.address.toLowerCase();
-      ticketHoldersMap[ticketAddress]?.push(holder);
+    ticketHoldersData.forEach(holder => {
+      ticketHoldersMap[holder.ticket.address]?.push(holder);
     });
 
     const formattedTicketsPromises = tickets.map(async (ticket) => {
@@ -403,7 +401,7 @@ export class TicketsService {
         ticketSupply: Number(ticketSupply),
         maxSupply: Number(maxSupply),
         price: denominatedPrice,
-        ticketOwners: ticketHoldersMap[ticket.address.toLowerCase()] || []
+        ticketOwners: ticketHoldersMap[ticket.address] || []
       };
     });
 
@@ -583,9 +581,7 @@ export class TicketsService {
 
   async getTicketOwners(ticketContractAddresses: PrefixedHexString[]) {
     try {
-      return this.getTicketHoldersByTicketContractAddress(
-        ticketContractAddresses
-      );
+      return this.getTicketHolders(ticketContractAddresses);
     } catch (e) {
       throw new CustomHttpException(e);
     }
@@ -613,10 +609,7 @@ export class TicketsService {
         throw new Error("User does not exist");
       }
 
-      const result = await this.getOwnedTokensByUserAddress(
-        user.smartWalletAddress,
-        ticketContractAddress.toLowerCase()
-      );
+      const result = await this.getTicketHolders([ticketContractAddress], user.smartWalletAddress);
       return {
         user: {
           hasTicket: !isEmpty(result?.ownedTokenIds),
@@ -796,11 +789,12 @@ export class TicketsService {
     let ownedTickets = [];
 
     try {
-      const ownedTokens = await this.getOwnedTokensByUserAddress(
-        user.smartWalletAddress.toLowerCase(),
-        user.Apps.flatMap((app) => app.Events).flatMap((event) =>
-          event.Tickets.map((ticket) => ticket.address.toLowerCase())
-        )
+      const ownedTokens = await this.getTicketHolders(
+        user.Apps
+          .flatMap((app) => app.Events)
+          .flatMap((event) => event.Tickets.map((ticket) => ticket.address)
+          ),
+        user.smartWalletAddress
       );
       for (const event of user.Apps.flatMap((app) => app.Events)) {
         const { Tickets, ...eventData } = event;
@@ -811,7 +805,7 @@ export class TicketsService {
           const { Event, ...ticketData } = ticket;
 
           const ownedTokenIds = ownedTokens
-            .find((token) => token.ticket.id === ticket.address.toLowerCase())
+            .find((token) => token.ticket.id === ticket.address)
             ?.ownedTokenIds.map((i) => Number(i));
 
           let usedTokenIds = [];
@@ -832,7 +826,7 @@ export class TicketsService {
             }
             hasEventEntry =
               usedToken?.wallet?.toLowerCase() ===
-              user.smartWalletAddress.toLowerCase();
+              user.smartWalletAddress;
           }
           if (!!ownedTokenIds.length) {
             ownedTicketsOfEvent.push({
@@ -873,16 +867,16 @@ export class TicketsService {
     if (!ticket) {
       throw new HttpException("Ticket not found", 404);
     }
-    const ownedTokensRes = await this.getOwnedTokensByUserAddress(
-      userSmartWalletAddress,
-      ticket.address.toLowerCase()
+    const ownedTokensRes = await this.getTicketHolders(
+      [ticket.address],
+      userSmartWalletAddress
     );
 
-    const ownedTokens =
-      ownedTokensRes?.[0]?.ownedTokenIds?.map((i: BigInt) => Number(i)) || [];
+    const ownedTokens = ownedTokensRes?.[0]?.ownedTokenIds?.map((i: BigInt) => Number(i)) || [];
     if (!ownedTokens.includes(tokenId)) {
       throw new HttpException("User does not own this token", 403);
     }
+
     return {
       code: encryptQrCodePayload(
         {
@@ -941,56 +935,36 @@ export class TicketsService {
     return this.eventsService.letUserIntoEvent(bouncerId, decodedCodeData);
   }
 
-  private async getTicketHoldersByTicketContractAddress(
-    ticketContractAddresses: PrefixedHexString[]
+  private async getTicketHolders(
+    ticketContractAddresses: PrefixedHexString[],
+    userAddress?: string
   ) {
     const subgraphRequestBody = {
       query: `
-        query TicketHolders($ticketContractAddresses: [String!]!) {
-          ticketHolders(
-            where: {ticket_: {address_in: $ticketContractAddresses}}
-            orderBy: ticket__createdAt
-            orderDirection: desc
-          ) {
-            ownedTokenIds
+      query TicketHolders($ticketContractAddresses: [String!]!, $userAddress: String) {
+        ticketHolders(
+          where: {
+            ticket_: {address_in: $ticketContractAddresses}
+            ${userAddress ? ", address: $userAddress" : ""}
+          }
+          orderBy: ticket__createdAt
+          orderDirection: desc
+        ) {
+          ownedTokenIds
+          address
+          ticket {
             address
-            ticket {
-              address
-            }
           }
         }
-      `,
+      }
+    `,
       operationName: "TicketHolders",
       variables: {
-        ticketContractAddresses
+        ticketContractAddresses,
+        userAddress
       }
     };
-    const { data } = await fetchSubgraphData(subgraphRequestBody);
-    return data.ticketHolders;
-  }
 
-  private async getOwnedTokensByUserAddress(
-    userAddress: string,
-    ticketContractAddresses: PrefixedHexString[] | PrefixedHexString
-  ) {
-    const subgraphRequestBody = {
-      query: `
-{
-          ticketHolders(where:{address:"${userAddress}",ticket_:{id_in: [${Array.isArray(ticketContractAddresses) ? ticketContractAddresses.map((address) => `"${address}"`).join(",") : `"${ticketContractAddresses}"`}]}}) {
-    id
-    ticket {
-      id
-    }
-    address
-    ownedTokenIds
-  }
-        }
-      `,
-      operationName: "TicketHolders",
-      variables: {
-        ticketContractAddresses
-      }
-    };
     const { data } = await fetchSubgraphData(subgraphRequestBody);
     return data.ticketHolders;
   }

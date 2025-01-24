@@ -234,7 +234,7 @@ export class DevelopersService {
     const data = { [identifierType]: identifier };
     const createdDeveloperAccount: any = await this.database.developer.create({ data });
     try {
-      const { data: capsuleData } = await createCapsuleAccount(
+      const capsuleData = await createCapsuleAccount(
         createdDeveloperAccount.id,
         identifier,
         "developer"
