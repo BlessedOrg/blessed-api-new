@@ -4,10 +4,10 @@ import { CustomHttpException } from "@/common/exceptions/custom-error-exception"
 import { DatabaseService } from "@/common/services/database/database.service";
 import { biconomyMetaTx } from "@/lib/biconomy";
 import { getSmartWalletForCapsuleWallet } from "@/lib/capsule";
+import { fetchSubgraphData } from "@/lib/graph";
 import { uploadMetadata } from "@/lib/irys";
 import { stripe } from "@/lib/stripe";
 import { contractArtifacts, getExplorerUrl, readContract, writeContract } from "@/lib/viem";
-import { parseEventLogs } from "viem";
 import { EventsService } from "@/routes/events/events.service";
 import { StakeholdersService } from "@/routes/stakeholders/stakeholders.service";
 import { CreateTicketDto, SnapshotDto } from "@/routes/tickets/dto/create-ticket.dto";
@@ -23,13 +23,13 @@ import { decryptQrCodePayload, encryptQrCodePayload } from "@/utils/eventKey";
 import { logoBase64 } from "@/utils/logo_base64";
 import { BadRequestException, forwardRef, HttpException, Inject, Injectable } from "@nestjs/common";
 import { EventEmitter2 } from "@nestjs/event-emitter";
+import { PaymentMethod } from "@prisma/client";
 import { PrefixedHexString } from "ethereumjs-util";
 import { isEmpty, omit } from "lodash";
 import slugify from "slugify";
 import Stripe from "stripe";
 import { v4 as uuidv4 } from "uuid";
-import { PaymentMethod } from "@prisma/client";
-import { fetchSubgraphData } from "@/lib/graph";
+import { parseEventLogs } from "viem";
 
 @Injectable()
 export class TicketsService {
@@ -371,13 +371,13 @@ export class TicketsService {
       functionName: "decimals"
     });
 
-    const ticketAddresses = tickets.map(ticket => ticket.address);
+    const ticketAddresses = tickets.map(ticket => ticket.address.toLowerCase());
     const ticketHoldersData = await this.getTicketHolders(ticketAddresses);
-    const ticketHoldersMap = Object.fromEntries(ticketAddresses.map(address => [address, []]));
+    const ticketHoldersMap = Object.fromEntries(ticketAddresses.map(address => [address.toLowerCase(), []]));
 
     ticketHoldersData.forEach(holder => {
-      const ticketAddress = holder.ticket.address;
-      ticketHoldersMap[ticketAddress].push(holder);
+      const ticketAddress = holder.ticket.address.toLowerCase();
+      ticketHoldersMap[ticketAddress]?.push(holder);
     });
 
     const formattedTicketsPromises = tickets.map(async (ticket) => {
@@ -394,7 +394,7 @@ export class TicketsService {
         ticketSupply: Number(ticketSupply),
         maxSupply: Number(maxSupply),
         price: denominatedPrice,
-        ticketOwners: ticketHoldersMap[ticket.address] || []
+        ticketOwners: ticketHoldersMap[ticket.address.toLowerCase()] || []
       };
     });
 
