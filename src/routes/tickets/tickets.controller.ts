@@ -78,7 +78,7 @@ export class TicketsController {
   @UseTicketIdInterceptor()
   @Get(":ticketId/owners")
   getTicketOwners(@Req() req: RequestWithApiKey & TicketValidate) {
-    return this.ticketsService.getTicketOwners(req.ticketContractAddress);
+    return this.ticketsService.getTicketOwners([req.ticketContractAddress]);
   }
 
   @UseInterceptors(SnapshotInterceptor)

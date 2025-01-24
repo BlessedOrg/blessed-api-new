@@ -91,9 +91,9 @@ export class UsersService {
           ...creationPayload
         }
       });
-      const { data } = await createCapsuleAccount(createdUserAccount.id, email, "user");
+      const capsuleData = await createCapsuleAccount(createdUserAccount.id, email, "user");
 
-      const { capsuleTokenVaultKey, walletAddress, smartWalletAddress } = data;
+      const { capsuleTokenVaultKey, walletAddress, smartWalletAddress } = capsuleData;
       await this.database.user.update({
         where: { id: createdUserAccount.id },
         data: {
@@ -176,13 +176,13 @@ export class UsersService {
 
       const capsuleAccounts = [];
       for (const account of result.newAccounts) {
-        const { data } = await createCapsuleAccount(account.id, account.email, "user");
-        if (data) {
+        const capsuleData = await createCapsuleAccount(account.id, account.email, "user");
+        if (capsuleData) {
           capsuleAccounts.push({
             email: account.email,
-            walletAddress: data.walletAddress,
-            smartWalletAddress: data.smartWalletAddress,
-            capsuleTokenVaultKey: data.capsuleTokenVaultKey
+            walletAddress: capsuleData.walletAddress,
+            smartWalletAddress: capsuleData.smartWalletAddress,
+            capsuleTokenVaultKey: capsuleData.capsuleTokenVaultKey
           });
         }
       }

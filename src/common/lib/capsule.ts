@@ -44,12 +44,11 @@ export const createCapsuleAccount = async (accountId: string, identifier: string
       const smartWallet = await createSmartWallet(ethersSigner);
       const smartWalletAddress = await smartWallet.getAddress();
       const vaultItem = await createVaultCapsuleKeyItem(userShare, address, email, type);
-      const data = {
+      return {
         capsuleTokenVaultKey: vaultItem.id,
         walletAddress: address?.toLowerCase(),
         smartWalletAddress: smartWalletAddress?.toLowerCase()
       };
-      return { data };
     } catch (e) {
       throw new Error(e.message);
     }
