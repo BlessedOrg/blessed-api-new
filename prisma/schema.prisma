@@ -37,26 +37,27 @@ enum Role {
 }
 
 model App {
-  id           String        @id @default(cuid())
-  slug         String        @unique
-  name         String        @unique
-  description  String?
-  imageUrl     String?
-  domainUrl    String?
-  colors       Json?
-  Tickets      Ticket[]
-  Developer    Developer     @relation(fields: [developerId], references: [id], onDelete: Cascade)
-  developerId  String
-  Users        User[]
-  ApiTokens    ApiToken[]
-  Events       Event[]
-  Campaigns    Campaign[]
-  Audiences    Audience[]
-  Stakeholders Stakeholder[]
-  Discounts    Discount[]
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  deletedAt    DateTime?
+  id                 String        @id @default(cuid())
+  slug               String        @unique
+  name               String        @unique
+  description        String?
+  imageUrl           String?
+  domainUrl          String?
+  colors             Json?
+  stripeKeysVaultKey String?
+  Tickets            Ticket[]
+  Developer          Developer     @relation(fields: [developerId], references: [id], onDelete: Cascade)
+  developerId        String
+  Users              User[]
+  ApiTokens          ApiToken[]
+  Events             Event[]
+  Campaigns          Campaign[]
+  Audiences          Audience[]
+  Stakeholders       Stakeholder[]
+  Discounts          Discount[]
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  deletedAt          DateTime?
 }
 
 model User {
