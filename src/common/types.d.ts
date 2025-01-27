@@ -8,7 +8,7 @@ declare global {
     canActivate(context: ExecutionContext): Promise<boolean>;
   }
 
-  type VaultItemType = "accessToken" | "capsuleKey" | "apiKey";
+  type VaultItemType = "accessToken" | "capsuleKey" | "apiKey" | "stripeKeys";
   type AccountType = "user" | "developer";
 
   //JWT's payload

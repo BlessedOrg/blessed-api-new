@@ -1,8 +1,9 @@
-import { Body, Controller, Get, Post, Req } from "@nestjs/common";
+import { Body, Controller, Get, Post, Put, Delete, Req, Param } from "@nestjs/common";
 import { ApplicationPrivateService, ApplicationService } from "./application.service";
 import { RequireApiKey, RequireDeveloperAuth } from "@/common/decorators/auth.decorator";
 import { CreateApplicationDto } from "@/routes/application/dto/create-application.dto";
 import { UseAppIdInterceptor } from "@/common/decorators/use-app-id.decorator";
+import { StripeKeysDto } from "@/routes/application/dto/stripe-keys.dto";
 
 @RequireApiKey()
 @Controller("application")
@@ -13,6 +14,7 @@ export class ApplicationController {
   getAppOwnerData(@Req() req: RequestWithApiKey) {
     return this.applicationService.getAppOwnerData(req.developerId);
   }
+
   @Get()
   getAppDetails(@Req() req: RequestWithApiKey) {
     return this.applicationService.getAppDetails(req.appId);
@@ -54,5 +56,45 @@ export class ApplicationPrivateController {
   getAllDeveloperApps(@Req() req: RequestWithDevAccessToken) {
     const developerId = req.developerId;
     return this.applicationsService.getAllDeveloperApps(developerId);
+  }
+
+  @UseAppIdInterceptor()
+  @Post(":app/stripe-keys")
+  setStripeKeys(
+    @Req() req: RequestWithDevAccessToken & AppValidate,
+    @Body() stripeKeysDto: StripeKeysDto
+  ) {
+    return this.applicationsService.setStripeKeys(
+      req.appId,
+      stripeKeysDto.stripeSecretKey,
+      stripeKeysDto.stripeWebhookSecret
+    );
+  }
+
+  @UseAppIdInterceptor()
+  @Get(":app/stripe-keys")
+  getStripeKeys(@Req() req: RequestWithDevAccessToken & AppValidate) {
+    return this.applicationsService.getStripeKeys(req.appId);
+  }
+
+  @UseAppIdInterceptor()
+  @Put(":app/stripe-keys")
+  updateStripeKeys(
+    @Req() req: RequestWithDevAccessToken & AppValidate,
+    @Body() stripeKeysDto: StripeKeysDto
+  ) {
+    return this.applicationsService.updateStripeKeys(
+      req.appId,
+      stripeKeysDto.stripeSecretKey,
+      stripeKeysDto.stripeWebhookSecret
+    );
+  }
+
+  @UseAppIdInterceptor()
+  @Delete(":app/stripe-keys")
+  deleteStripeKeys(
+    @Req() req: RequestWithDevAccessToken & AppValidate,
+  ) {
+    return this.applicationsService.deleteStripeKeys(req.appId);
   }
 }

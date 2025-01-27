@@ -22,11 +22,11 @@ export class AnalyticsController {
   }
 }
 
+@RequireDeveloperAuth()
 @Controller("private/analytics")
 export class AnalyticsPrivateController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
-  @RequireDeveloperAuth()
   @Get()
   getGeneralStatistics(@Req() req: RequestWithDevAccessToken, @Query() params: GeneralStatsQueryDto) {
     return this.analyticsService.getAdminStatistics(
@@ -35,7 +35,6 @@ export class AnalyticsPrivateController {
     );
   }
 
-  @RequireDeveloperAuth()
   @Get("filters")
   getAnalyticsFilter(@Req() req: RequestWithDevAccessToken) {
     return this.analyticsService.getAnalyticsFilter(req.developerId);

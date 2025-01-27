@@ -4,6 +4,7 @@ import { CreateApplicationDto } from "@/routes/application/dto/create-applicatio
 import slugify from "slugify";
 import { generateRandomLightColor } from "@/utils/colors";
 import { CustomHttpException } from "@/common/exceptions/custom-error-exception";
+import { createVaultStripeKeysItem, deleteVaultStripeKeysItem, getVaultItem, updateVaultStripeKeysItem } from "@/lib/1pwd-vault";
 
 @Injectable()
 export class ApplicationService {
@@ -139,5 +140,69 @@ export class ApplicationPrivateService {
         }
       }
     });
+  }
+
+  async setStripeKeys(appId: string, stripeSecretKey: string, stripeWebhookSecret: string) {
+    try {
+      const app = await this.database.app.findUnique({ where: { id: appId } });
+      const vaultItem = await createVaultStripeKeysItem(stripeSecretKey, stripeWebhookSecret, app.slug);
+      await this.database.app.update({
+        where: { id: appId },
+        data: { stripeKeysVaultKey: vaultItem.id }
+      });
+      return { message: "Stripe keys set successfully" };
+    } catch (e) {
+      throw new CustomHttpException(e);
+    }
+  }
+
+  async getStripeKeys(appId: string) {
+    try {
+      const app = await this.getAppWithStripeKeys(appId);
+      const vaultItem = await getVaultItem(app.stripeKeysVaultKey, "stripeKeys");
+      const stripeKeys = vaultItem.fields;
+
+      return stripeKeys
+        ?.filter(item => item.type === "CONCEALED" && item.value)
+        ?.reduce((result, item) => {
+          result[item.id] = item.value;
+          return result;
+        }, {});
+
+    } catch (e) {
+      throw new CustomHttpException(e);
+    }
+  }
+
+  async updateStripeKeys(appId: string, stripeSecretKey: string, stripeWebhookSecret: string) {
+    try {
+      const app = await this.getAppWithStripeKeys(appId);
+      await updateVaultStripeKeysItem(app.stripeKeysVaultKey, stripeSecretKey, stripeWebhookSecret);
+      return { message: "Stripe keys updated successfully" };
+    } catch (e) {
+      throw new CustomHttpException(e);
+    }
+  }
+
+  async deleteStripeKeys(appId: string) {
+    try {
+      const app = await this.getAppWithStripeKeys(appId);
+      await deleteVaultStripeKeysItem(app.stripeKeysVaultKey);
+      await this.database.app.update({
+        where: { id: appId },
+        data: { stripeKeysVaultKey: null }
+      });
+      return { message: "Stripe keys deleted successfully" };
+    } catch (e) {
+      throw new CustomHttpException(e);
+    }
+  }
+
+  private async getAppWithStripeKeys(appId: string) {
+    const app = await this.database.app.findUnique({ where: { id: appId } });
+    if (!app || !app.stripeKeysVaultKey) {
+      throw new Error("Stripe keys not found for this application");
+    }
+    return app;
   }
 }
